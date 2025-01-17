@@ -5,64 +5,11 @@ import (
 	"fmt"
 )
 
-type FType interface {
-	ftype()
-	ToGo() string // Goでの型を表す文字列、表せないものをどうするかはあとで考える
-}
-
-func (*FPrimitive) ftype() {}
-func (*FFunc) ftype()      {}
-
-type FPrimitive struct {
-	Name string // "int", "string" etc.
-}
-
-func (p *FPrimitive) ToGo() string {
-	// unitはなにも無しとしておく。関数のreturnなどはそれで動くので。
-	if p.Name == "unit" {
-		return ""
-	}
-	return p.Name
-}
-
-var (
-	FInt    = &FPrimitive{"int"}
-	FString = &FPrimitive{"string"}
-	FUnit   = &FPrimitive{"unit"}
-)
-
-type FFunc struct {
-	// カリー化されている前提で、引数も戻りも区別せず持つ
-	Targets []FType
-}
-
-func (p *FFunc) Args() []FType {
-	return p.Targets[0 : len(p.Targets)-1]
-}
-
-func (p *FFunc) ReturnType() FType {
-	return p.Targets[len(p.Targets)-1]
-}
-
-func (p *FFunc) ToGo() string {
-	var buf bytes.Buffer
-	buf.WriteString("func (")
-	for i, tp := range p.Args() {
-		if i != 0 {
-			buf.WriteString(",")
-		}
-		buf.WriteString(tp.ToGo())
-	}
-
-	last := p.ReturnType()
-	if last != FUnit {
-		buf.WriteString(" ")
-		buf.WriteString(last.ToGo())
-	}
-	return buf.String()
-}
+// ExprとStmtの共通インターフェース。今の所空。
+type Node interface{}
 
 type Expr interface {
+	Node
 	expr()
 	FType() FType
 	ToGo() string
@@ -96,8 +43,9 @@ type Var struct {
 	Type FType
 }
 
-func (v *Var) FType() FType { return v.Type }
-func (v *Var) ToGo() string { return v.Name }
+func (v *Var) FType() FType       { return v.Type }
+func (v *Var) ToGo() string       { return v.Name }
+func (v *Var) IsUnresolved() bool { return IsUnresolved(v.Type) }
 
 type FunCall struct {
 	Func Var
@@ -137,6 +85,7 @@ func (fc *FunCall) ToGo() string {
 }
 
 type Stmt interface {
+	Node
 	stmt()
 	ToGo() string
 }
@@ -163,13 +112,13 @@ func (p *Package) ToGo() string {
 
 type FuncDef struct {
 	Name string
-	// Unitはパース時点で0引数argsに変換済みの想定
-	Args []Var
-	Body Expr
+	// Unitはパース時点で0引数paramsに変換済みの想定
+	Params []Var
+	Body   Expr
 }
 
 func (fd *FuncDef) ToGoParams(buf *bytes.Buffer) {
-	for i, arg := range fd.Args {
+	for i, arg := range fd.Params {
 		if i != 0 {
 			buf.WriteString(", ")
 		}
@@ -177,6 +126,15 @@ func (fd *FuncDef) ToGoParams(buf *bytes.Buffer) {
 		buf.WriteString(" ")
 		buf.WriteString(arg.Type.ToGo())
 	}
+}
+
+func (fd *FuncDef) FuncFType() FType {
+	var fts []FType
+	for _, arg := range fd.Params {
+		fts = append(fts, arg.Type)
+	}
+	fts = append(fts, fd.Body.FType())
+	return &FFunc{fts}
 }
 
 func (fd *FuncDef) ToGo() string {
@@ -193,16 +151,94 @@ func (fd *FuncDef) ToGo() string {
 	return buf.String()
 }
 
-type Program struct {
-	Stmts []Stmt
+/*
+StmtとExprをトラバースしていく。
+f(node)がtrueを返すと子どもを辿っていく。
+最後はf(nil)を呼ぶ。
+*/
+func Walk(n Node, f func(Node) bool) {
+	if n == nil {
+		panic("nil")
+	}
+	if !f(n) {
+		return
+	}
+
+	switch n := n.(type) {
+	case *FuncDef:
+		for _, pm := range n.Params {
+			Walk(&pm, f)
+		}
+		Walk(n.Body, f)
+	case *Import, *Package:
+		// no-op
+	// ここからexpr
+	case *GoEval, *StringLiteral, *Var:
+		// no-op
+	case *FunCall:
+		Walk(&n.Func, f)
+		for _, arg := range n.Args {
+			Walk(arg, f)
+		}
+	default:
+		panic(n)
+	}
+	f(nil)
 }
 
-func (p *Program) AddStmt(stmt Stmt) {
+func WalkStmts(stmts []Stmt, f func(Node) bool) {
+	for _, stmt := range stmts {
+		Walk(stmt, f)
+	}
+}
+
+type TypeResolver struct {
+	TypeMap map[string]FType
+}
+
+func NewResolver() *TypeResolver {
+	res := TypeResolver{}
+	res.TypeMap = make(map[string]FType)
+	return &res
+}
+
+func (res *TypeResolver) Register(name string, ftype FType) {
+	res.TypeMap[name] = ftype
+}
+
+func (res *TypeResolver) Lookup(name string) FType {
+	return res.TypeMap[name]
+}
+
+func (res *TypeResolver) Resolve(n Node) {
+	Walk(n, func(n Node) bool {
+		switch n := n.(type) {
+		case *Var:
+			if n.IsUnresolved() {
+				nt := res.Lookup(n.Name)
+				if nt != nil {
+					n.Type = nt
+				}
+			}
+			return true
+		default:
+			return true
+		}
+	})
+}
+
+type Program struct {
+	Stmts    []Stmt
+	Resolver *TypeResolver
+}
+
+func (p *Program) addStmt(stmt Stmt) {
 	p.Stmts = append(p.Stmts, stmt)
 }
 
-func (p *Program) ToGo() string {
+func (p *Program) Compile() string {
 	var buf bytes.Buffer
+	p.ResolveAndRegisterType()
 	for _, stmt := range p.Stmts {
 		buf.WriteString(stmt.ToGo())
 		buf.WriteString("\n\n")
@@ -210,18 +246,43 @@ func (p *Program) ToGo() string {
 	return buf.String()
 }
 
-func main() {
+func NewProgram(stmts []Stmt) *Program {
 	var p Program
-	p.AddStmt(&Package{"main"})
-	p.AddStmt(&Import{"fmt"})
-	p.AddStmt(&FuncDef{"hello", []Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}})
-	p.AddStmt(&FuncDef{"main", nil,
-		&FunCall{
-			Var{"hello", &FFunc{[]FType{FString, FUnit}}},
-			[]Expr{&StringLiteral{"Hoge"}},
-		},
+	for _, s := range stmts {
+		p.addStmt(s)
+	}
+	p.Resolver = NewResolver()
+	return &p
+}
+
+func registerType(resolver *TypeResolver, root Stmt) {
+	Walk(root, func(n Node) bool {
+		switch n := n.(type) {
+		case *FuncDef:
+			resolver.Register(n.Name, n.FuncFType())
+			return false
+		default:
+			return true
+		}
 	})
-	fmt.Println(p.ToGo())
+}
+
+func (pg *Program) ResolveAndRegisterType() {
+	for _, stmt := range pg.Stmts {
+		pg.Resolver.Resolve(stmt)
+		registerType(pg.Resolver, stmt)
+	}
+}
+
+func main() {
+	p := NewProgram(
+		[]Stmt{
+			&Package{"main"},
+			&Import{"fmt"},
+			&FuncDef{"main", nil, &GoEval{"fmt.Println(\"Hello World\")"}},
+		},
+	)
+	fmt.Println(p.Compile())
 }
 
 /*
