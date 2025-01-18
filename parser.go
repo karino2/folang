@@ -265,14 +265,7 @@ func (p *Parser) parseImport() *Import {
 	return &Import{tk.stringVal}
 }
 
-func (p *Parser) parseExpr() Expr {
-	// only support
-	// GoEval "xxx"
-	tk := p.Current()
-	if tk.ttype != IDENTIFIER || tk.stringVal != "GoEval" {
-		panic(*tk)
-	}
-
+func (p *Parser) parseGoEval() Expr {
 	p.gotoNext()
 	arg := p.Current()
 	if arg.ttype != STRING {
@@ -280,6 +273,54 @@ func (p *Parser) parseExpr() Expr {
 	}
 	p.gotoNext()
 	return &GoEval{arg.stringVal}
+}
+
+func (p *Parser) isEndOfExpr() bool {
+	return p.Current().ttype == EOL || p.Current().ttype == EOF
+}
+
+func (p *Parser) parseExpr() Expr {
+	tk := p.Current()
+	// spcial handling
+	if tk.ttype == IDENTIFIER && tk.stringVal == "GoEval" {
+		return p.parseGoEval()
+	}
+
+	switch {
+	case tk.ttype == STRING:
+		p.gotoNext()
+		return &StringLiteral{tk.stringVal}
+	case tk.ttype == IDENTIFIER:
+		v := &Var{tk.stringVal, &FUnresolved{}}
+		p.gotoNext()
+		return v
+	default:
+		panic("NYI")
+	}
+}
+
+/*
+function body.
+*/
+func (p *Parser) parseBody() Expr {
+	expr := p.parseExpr()
+
+	if p.isEndOfExpr() {
+		return expr
+	}
+
+	// application expression: expr expr
+	v, ok := expr.(*Var)
+	if !ok {
+		panic("applicationn expr with non variable start, NYI")
+	}
+
+	var exprs []Expr
+	for !p.isEndOfExpr() {
+		expr = p.parseExpr()
+		exprs = append(exprs, expr)
+	}
+	return &FunCall{*v, exprs}
 }
 
 func (p *Parser) parseFuncDefLet() Stmt {
@@ -303,7 +344,7 @@ func (p *Parser) parseFuncDefLet() Stmt {
 	p.skipEOL()
 	// parse func body.
 	p.skipSpace()
-	expr := p.parseExpr()
+	expr := p.parseBody()
 	return &FuncDef{fname.stringVal, []Var{}, expr}
 }
 
