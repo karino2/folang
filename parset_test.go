@@ -146,7 +146,8 @@ let main () =
 	if len(res) != 3 {
 		t.Errorf("expect 2 stmt, only %d, %v", len(res), res)
 	}
-	p := NewProgram(res)
+	tp := NewTranspiler()
+	f := NewFile(res)
 
 	want := `package main
 
@@ -157,7 +158,7 @@ fmt.Println("Hello World")
 }
 
 `
-	got := p.Compile()
+	got := tp.Transpile(f)
 	if got != want {
 		t.Errorf("want '%s', got '%s'", want, got)
 	}
