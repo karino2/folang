@@ -18,6 +18,7 @@ const (
 	LPAREN
 	RPAREN
 	STRING
+	COLON
 	/*
 		INDENT
 		UNDENT
@@ -190,6 +191,10 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.ttype = RPAREN
 		cur.stringVal = ")"
 		cur.len = 1
+	case b == ':':
+		cur.ttype = COLON
+		cur.stringVal = ":"
+		cur.len = 1
 	default:
 		panic(b)
 	}
@@ -232,6 +237,13 @@ func (p *Parser) skipEOL() {
 	for tk.ttype == EOL {
 		p.gotoNext()
 		tk = p.Current()
+	}
+}
+
+func (p *Parser) expect(ttype TokenType) {
+	tk := p.Current()
+	if tk.ttype != ttype {
+		panic(tk)
 	}
 }
 
@@ -303,6 +315,7 @@ func (p *Parser) parseExpr() Expr {
 function body.
 */
 func (p *Parser) parseBody() Expr {
+	p.skipSpace()
 	expr := p.parseExpr()
 
 	if p.isEndOfExpr() {
@@ -323,6 +336,61 @@ func (p *Parser) parseBody() Expr {
 	return &FunCall{*v, exprs}
 }
 
+/*
+TYPE = 'string'
+*/
+func (p *Parser) parseType() FType {
+	p.expect(IDENTIFIER)
+	tname := p.Current().stringVal
+	if tname != "string" {
+		panic(tname)
+	}
+	p.gotoNext()
+	return FString
+}
+
+/*
+	PARAM = '(' ')'
+				|	'(' IDENTIFIER : TYPE ')'
+
+for '(' ')' case, return nil
+*/
+func (p *Parser) parseParam() *Var {
+	p.consume(LPAREN)
+	if p.Current().ttype == RPAREN {
+		p.consume(RPAREN)
+		return nil
+	}
+	p.expect(IDENTIFIER)
+	varName := p.Current().stringVal
+
+	p.gotoNext()
+	p.consume(COLON)
+	ft := p.parseType()
+	p.consume(RPAREN)
+	return &Var{varName, ft}
+}
+
+/*
+PARAMS = PARAM*
+*/
+func (p *Parser) parseParams() []Var {
+	var params []Var
+
+	one := p.parseParam()
+	if one == nil {
+		return params
+	}
+
+	params = append(params, *one)
+
+	for p.Current().ttype == LPAREN {
+		one = p.parseParam()
+		params = append(params, *one)
+	}
+	return params
+}
+
 func (p *Parser) parseFuncDefLet() Stmt {
 	/*
 		expext
@@ -338,14 +406,15 @@ func (p *Parser) parseFuncDefLet() Stmt {
 		panic(fname)
 	}
 	p.gotoNext()
-	p.consume(LPAREN)
-	p.consume(RPAREN)
+	params := p.parseParams()
+
 	p.consume(EQ)
 	p.skipEOL()
+
 	// parse func body.
-	p.skipSpace()
 	expr := p.parseBody()
-	return &FuncDef{fname.stringVal, []Var{}, expr}
+
+	return &FuncDef{fname.stringVal, params, expr}
 }
 
 func (p *Parser) parseLet() Stmt {

@@ -121,7 +121,7 @@ import "fmt"
 	parser := &Parser{}
 	res := parser.Parse("", []byte(src))
 	if len(res) != 2 {
-		t.Errorf("expect 2 stmt, only %d, %v", len(res), res)
+		t.Errorf("expect 2 stmt, got %d, %v", len(res), res)
 	}
 
 	wants := []string{`package main`, `import "fmt"`}
@@ -144,7 +144,7 @@ let main () =
 	parser := &Parser{}
 	res := parser.Parse("", []byte(src))
 	if len(res) != 3 {
-		t.Errorf("expect 2 stmt, only %d, %v", len(res), res)
+		t.Errorf("expect 3 stmt, got %d, %v", len(res), res)
 	}
 	tp := NewTranspiler()
 	f := NewFile(res)
@@ -155,6 +155,43 @@ import "fmt"
 
 func main() {
 fmt.Println("Hello World")
+}
+
+`
+	got := tp.Transpile(f)
+	if got != want {
+		t.Errorf("want '%s', got '%s'", want, got)
+	}
+}
+
+func TestParserFuncDef(t *testing.T) {
+	src :=
+		`package main
+import "fmt"
+
+let hello (msg:string) = 
+    GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
+
+let main () =
+   hello "World"
+`
+	parser := &Parser{}
+	res := parser.Parse("", []byte(src))
+	if len(res) != 4 {
+		t.Errorf("expect 4 stmt, got %d, %v", len(res), res)
+	}
+	tp := NewTranspiler()
+	f := NewFile(res)
+	want := `package main
+
+import "fmt"
+
+func hello(msg string) {
+fmt.Printf("Hello %s\n", msg)
+}
+
+func main() {
+hello("World")
 }
 
 `
