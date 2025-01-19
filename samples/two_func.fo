@@ -1,0 +1,8 @@
+package main
+import "fmt"
+
+let hello (msg:string) = 
+    GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
+
+let main () =
+    hello "World"

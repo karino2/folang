@@ -1,0 +1,6 @@
+package main
+
+type hoge = {X: string; Y: string}
+
+let ika () =
+    {X="abc"; Y="def"}
