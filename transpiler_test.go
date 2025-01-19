@@ -126,7 +126,7 @@ func TestRecordDef(t *testing.T) {
 	})
 	tp := NewTranspiler()
 	tp.resolveAndRegisterType(f.Stmts)
-	got := tp.Resolver.Lookup("hoge")
+	got := tp.Resolver.LookupByTypeName("hoge")
 	_, ok := got.(*FRecord)
 	if !ok {
 		t.Errorf("cannot find FRecord by name")

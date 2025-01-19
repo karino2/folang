@@ -19,12 +19,17 @@ func (res *TypeResolver) Register(name string, ftype FType) {
 }
 
 func (res *TypeResolver) RegisterRecord(name string, frtype *FRecord) {
-	res.Register(name, frtype)
 	res.RecordMap[name] = frtype
 }
 
+// Lookup type of variable by variable name.
 func (res *TypeResolver) Lookup(name string) FType {
 	return res.TypeMap[name]
+}
+
+// Lookup custom defined type by typename. Not by variable name.
+func (res *TypeResolver) LookupByTypeName(tname string) FType {
+	return res.RecordMap[tname]
 }
 
 func (res *TypeResolver) LookupRecord(fieldNames []string) *FRecord {
