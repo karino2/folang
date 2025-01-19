@@ -132,24 +132,19 @@ import "fmt"
 		}
 	}
 }
-
-func TestParserHello(t *testing.T) {
-	src :=
-		`package main
+func TestParserAndTranspile(t *testing.T) {
+	var tests = []struct {
+		input string
+		want  string
+	}{
+		{
+			`package main
 import "fmt"
 
 let main () =
     GoEval "fmt.Println(\"Hello World\")"
-`
-	parser := &Parser{}
-	res := parser.Parse("", []byte(src))
-	if len(res) != 3 {
-		t.Errorf("expect 3 stmt, got %d, %v", len(res), res)
-	}
-	tp := NewTranspiler()
-	f := NewFile(res)
-
-	want := `package main
+`,
+			`package main
 
 import "fmt"
 
@@ -157,32 +152,18 @@ func main() {
 fmt.Println("Hello World")
 }
 
-`
-	got := tp.Transpile(f)
-	if got != want {
-		t.Errorf("want '%s', got '%s'", want, got)
-	}
-}
-
-func TestParserFuncDef(t *testing.T) {
-	src :=
-		`package main
+`,
+		},
+		{
+			`package main
 import "fmt"
 
 let hello (msg:string) = 
     GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
 
 let main () =
-   hello "World"
-`
-	parser := &Parser{}
-	res := parser.Parse("", []byte(src))
-	if len(res) != 4 {
-		t.Errorf("expect 4 stmt, got %d, %v", len(res), res)
-	}
-	tp := NewTranspiler()
-	f := NewFile(res)
-	want := `package main
+    hello "World"
+`, `package main
 
 import "fmt"
 
@@ -194,9 +175,80 @@ func main() {
 hello("World")
 }
 
+`,
+		},
+		{
+			`type hoge = {X: string; Y: string}
+
+let ika () =
+    {X="abc"; Y="def"}
+`,
+			`type hoge struct {
+  X string
+  Y string
+}
+
+func ika() *hoge{
+return &hoge{X: "abc", Y: "def"}
+}
+
+`,
+		},
+	}
+
+	for _, test := range tests {
+		parser := &Parser{}
+		res := parser.Parse("", []byte(test.input))
+		tp := NewTranspiler()
+		f := NewFile(res)
+		got := tp.Transpile(f)
+
+		if got != test.want {
+			t.Errorf("got [%s], want [%s]", got, test.want)
+		}
+	}
+}
+
+func TestParserRecordDef(t *testing.T) {
+	src := `type Hoge = {X: string; Y: string}
 `
-	got := tp.Transpile(f)
-	if got != want {
-		t.Errorf("want '%s', got '%s'", want, got)
+
+	parser := &Parser{}
+	res := parser.Parse("", []byte(src))
+	if len(res) != 1 {
+		t.Errorf("expect 1 stmt, got %d, %v", len(res), res)
+	}
+	rd, ok := res[0].(*RecordDef)
+	if !ok {
+		t.Error("expect RecordDef but not")
+	}
+	if rd.Name != "Hoge" ||
+		len(rd.Fields) != 2 ||
+		rd.Fields[0].Name != "X" ||
+		rd.Fields[0].Type != FString ||
+		rd.Fields[1].Name != "Y" ||
+		rd.Fields[1].Type != FString {
+		t.Errorf("unexpected rd: %v", rd)
+	}
+}
+
+func TestParserRecordExpression(t *testing.T) {
+	src := `{X="hoge"; Y="ika"}
+`
+
+	parser := &Parser{}
+	parser.Setup("", []byte(src))
+	res := parser.parseExpr()
+	if res == nil {
+		t.Errorf("expect record gen expression")
+	}
+	rg, ok := res.(*RecordGen)
+	if !ok {
+		t.Error("expect RecordGen but not")
+	}
+	if len(rg.fieldNames) != 2 ||
+		rg.fieldNames[0] != "X" ||
+		rg.fieldNames[1] != "Y" {
+		t.Errorf("unexpected rg: %v", rg)
 	}
 }

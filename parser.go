@@ -12,19 +12,30 @@ const (
 	IDENTIFIER
 	EQ
 	LET
+	TYPE
 	EOL
 	PACKAGE
 	IMPORT
 	LPAREN
 	RPAREN
+	LBRACE
+	RBRACE
 	STRING
 	COLON
+	SEMICOLON
 	/*
 		INDENT
 		UNDENT
 
 	*/
 )
+
+var keywordMap = map[string]TokenType{
+	"let":     LET,
+	"package": PACKAGE,
+	"import":  IMPORT,
+	"type":    TYPE,
+}
 
 type Token struct {
 	ttype     TokenType
@@ -138,10 +149,10 @@ func (tkz *Tokenizer) analyzeCurAsStringLiteral() {
 	}
 }
 
-var keywordMap = map[string]TokenType{
-	"let":     LET,
-	"package": PACKAGE,
-	"import":  IMPORT,
+func (tk *Token) setOneChar(tid TokenType, one byte) {
+	tk.ttype = tid
+	tk.stringVal = string(one)
+	tk.len = 1
 }
 
 /*
@@ -176,25 +187,21 @@ func (tkz *Tokenizer) analyzeCur() {
 	case b == '"':
 		tkz.analyzeCurAsStringLiteral()
 	case b == '=':
-		cur.ttype = EQ
-		cur.stringVal = "="
-		cur.len = 1
+		cur.setOneChar(EQ, b)
 	case b == '\n':
-		cur.ttype = EOL
-		cur.stringVal = "\n"
-		cur.len = 1
+		cur.setOneChar(EOL, b)
 	case b == '(':
-		cur.ttype = LPAREN
-		cur.stringVal = "("
-		cur.len = 1
+		cur.setOneChar(LPAREN, b)
 	case b == ')':
-		cur.ttype = RPAREN
-		cur.stringVal = ")"
-		cur.len = 1
+		cur.setOneChar(RPAREN, b)
+	case b == '{':
+		cur.setOneChar(LBRACE, b)
+	case b == '}':
+		cur.setOneChar(RBRACE, b)
 	case b == ':':
-		cur.ttype = COLON
-		cur.stringVal = ":"
-		cur.len = 1
+		cur.setOneChar(COLON, b)
+	case b == ';':
+		cur.setOneChar(SEMICOLON, b)
 	default:
 		panic(b)
 	}
@@ -232,6 +239,12 @@ func (p *Parser) gotoNext() {
 	p.skipSpace()
 }
 
+// goto next with Skip EOL
+func (p *Parser) gotoNextSL() {
+	p.gotoNext()
+	p.skipEOL()
+}
+
 func (p *Parser) skipEOL() {
 	tk := p.Current()
 	for tk.ttype == EOL {
@@ -255,14 +268,19 @@ func (p *Parser) consume(ttype TokenType) {
 	p.gotoNext()
 }
 
+// consume with skip EOL
+func (p *Parser) consumeSL(ttype TokenType) {
+	p.consume(ttype)
+	p.skipEOL()
+}
+
 func (p *Parser) parsePackage() *Package {
 	p.consume(PACKAGE)
 	ident := p.Current()
 	if ident.ttype != IDENTIFIER {
 		panic(ident)
 	}
-	p.gotoNext()
-	p.skipEOL()
+	p.gotoNextSL()
 	return &Package{ident.stringVal}
 }
 
@@ -272,8 +290,7 @@ func (p *Parser) parseImport() *Import {
 	if tk.ttype != STRING {
 		panic(tk)
 	}
-	p.gotoNext()
-	p.skipEOL()
+	p.gotoNextSL()
 	return &Import{tk.stringVal}
 }
 
@@ -291,6 +308,36 @@ func (p *Parser) isEndOfExpr() bool {
 	return p.Current().ttype == EOL || p.Current().ttype == EOF
 }
 
+/*
+RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
+
+FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
+
+FIELD_INITIALIZER = IDENTIFIER '=' expr
+*/
+func (p *Parser) parseRecordGen() Expr {
+	p.consumeSL(LBRACE)
+
+	var fnames []string
+	var fvals []Expr
+	for i := 0; p.Current().ttype != RBRACE; i++ {
+		if i != 0 {
+			p.consumeSL(SEMICOLON)
+		}
+
+		p.expect(IDENTIFIER)
+		fnames = append(fnames, p.Current().stringVal)
+
+		p.gotoNextSL()
+		p.consumeSL(EQ)
+		one := p.parseExpr()
+		fvals = append(fvals, one)
+	}
+
+	p.consume(RBRACE)
+	return NewRecordGen(fnames, fvals)
+}
+
 func (p *Parser) parseExpr() Expr {
 	tk := p.Current()
 	// spcial handling
@@ -306,6 +353,8 @@ func (p *Parser) parseExpr() Expr {
 		v := &Var{tk.stringVal, &FUnresolved{}}
 		p.gotoNext()
 		return v
+	case tk.ttype == LBRACE:
+		return p.parseRecordGen()
 	default:
 		panic("NYI")
 	}
@@ -408,8 +457,7 @@ func (p *Parser) parseFuncDefLet() Stmt {
 	p.gotoNext()
 	params := p.parseParams()
 
-	p.consume(EQ)
-	p.skipEOL()
+	p.consumeSL(EQ)
 
 	// parse func body.
 	expr := p.parseBody()
@@ -421,6 +469,40 @@ func (p *Parser) parseLet() Stmt {
 	return p.parseFuncDefLet()
 }
 
+// TYPE_DEF = 'type' ID '=' '{' FIELD_DEFS '}'
+//
+// FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
+//
+// FIELD_DEF = ID ':' TYPE
+func (p *Parser) parseTypeDef() Stmt {
+	p.consume(TYPE)
+	p.expect(IDENTIFIER)
+
+	tname := p.Current().stringVal
+	p.gotoNextSL()
+
+	p.consumeSL(EQ)
+	p.consumeSL(LBRACE)
+
+	var fields []RecordField
+	for i := 0; p.Current().ttype != RBRACE; i++ {
+		if i != 0 {
+			p.consumeSL(SEMICOLON)
+		}
+
+		p.expect(IDENTIFIER)
+		fname := p.Current().stringVal
+
+		p.gotoNextSL()
+		p.consumeSL(COLON)
+		ftype := p.parseType()
+		fields = append(fields, RecordField{fname, ftype})
+	}
+	p.consume(RBRACE)
+
+	return &RecordDef{tname, fields}
+}
+
 func (p *Parser) parseStmt() Stmt {
 	tk := p.Current()
 	switch tk.ttype {
@@ -430,6 +512,8 @@ func (p *Parser) parseStmt() Stmt {
 		return p.parseImport()
 	case LET:
 		return p.parseLet()
+	case TYPE:
+		return p.parseTypeDef()
 	default:
 		panic(tk)
 	}
@@ -447,8 +531,12 @@ func (p *Parser) parseStmts() []Stmt {
 	return stmts
 }
 
-func (p *Parser) Parse(fileName string, buf []byte) []Stmt {
+func (p *Parser) Setup(fileName string, buf []byte) {
 	p.tokenizer = NewTokenizer(fileName, buf)
 	p.tokenizer.Setup()
+}
+
+func (p *Parser) Parse(fileName string, buf []byte) []Stmt {
+	p.Setup(fileName, buf)
 	return p.parseStmts()
 }
