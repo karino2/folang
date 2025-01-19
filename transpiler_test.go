@@ -120,7 +120,7 @@ func TestResolver(t *testing.T) {
 	}
 }
 
-func TestRecordDef(t *testing.T) {
+func TestRecordDefLookup(t *testing.T) {
 	f := NewFile([]Stmt{
 		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
 	})
@@ -150,5 +150,34 @@ func TestRecordDef(t *testing.T) {
 	got5 := tp.Resolver.LookupRecord([]string{"X"})
 	if got5 != nil {
 		t.Errorf("Wrongly matched with few fields")
+	}
+}
+
+func TestRecordGen(t *testing.T) {
+	recGen := NewRecordGen(
+		[]string{"X", "Y"},
+		[]Expr{&StringLiteral{"abc"}, &StringLiteral{"def"}},
+	)
+
+	f := NewFile([]Stmt{
+		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
+		&FuncDef{"ika", nil,
+			recGen,
+		},
+	})
+	tp := NewTranspiler()
+	got := tp.Transpile(f)
+	want := `type hoge struct {
+  X string
+  Y string
+}
+
+func ika() *hoge{
+return &hoge{X: "abc", Y: "def"}
+}
+
+`
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
 	}
 }

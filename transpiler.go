@@ -52,6 +52,12 @@ func (res *TypeResolver) Resolve(n Node) {
 				}
 			}
 			return true
+		case *RecordGen:
+			rt := res.LookupRecord(n.fieldNames)
+			if rt != nil {
+				n.recordType = rt
+			}
+			return true
 		default:
 			return true
 		}

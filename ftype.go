@@ -95,7 +95,12 @@ type FRecord struct {
 }
 
 // Use for cast and variable declaration.
+// Use pointer type as record type.
 func (fr *FRecord) ToGo() string {
+	return "*" + fr.name
+}
+
+func (fr *FRecord) StructName() string {
 	return fr.name
 }
 

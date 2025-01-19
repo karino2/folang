@@ -19,6 +19,7 @@ func (*GoEval) expr()        {}
 func (*StringLiteral) expr() {}
 func (*FunCall) expr()       {}
 func (*Var) expr()           {}
+func (*RecordGen) expr()     {}
 
 type StringLiteral struct {
 	Value string
@@ -81,6 +82,44 @@ func (fc *FunCall) ToGo() string {
 		buf.WriteString(arg.ToGo())
 	}
 	buf.WriteString(")")
+	return buf.String()
+}
+
+type RecordGen struct {
+	fieldNames  []string
+	fieldValues []Expr
+	recordType  FType
+}
+
+func NewRecordGen(fieldNames []string, fieldValues []Expr) *RecordGen {
+	return &RecordGen{fieldNames, fieldValues, &FUnresolved{}}
+}
+
+func (rg *RecordGen) FType() FType {
+	return rg.recordType
+}
+
+func (rg *RecordGen) ToGo() string {
+	rtype, ok := rg.recordType.(*FRecord)
+	if !ok {
+		panic("Unresolved record type.")
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("&")
+
+	buf.WriteString(rtype.StructName())
+	buf.WriteString("{")
+	for i, fname := range rg.fieldNames {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		fval := rg.fieldValues[i]
+		buf.WriteString(fname)
+		buf.WriteString(": ")
+		buf.WriteString(fval.ToGo())
+	}
+	buf.WriteString("}")
 	return buf.String()
 }
 
@@ -147,6 +186,10 @@ func (fd *FuncDef) ToGo() string {
 	buf.WriteString(") ")
 	buf.WriteString(fd.Body.FType().ToGo())
 	buf.WriteString("{\n")
+	// TODO: multiple stmt support.
+	if fd.Body.FType() != FUnit {
+		buf.WriteString("return ")
+	}
 	buf.WriteString(fd.Body.ToGo())
 	buf.WriteString("\n}")
 	return buf.String()
@@ -206,6 +249,10 @@ func Walk(n Node, f func(Node) bool) {
 		Walk(&n.Func, f)
 		for _, arg := range n.Args {
 			Walk(arg, f)
+		}
+	case *RecordGen:
+		for _, fval := range n.fieldValues {
+			Walk(fval, f)
 		}
 	default:
 		panic(n)
