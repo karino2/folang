@@ -11,6 +11,7 @@ func (*FPrimitive) ftype()  {}
 func (*FUnitType) ftype()   {}
 func (*FFunc) ftype()       {}
 func (*FUnresolved) ftype() {}
+func (*FRecord) ftype()     {}
 
 func IsUnresolved(ft FType) bool {
 	_, ok := ft.(*FUnresolved)
@@ -81,4 +82,37 @@ func (p *FFunc) ToGo() string {
 		buf.WriteString(last.ToGo())
 	}
 	return buf.String()
+}
+
+type RecordField struct {
+	Name string
+	Type FType
+}
+
+type FRecord struct {
+	name   string
+	fields []RecordField
+}
+
+// Use for cast and variable declaration.
+func (fr *FRecord) ToGo() string {
+	return fr.name
+}
+
+func (fr *FRecord) Match(fieldNames []string) bool {
+	if len(fieldNames) != len(fr.fields) {
+		return false
+	}
+	m := make(map[string]bool)
+	for _, f := range fr.fields {
+		m[f.Name] = true
+	}
+
+	for _, fn := range fieldNames {
+		_, ok := m[fn]
+		if !ok {
+			return false
+		}
+	}
+	return true
 }

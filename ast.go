@@ -90,9 +90,10 @@ type Stmt interface {
 	ToGo() string
 }
 
-func (*FuncDef) stmt() {}
-func (*Import) stmt()  {}
-func (*Package) stmt() {}
+func (*FuncDef) stmt()   {}
+func (*Import) stmt()    {}
+func (*Package) stmt()   {}
+func (*RecordDef) stmt() {}
 
 type Import struct {
 	PackageName string
@@ -151,6 +152,32 @@ func (fd *FuncDef) ToGo() string {
 	return buf.String()
 }
 
+type RecordDef struct {
+	Name   string
+	Fields []RecordField
+}
+
+// Use for type definition, type XXX struct {...}
+func (rd *RecordDef) ToGo() string {
+	var buf bytes.Buffer
+	buf.WriteString("type ")
+	buf.WriteString(rd.Name)
+	buf.WriteString(" struct {\n")
+	for _, field := range rd.Fields {
+		buf.WriteString("  ")
+		buf.WriteString(field.Name)
+		buf.WriteString(" ")
+		buf.WriteString(field.Type.ToGo())
+		buf.WriteString("\n")
+	}
+	buf.WriteString("}")
+	return buf.String()
+}
+
+func (rd *RecordDef) ToFType() *FRecord {
+	return &FRecord{rd.Name, rd.Fields}
+}
+
 /*
 StmtとExprをトラバースしていく。
 f(node)がtrueを返すと子どもを辿っていく。
@@ -170,7 +197,7 @@ func Walk(n Node, f func(Node) bool) {
 			Walk(&pm, f)
 		}
 		Walk(n.Body, f)
-	case *Import, *Package:
+	case *Import, *Package, *RecordDef:
 		// no-op
 	// ここからexpr
 	case *GoEval, *StringLiteral, *Var:

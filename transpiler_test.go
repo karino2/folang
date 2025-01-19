@@ -75,6 +75,17 @@ hello("Hoge")
 
 `,
 		},
+		{
+			[]Stmt{
+				&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
+			},
+			`type hoge struct {
+  X string
+  Y string
+}
+
+`,
+		},
 	} {
 		tp := NewTranspiler()
 		f := NewFile(test.stmts)
@@ -106,5 +117,38 @@ func TestResolver(t *testing.T) {
 	want := "func (string)"
 	if got != want {
 		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+func TestRecordDef(t *testing.T) {
+	f := NewFile([]Stmt{
+		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
+	})
+	tp := NewTranspiler()
+	tp.resolveAndRegisterType(f.Stmts)
+	got := tp.Resolver.Lookup("hoge")
+	_, ok := got.(*FRecord)
+	if !ok {
+		t.Errorf("cannot find FRecord by name")
+	}
+
+	got2 := tp.Resolver.LookupRecord([]string{"X", "Y"})
+	if got2 == nil {
+		t.Errorf("cannot find FRecord by field")
+	}
+
+	got3 := tp.Resolver.LookupRecord([]string{"X", "DEF"})
+	if got3 != nil {
+		t.Errorf("Wrongly matched with different name")
+	}
+
+	got4 := tp.Resolver.LookupRecord([]string{"X", "Y", "Z"})
+	if got4 != nil {
+		t.Errorf("Wrongly matched with extra field")
+	}
+
+	got5 := tp.Resolver.LookupRecord([]string{"X"})
+	if got5 != nil {
+		t.Errorf("Wrongly matched with few fields")
 	}
 }

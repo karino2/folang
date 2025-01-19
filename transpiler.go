@@ -3,12 +3,14 @@ package main
 import "bytes"
 
 type TypeResolver struct {
-	TypeMap map[string]FType
+	TypeMap   map[string]FType
+	RecordMap map[string]*FRecord
 }
 
 func NewResolver() *TypeResolver {
 	res := TypeResolver{}
 	res.TypeMap = make(map[string]FType)
+	res.RecordMap = make(map[string]*FRecord)
 	return &res
 }
 
@@ -16,8 +18,22 @@ func (res *TypeResolver) Register(name string, ftype FType) {
 	res.TypeMap[name] = ftype
 }
 
+func (res *TypeResolver) RegisterRecord(name string, frtype *FRecord) {
+	res.Register(name, frtype)
+	res.RecordMap[name] = frtype
+}
+
 func (res *TypeResolver) Lookup(name string) FType {
 	return res.TypeMap[name]
+}
+
+func (res *TypeResolver) LookupRecord(fieldNames []string) *FRecord {
+	for _, rt := range res.RecordMap {
+		if rt.Match(fieldNames) {
+			return rt
+		}
+	}
+	return nil
 }
 
 func (res *TypeResolver) Resolve(n Node) {
@@ -42,6 +58,9 @@ func registerType(resolver *TypeResolver, root Stmt) {
 		switch n := n.(type) {
 		case *FuncDef:
 			resolver.Register(n.Name, n.FuncFType())
+			return false
+		case *RecordDef:
+			resolver.RegisterRecord(n.Name, n.ToFType())
 			return false
 		default:
 			return true
