@@ -423,19 +423,19 @@ func (p *Parser) parseParam() *Var {
 /*
 PARAMS = PARAM*
 */
-func (p *Parser) parseParams() []Var {
-	var params []Var
+func (p *Parser) parseParams() []*Var {
+	var params []*Var
 
 	one := p.parseParam()
 	if one == nil {
 		return params
 	}
 
-	params = append(params, *one)
+	params = append(params, one)
 
 	for p.Current().ttype == LPAREN {
 		one = p.parseParam()
-		params = append(params, *one)
+		params = append(params, one)
 	}
 	return params
 }

@@ -26,7 +26,7 @@ fmt.Println("Hello World")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
 				&FuncDef{"main", nil,
 					&FunCall{
 						&Var{"hello", &FFunc{[]FType{FString, FUnit}}},
@@ -52,7 +52,7 @@ hello("Hoge")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
 				&FuncDef{"main", nil,
 					&FunCall{
 						// 型解決が動くか？
@@ -105,7 +105,7 @@ func TestResolver(t *testing.T) {
 	f := NewFile([]Stmt{
 		&Package{"main"},
 		&Import{"fmt"},
-		&FuncDef{"hello", []Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
+		&FuncDef{"hello", []*Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
 		&FuncDef{"main", nil,
 			funCall,
 		},

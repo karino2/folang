@@ -153,7 +153,7 @@ func (p *Package) ToGo() string {
 type FuncDef struct {
 	Name string
 	// Unitはパース時点で0引数paramsに変換済みの想定
-	Params []Var
+	Params []*Var
 	Body   Expr
 }
 
@@ -237,7 +237,7 @@ func Walk(n Node, f func(Node) bool) {
 	switch n := n.(type) {
 	case *FuncDef:
 		for _, pm := range n.Params {
-			Walk(&pm, f)
+			Walk(pm, f)
 		}
 		Walk(n.Body, f)
 	case *Import, *Package, *RecordDef:
