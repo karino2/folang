@@ -142,6 +142,7 @@ func (*FuncDef) stmt()   {}
 func (*Import) stmt()    {}
 func (*Package) stmt()   {}
 func (*RecordDef) stmt() {}
+func (*UnionDef) stmt()  {}
 
 type Import struct {
 	PackageName string
@@ -206,7 +207,7 @@ func (fd *FuncDef) ToGo() string {
 
 type RecordDef struct {
 	Name   string
-	Fields []RecordField
+	Fields []NameTypePair
 }
 
 // Use for type definition, type XXX struct {...}
@@ -228,6 +229,107 @@ func (rd *RecordDef) ToGo() string {
 
 func (rd *RecordDef) ToFType() *FRecord {
 	return &FRecord{rd.Name, rd.Fields}
+}
+
+/*
+Union implementation.
+For following code:
+type IntOrBool =
+
+	| I of int
+	| B of bool
+
+The result becomes following three types.
+
+- IntOrBool interface
+- IntOrBool_I struct (with Value int)
+- IntOrBool_B struct (with Value bool)
+
+We call IntOrBool_I "case struct of I".
+*/
+type UnionDef struct {
+	Name  string
+	Cases []NameTypePair
+}
+
+// Return IntOrBool_I
+func (ud *UnionDef) CaseStructName(index int) string {
+	return fmt.Sprintf("%s_%s", ud.Name, ud.Cases[index].Name)
+}
+
+/*
+	type IntOrBool interface {
+	  IntOrBool_Union()
+	}
+*/
+func (ud *UnionDef) buildUnionDef(buf *bytes.Buffer) {
+	buf.WriteString("type ")
+	buf.WriteString(ud.Name)
+	buf.WriteString(" interface {\n")
+	buf.WriteString("  ")
+	buf.WriteString(ud.Name)
+	buf.WriteString("_Union()\n")
+	buf.WriteString("}\n")
+}
+
+/*
+func (*IntOrBool_I) IntOrBool_Union(){}
+func (*IntOrBool_B) IntOrBool_Union(){}
+*/
+func (ud *UnionDef) buildCaseStructConformMethod(buf *bytes.Buffer) {
+	method := ud.Name + "_Union(){}\n"
+	for i := range ud.Cases {
+		buf.WriteString("func (*")
+		buf.WriteString(ud.CaseStructName(i))
+		buf.WriteString(") ")
+		buf.WriteString(method)
+	}
+}
+
+/*
+	type IntOrBool_I struct {
+	   Value int
+	}
+*/
+func (ud *UnionDef) buildCaseStructDef(buf *bytes.Buffer, index int) {
+	buf.WriteString("type ")
+	buf.WriteString(ud.CaseStructName(index))
+	buf.WriteString(" struct {\n")
+	buf.WriteString("  Value ")
+	buf.WriteString(ud.Cases[index].Type.ToGo())
+	buf.WriteString("\n}\n")
+}
+
+/*
+func New_IntOrBool_I(v int) IntOrBool { return &IntOrBool_I{v} }
+*/
+func (ud *UnionDef) buildCaseStructConstructor(buf *bytes.Buffer, index int) {
+	buf.WriteString("func New_")
+	buf.WriteString(ud.CaseStructName(index))
+	buf.WriteString("(v ")
+	buf.WriteString(ud.Cases[index].Type.ToGo())
+	buf.WriteString(") ")
+	buf.WriteString(ud.Name)
+	buf.WriteString(" { return &")
+	buf.WriteString(ud.CaseStructName(index))
+	buf.WriteString("{v} }\n")
+}
+
+func (ud *UnionDef) ToGo() string {
+	var buf bytes.Buffer
+	ud.buildUnionDef(&buf)
+	buf.WriteString("\n")
+	ud.buildCaseStructConformMethod(&buf)
+	buf.WriteString("\n")
+
+	for i := range ud.Cases {
+		ud.buildCaseStructDef(&buf, i)
+		buf.WriteString("\n")
+		ud.buildCaseStructConstructor(&buf, i)
+		buf.WriteString("\n")
+	}
+
+	return buf.String()
 }
 
 /*

@@ -77,7 +77,7 @@ hello("Hoge")
 		},
 		{
 			[]Stmt{
-				&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
+				&RecordDef{"hoge", []NameTypePair{{"X", FString}, {"Y", FString}}},
 			},
 			`type hoge struct {
   X string
@@ -122,7 +122,7 @@ func TestResolver(t *testing.T) {
 
 func TestRecordDefLookup(t *testing.T) {
 	f := NewFile([]Stmt{
-		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
+		&RecordDef{"hoge", []NameTypePair{{"X", FString}, {"Y", FString}}},
 	})
 	tp := NewTranspiler()
 	tp.resolveAndRegisterType(f.Stmts)
@@ -160,7 +160,7 @@ func TestRecordGen(t *testing.T) {
 	)
 
 	f := NewFile([]Stmt{
-		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FInt}}},
+		&RecordDef{"hoge", []NameTypePair{{"X", FString}, {"Y", FInt}}},
 		&FuncDef{"ika", nil,
 			recGen,
 		},
@@ -175,6 +175,35 @@ func TestRecordGen(t *testing.T) {
 func ika() *hoge{
 return &hoge{X: "abc", Y: 123}
 }
+
+`
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+func TestUnionDef(t *testing.T) {
+	unionDef := &UnionDef{"IntOrBool", []NameTypePair{{"I", FInt}, {"S", FString}}}
+	got := unionDef.ToGo()
+
+	want := `type IntOrBool interface {
+  IntOrBool_Union()
+}
+
+func (*IntOrBool_I) IntOrBool_Union(){}
+func (*IntOrBool_S) IntOrBool_Union(){}
+
+type IntOrBool_I struct {
+  Value int
+}
+
+func New_IntOrBool_I(v int) IntOrBool { return &IntOrBool_I{v} }
+
+type IntOrBool_S struct {
+  Value string
+}
+
+func New_IntOrBool_S(v string) IntOrBool { return &IntOrBool_S{v} }
 
 `
 	if got != want {

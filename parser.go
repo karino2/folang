@@ -511,7 +511,7 @@ func (p *Parser) parseTypeDef() Stmt {
 	p.consumeSL(EQ)
 	p.consumeSL(LBRACE)
 
-	var fields []RecordField
+	var fields []NameTypePair
 	for i := 0; p.Current().ttype != RBRACE; i++ {
 		if i != 0 {
 			p.consumeSL(SEMICOLON)
@@ -523,7 +523,7 @@ func (p *Parser) parseTypeDef() Stmt {
 		p.gotoNextSL()
 		p.consumeSL(COLON)
 		ftype := p.parseType()
-		fields = append(fields, RecordField{fname, ftype})
+		fields = append(fields, NameTypePair{fname, ftype})
 	}
 	p.consume(RBRACE)
 

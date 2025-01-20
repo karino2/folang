@@ -12,6 +12,7 @@ func (*FUnitType) ftype()   {}
 func (*FFunc) ftype()       {}
 func (*FUnresolved) ftype() {}
 func (*FRecord) ftype()     {}
+func (*FUnion) ftype()      {}
 
 func IsUnresolved(ft FType) bool {
 	_, ok := ft.(*FUnresolved)
@@ -84,14 +85,14 @@ func (p *FFunc) ToGo() string {
 	return buf.String()
 }
 
-type RecordField struct {
+type NameTypePair struct {
 	Name string
 	Type FType
 }
 
 type FRecord struct {
 	name   string
-	fields []RecordField
+	fields []NameTypePair
 }
 
 // Use for cast and variable declaration.
@@ -120,4 +121,14 @@ func (fr *FRecord) Match(fieldNames []string) bool {
 		}
 	}
 	return true
+}
+
+type FUnion struct {
+	name  string
+	cases []NameTypePair
+}
+
+// FUnion is interface in go. No need to add *.
+func (fu *FUnion) ToGo() string {
+	return fu.name
 }
