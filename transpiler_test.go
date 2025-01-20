@@ -183,27 +183,27 @@ return &hoge{X: "abc", Y: 123}
 }
 
 func TestUnionDef(t *testing.T) {
-	unionDef := &UnionDef{"IntOrBool", []NameTypePair{{"I", FInt}, {"S", FString}}}
+	unionDef := &UnionDef{"IntOrString", []NameTypePair{{"I", FInt}, {"S", FString}}}
 	got := unionDef.ToGo()
 
-	want := `type IntOrBool interface {
-  IntOrBool_Union()
+	want := `type IntOrString interface {
+  IntOrString_Union()
 }
 
-func (*IntOrBool_I) IntOrBool_Union(){}
-func (*IntOrBool_S) IntOrBool_Union(){}
+func (*IntOrString_I) IntOrString_Union(){}
+func (*IntOrString_S) IntOrString_Union(){}
 
-type IntOrBool_I struct {
+type IntOrString_I struct {
   Value int
 }
 
-func New_IntOrBool_I(v int) IntOrBool { return &IntOrBool_I{v} }
+func New_IntOrString_I(v int) IntOrString { return &IntOrString_I{v} }
 
-type IntOrBool_S struct {
+type IntOrString_S struct {
   Value string
 }
 
-func New_IntOrBool_S(v string) IntOrBool { return &IntOrBool_S{v} }
+func New_IntOrString_S(v string) IntOrString { return &IntOrString_S{v} }
 
 `
 	if got != want {
@@ -218,7 +218,7 @@ func TestUnionDefConstructorHandling(t *testing.T) {
 	}
 
 	f := NewFile([]Stmt{
-		&UnionDef{"IntOrBool", []NameTypePair{{"I", FInt}, {"S", FString}}},
+		&UnionDef{"IntOrString", []NameTypePair{{"I", FInt}, {"S", FString}}},
 		&FuncDef{"test_func", nil, funCall},
 	})
 
@@ -226,16 +226,16 @@ func TestUnionDefConstructorHandling(t *testing.T) {
 	tp.resolveAndRegisterType(f.Stmts)
 
 	fn := funCall.Func
-	if fn.Name != "New_IntOrBool_I" {
-		t.Errorf("want New_IntOrBool_I, got %v", fn)
+	if fn.Name != "New_IntOrString_I" {
+		t.Errorf("want New_IntOrString_I, got %v", fn)
 	}
 	ft, ok := fn.Type.(*FFunc)
 	if !ok {
 		t.Errorf("want FFunc type, got %v", fn)
 	}
 	got := ft.String()
-	if got != "int -> IntOrBool" {
-		t.Errorf("want 'int -> IntOrBool', got %s", got)
+	if got != "int -> IntOrString" {
+		t.Errorf("want 'int -> IntOrString', got %s", got)
 	}
 
 }

@@ -234,32 +234,32 @@ func (rd *RecordDef) ToFType() *FRecord {
 /*
 Union implementation.
 For following code:
-type IntOrBool =
+type IntOrString =
 
 	| I of int
 	| B of bool
 
 The result becomes following three types.
 
-- IntOrBool interface
-- IntOrBool_I struct (with Value int)
-- IntOrBool_B struct (with Value bool)
+- IntOrString interface
+- IntOrString_I struct (with Value int)
+- IntOrString_B struct (with Value bool)
 
-We call IntOrBool_I "case struct of I".
+We call IntOrString_I "case struct of I".
 */
 type UnionDef struct {
 	Name  string
 	Cases []NameTypePair
 }
 
-// Return IntOrBool_I
+// Return IntOrString_I
 func (ud *UnionDef) CaseStructName(index int) string {
 	return fmt.Sprintf("%s_%s", ud.Name, ud.Cases[index].Name)
 }
 
 /*
-	type IntOrBool interface {
-	  IntOrBool_Union()
+	type IntOrString interface {
+	  IntOrString_Union()
 	}
 */
 func (ud *UnionDef) buildUnionDef(buf *bytes.Buffer) {
@@ -273,8 +273,8 @@ func (ud *UnionDef) buildUnionDef(buf *bytes.Buffer) {
 }
 
 /*
-func (*IntOrBool_I) IntOrBool_Union(){}
-func (*IntOrBool_B) IntOrBool_Union(){}
+func (*IntOrString_I) IntOrString_Union(){}
+func (*IntOrString_B) IntOrString_Union(){}
 */
 func (ud *UnionDef) buildCaseStructConformMethod(buf *bytes.Buffer) {
 	method := ud.Name + "_Union(){}\n"
@@ -287,7 +287,7 @@ func (ud *UnionDef) buildCaseStructConformMethod(buf *bytes.Buffer) {
 }
 
 /*
-	type IntOrBool_I struct {
+	type IntOrString_I struct {
 	   Value int
 	}
 */
@@ -300,13 +300,13 @@ func (ud *UnionDef) buildCaseStructDef(buf *bytes.Buffer, index int) {
 	buf.WriteString("\n}\n")
 }
 
-// New_IntOrBool_I
+// New_IntOrString_I
 func (ud *UnionDef) caseStructConstructorName(index int) string {
 	return "New_" + ud.CaseStructName(index)
 }
 
 /*
-func New_IntOrBool_I(v int) IntOrBool { return &IntOrBool_I{v} }
+func New_IntOrString_I(v int) IntOrString { return &IntOrString_I{v} }
 */
 func (ud *UnionDef) buildCaseStructConstructor(buf *bytes.Buffer, index int) {
 	buf.WriteString("func ")

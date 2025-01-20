@@ -6,8 +6,8 @@ type TypeResolver struct {
 	TypeMap   map[string]FType
 	RecordMap map[string]*FRecord
 	/*
-		Union case constructor use internal name (like "I") and go lang name ("New_IntOrBool_I") differently.
-		So register "I": &Var{"New_IntOrbool_I", int->IntOrBool} for such case.
+		Union case constructor use internal name (like "I") and go lang name ("New_IntOrString_I") differently.
+		So register "I": &Var{"New_IntOrbool_I", int->IntOrString} for such case.
 	*/
 	AliasMap map[string]*Var
 }
