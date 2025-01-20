@@ -49,7 +49,7 @@ func (v *Var) ToGo() string       { return v.Name }
 func (v *Var) IsUnresolved() bool { return IsUnresolved(v.Type) }
 
 type FunCall struct {
-	Func Var
+	Func *Var
 	Args []Expr
 }
 
@@ -246,7 +246,7 @@ func Walk(n Node, f func(Node) bool) {
 	case *GoEval, *StringLiteral, *Var:
 		// no-op
 	case *FunCall:
-		Walk(&n.Func, f)
+		Walk(n.Func, f)
 		for _, arg := range n.Args {
 			Walk(arg, f)
 		}

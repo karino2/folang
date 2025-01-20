@@ -29,7 +29,7 @@ fmt.Println("Hello World")
 				&FuncDef{"hello", []Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
 				&FuncDef{"main", nil,
 					&FunCall{
-						Var{"hello", &FFunc{[]FType{FString, FUnit}}},
+						&Var{"hello", &FFunc{[]FType{FString, FUnit}}},
 						[]Expr{&StringLiteral{"Hoge"}},
 					},
 				},
@@ -56,7 +56,7 @@ hello("Hoge")
 				&FuncDef{"main", nil,
 					&FunCall{
 						// 型解決が動くか？
-						Var{"hello", &FUnresolved{}},
+						&Var{"hello", &FUnresolved{}},
 						[]Expr{&StringLiteral{"Hoge"}},
 					},
 				},
@@ -97,7 +97,7 @@ hello("Hoge")
 }
 func TestResolver(t *testing.T) {
 	funCall := &FunCall{
-		Var{"hello", &FUnresolved{}},
+		&Var{"hello", &FUnresolved{}},
 		[]Expr{&StringLiteral{"Hoge"}},
 	}
 

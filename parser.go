@@ -382,7 +382,7 @@ func (p *Parser) parseBody() Expr {
 		expr = p.parseExpr()
 		exprs = append(exprs, expr)
 	}
-	return &FunCall{*v, exprs}
+	return &FunCall{v, exprs}
 }
 
 /*
