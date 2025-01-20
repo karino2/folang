@@ -17,6 +17,7 @@ type Expr interface {
 
 func (*GoEval) expr()        {}
 func (*StringLiteral) expr() {}
+func (*IntImm) expr()        {}
 func (*FunCall) expr()       {}
 func (*Var) expr()           {}
 func (*RecordGen) expr()     {}
@@ -29,6 +30,14 @@ func (*StringLiteral) FType() FType { return FString }
 
 // TODO: エスケープ
 func (s *StringLiteral) ToGo() string { return fmt.Sprintf(`"%s"`, s.Value) }
+
+type IntImm struct {
+	Value int
+}
+
+func (*IntImm) FType() FType { return FInt }
+
+func (s *IntImm) ToGo() string { return fmt.Sprintf("%d", s.Value) }
 
 // Goのコードを直接持つinline asm的な抜け穴
 type GoEval struct {
@@ -243,7 +252,7 @@ func Walk(n Node, f func(Node) bool) {
 	case *Import, *Package, *RecordDef:
 		// no-op
 	// ここからexpr
-	case *GoEval, *StringLiteral, *Var:
+	case *GoEval, *StringLiteral, *Var, *IntImm:
 		// no-op
 	case *FunCall:
 		Walk(n.Func, f)

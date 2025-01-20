@@ -156,11 +156,11 @@ func TestRecordDefLookup(t *testing.T) {
 func TestRecordGen(t *testing.T) {
 	recGen := NewRecordGen(
 		[]string{"X", "Y"},
-		[]Expr{&StringLiteral{"abc"}, &StringLiteral{"def"}},
+		[]Expr{&StringLiteral{"abc"}, &IntImm{123}},
 	)
 
 	f := NewFile([]Stmt{
-		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FString}}},
+		&RecordDef{"hoge", []RecordField{{"X", FString}, {"Y", FInt}}},
 		&FuncDef{"ika", nil,
 			recGen,
 		},
@@ -169,11 +169,11 @@ func TestRecordGen(t *testing.T) {
 	got := tp.Transpile(f)
 	want := `type hoge struct {
   X string
-  Y string
+  Y int
 }
 
 func ika() *hoge{
-return &hoge{X: "abc", Y: "def"}
+return &hoge{X: "abc", Y: 123}
 }
 
 `

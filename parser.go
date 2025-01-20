@@ -1,6 +1,8 @@
 package main
 
-import "bytes"
+import (
+	"bytes"
+)
 
 type TokenType int
 
@@ -23,6 +25,7 @@ const (
 	STRING
 	COLON
 	SEMICOLON
+	INT_IMM
 	/*
 		INDENT
 		UNDENT
@@ -42,9 +45,7 @@ type Token struct {
 	begin     int
 	len       int
 	stringVal string // also used in Identifier.
-	/*
-		intVal    int
-	*/
+	intVal    int
 }
 
 func NewToken(ttype TokenType, begin int, len int) *Token {
@@ -149,6 +150,22 @@ func (tkz *Tokenizer) analyzeCurAsStringLiteral() {
 	}
 }
 
+func (tkz *Tokenizer) analyzeCurAsIntImm() {
+	cur := tkz.currentToken
+	cur.ttype = INT_IMM
+	c := tkz.buf[tkz.pos]
+	n := 0
+	i := 0
+	for isNumber(c) {
+		n = 10*n + int(c-'0')
+		i++
+		c = tkz.buf[tkz.pos+i]
+	}
+
+	cur.len = i
+	cur.intVal = n
+}
+
 func (tk *Token) setOneChar(tid TokenType, one byte) {
 	tk.ttype = tid
 	tk.stringVal = string(one)
@@ -184,6 +201,8 @@ func (tkz *Tokenizer) analyzeCur() {
 		if tt, ok := keywordMap[cur.stringVal]; ok {
 			cur.ttype = tt
 		}
+	case isNumber(b):
+		tkz.analyzeCurAsIntImm()
 	case b == '"':
 		tkz.analyzeCurAsStringLiteral()
 	case b == '=':
@@ -349,6 +368,9 @@ func (p *Parser) parseExpr() Expr {
 	case tk.ttype == STRING:
 		p.gotoNext()
 		return &StringLiteral{tk.stringVal}
+	case tk.ttype == INT_IMM:
+		p.gotoNext()
+		return &IntImm{tk.intVal}
 	case tk.ttype == IDENTIFIER:
 		v := &Var{tk.stringVal, &FUnresolved{}}
 		p.gotoNext()
@@ -386,16 +408,21 @@ func (p *Parser) parseBody() Expr {
 }
 
 /*
-TYPE = 'string'
+TYPE = 'string' | 'int'
 */
 func (p *Parser) parseType() FType {
 	p.expect(IDENTIFIER)
 	tname := p.Current().stringVal
-	if tname != "string" {
+	switch tname {
+	case "string":
+		p.gotoNext()
+		return FString
+	case "int":
+		p.gotoNext()
+		return FInt
+	default:
 		panic(tname)
 	}
-	p.gotoNext()
-	return FString
 }
 
 /*

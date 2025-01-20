@@ -178,18 +178,18 @@ hello("World")
 `,
 		},
 		{
-			`type hoge = {X: string; Y: string}
+			`type hoge = {X: string; Y: int}
 
 let ika () =
-    {X="abc"; Y="def"}
+    {X="abc"; Y=123}
 `,
 			`type hoge struct {
   X string
-  Y string
+  Y int
 }
 
 func ika() *hoge{
-return &hoge{X: "abc", Y: "def"}
+return &hoge{X: "abc", Y: 123}
 }
 
 `,
