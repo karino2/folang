@@ -10,7 +10,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${fileDirname}",
-      "args": ["temp/two_func.fo"]
+      "args": ["samples/union_simple.fo"]
     }
   ]
 }

@@ -1,0 +1,8 @@
+package main
+
+type IntOrString =
+| I of int
+| S of string
+
+let ika () =
+   I 123 
