@@ -210,3 +210,32 @@ func New_IntOrBool_S(v string) IntOrBool { return &IntOrBool_S{v} }
 		t.Errorf("got %s, want %s", got, want)
 	}
 }
+
+func TestUnionDefConstructorHandling(t *testing.T) {
+	funCall := &FunCall{
+		&Var{"I", &FUnresolved{}},
+		[]Expr{&IntImm{123}},
+	}
+
+	f := NewFile([]Stmt{
+		&UnionDef{"IntOrBool", []NameTypePair{{"I", FInt}, {"S", FString}}},
+		&FuncDef{"test_func", nil, funCall},
+	})
+
+	tp := NewTranspiler()
+	tp.resolveAndRegisterType(f.Stmts)
+
+	fn := funCall.Func
+	if fn.Name != "New_IntOrBool_I" {
+		t.Errorf("want New_IntOrBool_I, got %v", fn)
+	}
+	ft, ok := fn.Type.(*FFunc)
+	if !ok {
+		t.Errorf("want FFunc type, got %v", fn)
+	}
+	got := ft.String()
+	if got != "int -> IntOrBool" {
+		t.Errorf("want 'int -> IntOrBool', got %s", got)
+	}
+
+}

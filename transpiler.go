@@ -5,12 +5,18 @@ import "bytes"
 type TypeResolver struct {
 	TypeMap   map[string]FType
 	RecordMap map[string]*FRecord
+	/*
+		Union case constructor use internal name (like "I") and go lang name ("New_IntOrBool_I") differently.
+		So register "I": &Var{"New_IntOrbool_I", int->IntOrBool} for such case.
+	*/
+	AliasMap map[string]*Var
 }
 
 func NewResolver() *TypeResolver {
 	res := TypeResolver{}
 	res.TypeMap = make(map[string]FType)
 	res.RecordMap = make(map[string]*FRecord)
+	res.AliasMap = make(map[string]*Var)
 	return &res
 }
 
@@ -52,6 +58,13 @@ func (res *TypeResolver) Resolve(n Node) {
 				}
 			}
 			return true
+		case *FunCall:
+			if n.Func.IsUnresolved() {
+				if alt, ok := res.AliasMap[n.Func.Name]; ok {
+					*(n.Func) = *alt
+				}
+			}
+			return true
 		case *RecordGen:
 			rt := res.LookupRecord(n.fieldNames)
 			if rt != nil {
@@ -72,6 +85,9 @@ func registerType(resolver *TypeResolver, root Stmt) {
 			return false
 		case *RecordDef:
 			resolver.RegisterRecord(n.Name, n.ToFType())
+			return false
+		case *UnionDef:
+			n.RegisterConstructorAlias(resolver)
 			return false
 		default:
 			return true

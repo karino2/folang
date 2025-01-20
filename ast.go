@@ -300,12 +300,17 @@ func (ud *UnionDef) buildCaseStructDef(buf *bytes.Buffer, index int) {
 	buf.WriteString("\n}\n")
 }
 
+// New_IntOrBool_I
+func (ud *UnionDef) caseStructConstructorName(index int) string {
+	return "New_" + ud.CaseStructName(index)
+}
+
 /*
 func New_IntOrBool_I(v int) IntOrBool { return &IntOrBool_I{v} }
 */
 func (ud *UnionDef) buildCaseStructConstructor(buf *bytes.Buffer, index int) {
-	buf.WriteString("func New_")
-	buf.WriteString(ud.CaseStructName(index))
+	buf.WriteString("func ")
+	buf.WriteString(ud.caseStructConstructorName(index))
 	buf.WriteString("(v ")
 	buf.WriteString(ud.Cases[index].Type.ToGo())
 	buf.WriteString(") ")
@@ -332,6 +337,20 @@ func (ud *UnionDef) ToGo() string {
 	return buf.String()
 }
 
+func (ud *UnionDef) UnionFType() *FUnion {
+	return &FUnion{ud.Name, ud.Cases}
+}
+
+func (ud *UnionDef) RegisterConstructorAlias(resolver *TypeResolver) {
+	utype := ud.UnionFType()
+
+	for i, cs := range ud.Cases {
+		tps := []FType{cs.Type, utype}
+		ftype := &FFunc{tps}
+		resolver.AliasMap[cs.Name] = &Var{ud.caseStructConstructorName(i), ftype}
+	}
+}
+
 /*
 StmtとExprをトラバースしていく。
 f(node)がtrueを返すと子どもを辿っていく。
@@ -351,7 +370,7 @@ func Walk(n Node, f func(Node) bool) {
 			Walk(pm, f)
 		}
 		Walk(n.Body, f)
-	case *Import, *Package, *RecordDef:
+	case *Import, *Package, *RecordDef, *UnionDef:
 		// no-op
 	// ここからexpr
 	case *GoEval, *StringLiteral, *Var, *IntImm:

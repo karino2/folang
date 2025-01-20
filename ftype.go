@@ -85,6 +85,19 @@ func (p *FFunc) ToGo() string {
 	return buf.String()
 }
 
+func (f *FFunc) String() string {
+	var buf bytes.Buffer
+	for i, ft := range f.Targets {
+		if i != 0 {
+			buf.WriteString(" -> ")
+		}
+		// ToGo is not good.
+		// It should be folang type name. But currently there are no such method.
+		buf.WriteString(ft.ToGo())
+	}
+	return buf.String()
+}
+
 type NameTypePair struct {
 	Name string
 	Type FType
