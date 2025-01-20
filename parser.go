@@ -26,6 +26,8 @@ const (
 	COLON
 	SEMICOLON
 	INT_IMM
+	OF
+	BAR
 	/*
 		INDENT
 		UNDENT
@@ -38,6 +40,7 @@ var keywordMap = map[string]TokenType{
 	"package": PACKAGE,
 	"import":  IMPORT,
 	"type":    TYPE,
+	"of":      OF,
 }
 
 type Token struct {
@@ -221,6 +224,8 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(COLON, b)
 	case b == ';':
 		cur.setOneChar(SEMICOLON, b)
+	case b == '|':
+		cur.setOneChar(BAR, b)
 	default:
 		panic(b)
 	}
@@ -496,19 +501,35 @@ func (p *Parser) parseLet() Stmt {
 	return p.parseFuncDefLet()
 }
 
-// TYPE_DEF = 'type' ID '=' '{' FIELD_DEFS '}'
+/*
+UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
+
+CASE_DEF = '|' IDENIFIER OF TYPE
+*/
+func (p *Parser) parseUnionDef(uname string) Stmt {
+	var cases []NameTypePair
+
+	for p.Current().ttype == BAR {
+		p.gotoNext()
+		p.expect(IDENTIFIER)
+		cname := p.Current().stringVal
+
+		p.gotoNext()
+		p.consume(OF)
+
+		tp := p.parseType()
+		cases = append(cases, NameTypePair{cname, tp})
+		p.consume(EOL)
+	}
+	return &UnionDef{uname, cases}
+}
+
+// RECORD_DEF = '{' FIELD_DEFS '}'
 //
 // FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
 //
 // FIELD_DEF = ID ':' TYPE
-func (p *Parser) parseTypeDef() Stmt {
-	p.consume(TYPE)
-	p.expect(IDENTIFIER)
-
-	tname := p.Current().stringVal
-	p.gotoNextSL()
-
-	p.consumeSL(EQ)
+func (p *Parser) parseRecordDef(rname string) Stmt {
 	p.consumeSL(LBRACE)
 
 	var fields []NameTypePair
@@ -527,7 +548,29 @@ func (p *Parser) parseTypeDef() Stmt {
 	}
 	p.consume(RBRACE)
 
-	return &RecordDef{tname, fields}
+	return &RecordDef{rname, fields}
+}
+
+// TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)
+//
+// RECORD_DEF = '{' FIELD_DEFS '}'
+//
+// UNION_DEF = '|'...
+func (p *Parser) parseTypeDef() Stmt {
+	p.consume(TYPE)
+	p.expect(IDENTIFIER)
+
+	tname := p.Current().stringVal
+	p.gotoNextSL()
+
+	p.consumeSL(EQ)
+
+	if p.Current().ttype == LBRACE {
+		return p.parseRecordDef(tname)
+	}
+
+	p.expect(BAR)
+	return p.parseUnionDef(tname)
 }
 
 func (p *Parser) parseStmt() Stmt {
