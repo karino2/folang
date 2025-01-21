@@ -67,11 +67,7 @@ type Tokenizer struct {
 	fileName     string
 	pos          int
 	currentToken *Token
-	/*
-		line         int // 0 origin
-		offsideCol   int
-		dents        int
-	*/
+	col          int
 }
 
 func NewTokenizer(fileName string, buf []byte) *Tokenizer {
@@ -232,11 +228,17 @@ func (tkz *Tokenizer) analyzeCur() {
 
 }
 
+func (tkz *Tokenizer) Col() int        { return tkz.col }
 func (tkz *Tokenizer) Current() *Token { return tkz.currentToken }
 func (tkz *Tokenizer) Setup()          { tkz.analyzeCur() }
 func (tkz *Tokenizer) GotoNext() {
 	if tkz.currentToken.ttype == EOF {
 		return
+	}
+	if tkz.currentToken.ttype == EOL {
+		tkz.col = 0
+	} else {
+		tkz.col += tkz.currentToken.len
 	}
 	tkz.pos = tkz.currentToken.end()
 	tkz.analyzeCur()
@@ -248,11 +250,34 @@ func (tkz *Tokenizer) RevertTo(token *Token) {
 }
 
 type Parser struct {
-	tokenizer *Tokenizer
+	tokenizer  *Tokenizer
+	offsideCol []int
 }
 
 func (p *Parser) Current() *Token {
 	return p.tokenizer.Current()
+}
+
+func (p *Parser) currentCol() int {
+	return p.tokenizer.Col()
+}
+
+func (p *Parser) pushOffside() {
+	if p.currentOffside() >= p.currentCol() {
+		panic("Overrun offside line.")
+	}
+	p.offsideCol = append(p.offsideCol, p.currentCol())
+}
+
+func (p *Parser) popOffside() {
+	p.offsideCol = p.offsideCol[0 : len(p.offsideCol)-1]
+}
+
+func (p *Parser) currentOffside() int {
+	if len(p.offsideCol) == 0 {
+		return 0
+	}
+	return p.offsideCol[len(p.offsideCol)-1]
 }
 
 func (p *Parser) skipSpace() {
@@ -432,12 +457,9 @@ func (p *Parser) parseExpr() Expr {
 	return &FunCall{v, exprs[1:]}
 }
 
-/*
-Should consider offside rule.
-But just check EOL for a while.
-*/
 func (p *Parser) isEndOfBlock() bool {
-	return p.Current().ttype == EOL || p.Current().ttype == EOF
+	p.skipSpace()
+	return p.currentCol() < p.currentOffside()
 }
 
 /*
@@ -450,10 +472,14 @@ func (p *Parser) parseBlock() *Block {
 
 	p.skipSpace()
 
+	// limited implementation of offside rule.
+	p.pushOffside()
+
 	expr := p.parseExpr()
 	p.skipEOLOne()
 
 	if p.isEndOfBlock() {
+		p.popOffside()
 		return &Block{stmts, expr}
 	}
 
@@ -462,6 +488,7 @@ func (p *Parser) parseBlock() *Block {
 		expr = p.parseExpr()
 		p.skipEOLOne()
 	}
+	p.popOffside()
 
 	return &Block{stmts, expr}
 }
