@@ -12,7 +12,7 @@ func TestCompile(t *testing.T) {
 		{
 			[]Stmt{
 				&Import{"fmt"},
-				&FuncDef{"main", nil, &GoEval{"fmt.Println(\"Hello World\")"}},
+				&FuncDef{"main", nil, &Block{nil, &GoEval{"fmt.Println(\"Hello World\")"}}},
 			},
 			`import "fmt"
 
@@ -26,11 +26,13 @@ fmt.Println("Hello World")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}}},
 				&FuncDef{"main", nil,
-					&FunCall{
-						&Var{"hello", &FFunc{[]FType{FString, FUnit}}},
-						[]Expr{&StringLiteral{"Hoge"}},
+					&Block{nil,
+						&FunCall{
+							&Var{"hello", &FFunc{[]FType{FString, FUnit}}},
+							[]Expr{&StringLiteral{"Hoge"}},
+						},
 					},
 				},
 			},
@@ -52,12 +54,14 @@ hello("Hoge")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}}},
 				&FuncDef{"main", nil,
-					&FunCall{
-						// 型解決が動くか？
-						&Var{"hello", &FUnresolved{}},
-						[]Expr{&StringLiteral{"Hoge"}},
+					&Block{nil,
+						&FunCall{
+							// 型解決が動くか？
+							&Var{"hello", &FUnresolved{}},
+							[]Expr{&StringLiteral{"Hoge"}},
+						},
 					},
 				},
 			},
@@ -105,9 +109,9 @@ func TestResolver(t *testing.T) {
 	f := NewFile([]Stmt{
 		&Package{"main"},
 		&Import{"fmt"},
-		&FuncDef{"hello", []*Var{{"msg", FString}}, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}},
+		&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}}},
 		&FuncDef{"main", nil,
-			funCall,
+			&Block{nil, funCall},
 		},
 	})
 
@@ -162,7 +166,10 @@ func TestRecordGen(t *testing.T) {
 	f := NewFile([]Stmt{
 		&RecordDef{"hoge", []NameTypePair{{"X", FString}, {"Y", FInt}}},
 		&FuncDef{"ika", nil,
-			recGen,
+			&Block{
+				nil,
+				recGen,
+			},
 		},
 	})
 	tp := NewTranspiler()
@@ -219,7 +226,7 @@ func TestUnionDefConstructorHandling(t *testing.T) {
 
 	f := NewFile([]Stmt{
 		&UnionDef{"IntOrString", []NameTypePair{{"I", FInt}, {"S", FString}}},
-		&FuncDef{"test_func", nil, funCall},
+		&FuncDef{"test_func", nil, &Block{nil, funCall}},
 	})
 
 	tp := NewTranspiler()

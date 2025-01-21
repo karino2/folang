@@ -388,14 +388,18 @@ func (p *Parser) parseExpr() Expr {
 }
 
 /*
-function body.
+BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
+
+STMT_LIKE = LET_STMT | EXPR
 */
-func (p *Parser) parseBody() Expr {
+func (p *Parser) parseBlock() *Block {
+	var stmts []Stmt
+
 	p.skipSpace()
 	expr := p.parseExpr()
 
 	if p.isEndOfExpr() {
-		return expr
+		return &Block{stmts, expr}
 	}
 
 	// application expression: expr expr
@@ -409,7 +413,8 @@ func (p *Parser) parseBody() Expr {
 		expr = p.parseExpr()
 		exprs = append(exprs, expr)
 	}
-	return &FunCall{v, exprs}
+	one := &FunCall{v, exprs}
+	return &Block{stmts, one}
 }
 
 /*
@@ -491,10 +496,9 @@ func (p *Parser) parseFuncDefLet() Stmt {
 
 	p.consumeSL(EQ)
 
-	// parse func body.
-	expr := p.parseBody()
+	block := p.parseBlock()
 
-	return &FuncDef{fname.stringVal, params, expr}
+	return &FuncDef{fname.stringVal, params, block}
 }
 
 func (p *Parser) parseLet() Stmt {

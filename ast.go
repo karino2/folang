@@ -21,6 +21,18 @@ func (*IntImm) expr()        {}
 func (*FunCall) expr()       {}
 func (*Var) expr()           {}
 func (*RecordGen) expr()     {}
+func (*Block) expr()         {}
+
+/*
+Some expr is OK for just return in some situation (like body of function).
+For example, golang switch is not a expression, to use it as expression, we need to wrap (func()...{...})().
+But if we use it in function body, just return is enough.
+For those situation, Use ToGoReturn() for non-wrapped go code.
+*/
+type ReturnableExpr interface {
+	Expr
+	ToGoReturn() string
+}
 
 type StringLiteral struct {
 	Value string
@@ -132,6 +144,48 @@ func (rg *RecordGen) ToGo() string {
 	return buf.String()
 }
 
+/*
+Block contains stmts and final return expr.
+*/
+type Block struct {
+	Stmts     []Stmt
+	FinalExpr Expr
+}
+
+func (b *Block) FType() FType { return b.FinalExpr.FType() }
+
+func (b *Block) ToGo() string {
+	var buf bytes.Buffer
+	buf.WriteString("(func () ")
+	buf.WriteString(b.FType().ToGo())
+	buf.WriteString(" {\n")
+	buf.WriteString(b.ToGoReturn())
+	buf.WriteString("})()")
+	return buf.String()
+}
+
+func (b *Block) ToGoReturn() string {
+	var buf bytes.Buffer
+	for _, s := range b.Stmts {
+		buf.WriteString(s.ToGo())
+		buf.WriteString("\n")
+	}
+	last := b.FinalExpr
+
+	if last.FType() != FUnit {
+		buf.WriteString("return ")
+	}
+	buf.WriteString(last.ToGo())
+
+	return buf.String()
+}
+
+/*
+	End of Expression.
+
+	Begin Stmt related code.
+*/
+
 type Stmt interface {
 	Node
 	stmt()
@@ -141,6 +195,7 @@ type Stmt interface {
 func (*FuncDef) stmt()   {}
 func (*Import) stmt()    {}
 func (*Package) stmt()   {}
+func (*ExprStmt) stmt()  {}
 func (*RecordDef) stmt() {}
 func (*UnionDef) stmt()  {}
 
@@ -160,11 +215,20 @@ func (p *Package) ToGo() string {
 	return fmt.Sprintf("package %s", p.Name)
 }
 
+// Just contain 1 expression as Stmt.
+type ExprStmt struct {
+	Expr Expr
+}
+
+func (es *ExprStmt) ToGo() string {
+	return es.Expr.ToGo()
+}
+
 type FuncDef struct {
 	Name string
 	// Unitはパース時点で0引数paramsに変換済みの想定
 	Params []*Var
-	Body   Expr
+	Body   *Block
 }
 
 func (fd *FuncDef) ToGoParams(buf *bytes.Buffer) {
@@ -196,11 +260,7 @@ func (fd *FuncDef) ToGo() string {
 	buf.WriteString(") ")
 	buf.WriteString(fd.Body.FType().ToGo())
 	buf.WriteString("{\n")
-	// TODO: multiple stmt support.
-	if fd.Body.FType() != FUnit {
-		buf.WriteString("return ")
-	}
-	buf.WriteString(fd.Body.ToGo())
+	buf.WriteString(fd.Body.ToGoReturn())
 	buf.WriteString("\n}")
 	return buf.String()
 }
@@ -370,6 +430,11 @@ func Walk(n Node, f func(Node) bool) {
 			Walk(pm, f)
 		}
 		Walk(n.Body, f)
+	case *Block:
+		for _, stmt := range n.Stmts {
+			Walk(stmt, f)
+		}
+		Walk(n.FinalExpr, f)
 	case *Import, *Package, *RecordDef, *UnionDef:
 		// no-op
 	// ここからexpr
@@ -384,6 +449,8 @@ func Walk(n Node, f func(Node) bool) {
 		for _, fval := range n.fieldValues {
 			Walk(fval, f)
 		}
+	case *ExprStmt:
+		Walk(n.Expr, f)
 	default:
 		panic(n)
 	}
