@@ -1,0 +1,11 @@
+package main
+
+type IorS =
+ | IT of int
+ | ST of string
+
+ let ika () =
+  match IT 3 with
+  | IT _ -> "i hit" 
+  | ST sval -> sval
+

@@ -177,10 +177,15 @@ func (b *Block) ToGoReturn() string {
 	}
 	last := b.FinalExpr
 
-	if last.FType() != FUnit {
-		buf.WriteString("return ")
+	if lastre, ok := last.(ReturnableExpr); ok {
+		// return is generated inside lastre.ToGoReturn().
+		buf.WriteString(lastre.ToGoReturn())
+	} else {
+		if last.FType() != FUnit {
+			buf.WriteString("return ")
+		}
+		buf.WriteString(last.ToGo())
 	}
-	buf.WriteString(last.ToGo())
 
 	return buf.String()
 }
@@ -190,6 +195,10 @@ var uniqueId = 0
 func UniqueTmpVarName() string {
 	uniqueId++
 	return fmt.Sprintf("_v%d", uniqueId)
+}
+
+func ResetUniqueTmpCounter() {
+	uniqueId = 0
 }
 
 /*
@@ -231,10 +240,13 @@ func (mr *MatchRule) ToGo(uname string, tmpVarName string) string {
 		buf.WriteString("case *")
 		buf.WriteString(UnionCaseStructName(uname, pat.caseId))
 		buf.WriteString(":\n")
-		buf.WriteString(pat.varName)
-		buf.WriteString(" := ")
-		buf.WriteString(tmpVarName)
-		buf.WriteString("\n")
+		if pat.varName != "_" {
+			buf.WriteString(pat.varName)
+			buf.WriteString(" := ")
+			buf.WriteString(tmpVarName)
+			buf.WriteString(".Value")
+			buf.WriteString("\n")
+		}
 	}
 	buf.WriteString(mr.body.ToGoReturn())
 	buf.WriteString("\n")
@@ -556,6 +568,12 @@ func Walk(n Node, f func(Node) bool) {
 		}
 	case *ExprStmt:
 		Walk(n.Expr, f)
+	case *MatchExpr:
+		Walk(n.target, f)
+		for _, rule := range n.rules {
+			// pattern is currently only identifier, so just walk body only.
+			Walk(rule.body, f)
+		}
 	default:
 		panic(n)
 	}

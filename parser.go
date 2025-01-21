@@ -28,6 +28,10 @@ const (
 	INT_IMM
 	OF
 	BAR
+	RARROW
+	UNDER_SCORE
+	MATCH
+	WITH
 	/*
 		INDENT
 		UNDENT
@@ -41,6 +45,9 @@ var keywordMap = map[string]TokenType{
 	"import":  IMPORT,
 	"type":    TYPE,
 	"of":      OF,
+	"_":       UNDER_SCORE,
+	"match":   MATCH,
+	"with":    WITH,
 }
 
 type Token struct {
@@ -111,6 +118,13 @@ func (tkz *Tokenizer) analyzeCurAsIdentifier() {
 		break
 	}
 	cur.stringVal = string(tkz.buf[cur.begin:cur.end()])
+}
+
+func (tkz *Tokenizer) isCharAt(at int, ch byte) bool {
+	if at >= len(tkz.buf) {
+		return false
+	}
+	return tkz.buf[at] == ch
 }
 
 func (tkz *Tokenizer) analyzeCurAsStringLiteral() {
@@ -222,6 +236,14 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(SEMICOLON, b)
 	case b == '|':
 		cur.setOneChar(BAR, b)
+	case b == '-':
+		if tkz.isCharAt(tkz.pos+1, '>') {
+			cur.ttype = RARROW
+			cur.stringVal = "->"
+			cur.len = 2
+			return
+		}
+		panic("NYI")
 	default:
 		panic(b)
 	}
@@ -374,7 +396,13 @@ func (p *Parser) parseGoEval() Expr {
 }
 
 func (p *Parser) isEndOfExpr() bool {
-	return p.Current().ttype == EOL || p.Current().ttype == EOF || p.Current().ttype == SEMICOLON || p.Current().ttype == RBRACE || p.Current().ttype == RPAREN
+	ttype := p.Current().ttype
+	return ttype == EOL ||
+		ttype == EOF ||
+		ttype == SEMICOLON ||
+		ttype == RBRACE ||
+		ttype == RPAREN ||
+		ttype == WITH
 }
 
 /*
@@ -432,11 +460,60 @@ func (p *Parser) parseSingleExpr() Expr {
 	}
 }
 
+/*
+MATCH_RULE = '|' IDENTIFIER IDENTIFIER '->' BLOCK
+
+ex:
+
+	| Record r -> hoge r
+*/
+func (p *Parser) parseMatchRule() *MatchRule {
+	p.consume(BAR)
+	p.expect(IDENTIFIER)
+	caseName := p.Current().stringVal
+	p.gotoNext()
+	var varName string
+	if p.Current().ttype == UNDER_SCORE {
+		varName = "_"
+	} else {
+		p.expect(IDENTIFIER)
+		varName = p.Current().stringVal
+	}
+	p.gotoNext()
+	p.consume(RARROW)
+	p.skipEOLOne()
+	p.skipSpace()
+	block := p.parseBlock()
+	return &MatchRule{&MatchPattern{caseName, varName}, block}
+}
+
+/*
+MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+
+*/
+func (p *Parser) parseMatchExpr() Expr {
+	p.consume(MATCH)
+	target := p.parseExpr()
+	p.consume(WITH)
+	p.skipEOLOne()
+	p.skipSpace()
+
+	var rules []*MatchRule
+	for p.Current().ttype == BAR {
+		one := p.parseMatchRule()
+		rules = append(rules, one)
+	}
+	return &MatchExpr{target, rules}
+}
+
 func (p *Parser) parseExpr() Expr {
 	tk := p.Current()
 	// spcial handling for a while.
 	if tk.ttype == IDENTIFIER && tk.stringVal == "GoEval" {
 		return p.parseGoEval()
+	}
+
+	if tk.ttype == MATCH {
+		return p.parseMatchExpr()
 	}
 
 	var exprs []Expr

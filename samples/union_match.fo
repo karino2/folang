@@ -1,0 +1,12 @@
+package main
+import "fmt"
+
+type IorS =
+ | IT of int
+ | ST of string
+
+ let main () =
+  match IT 3 with
+  | IT ival -> GoEval "fmt.Printf(\"ival=%d\\n\", ival)"
+  | ST sval -> GoEval "fmt.Printf(\"ival=%s\\n\", sval)"
+

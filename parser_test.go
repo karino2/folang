@@ -132,6 +132,19 @@ import "fmt"
 		}
 	}
 }
+
+func transpile(src string) string {
+	ResetUniqueTmpCounter()
+	defer ResetUniqueTmpCounter()
+
+	parser := &Parser{}
+	res := parser.Parse("", []byte(src))
+	tp := NewTranspiler()
+	f := NewFile(res)
+	return tp.Transpile(f)
+
+}
+
 func TestParserAndTranspile(t *testing.T) {
 	var tests = []struct {
 		input string
@@ -225,11 +238,7 @@ func New_IntOrString_S(v string) IntOrString { return &IntOrString_S{v} }
 	}
 
 	for _, test := range tests {
-		parser := &Parser{}
-		res := parser.Parse("", []byte(test.input))
-		tp := NewTranspiler()
-		f := NewFile(res)
-		got := tp.Transpile(f)
+		got := transpile(test.input)
 
 		if got != test.want {
 			t.Errorf("got [%s], want [%s]", got, test.want)
@@ -279,4 +288,84 @@ func TestParserRecordExpression(t *testing.T) {
 		rg.fieldNames[1] != "Y" {
 		t.Errorf("unexpected rg: %v", rg)
 	}
+}
+
+func TestParserMatchExpression(t *testing.T) {
+	src :=
+		`   match x with
+    | I ival -> "i match"
+    | S sval -> "s match"
+`
+	parser := &Parser{}
+	parser.Setup("", []byte(src))
+	parser.skipSpace()
+	parser.pushOffside()
+	res := parser.parseExpr()
+
+	me, ok := res.(*MatchExpr)
+	if !ok {
+		t.Error("parse result is not MatchExpr.")
+	}
+	v, ok := me.target.(*Var)
+	if !ok {
+		t.Error("target is not variable.")
+	}
+	if v.Name != "x" {
+		t.Errorf("wrong target: %v", v)
+	}
+	if len(me.rules) != 2 {
+		t.Errorf("want 2 rules, but %v", me.rules)
+	}
+}
+
+/*
+This result is too complex to assert.
+Check by eye.
+*/
+func TestParserMatchExpressionWhole(t *testing.T) {
+	src :=
+		`package main
+
+type IorS =
+ | IT of int
+ | ST of string
+
+ let ika () =
+  match IT 3 with
+  | IT ival -> "i match"
+  | ST sval -> "s match"
+`
+
+	got := transpile(src)
+	// t.Error(got)
+
+	// dummy check.
+	if got == "" {
+		t.Error(got)
+	}
+
+}
+
+func TestParserMatchExpressionNoVar(t *testing.T) {
+	src :=
+		`package main
+
+type IorS =
+ | IT of int
+ | ST of string
+
+ let ika () =
+  match IT 3 with
+  | IT _ -> "i match"
+  | ST sval -> "s match"
+`
+
+	got := transpile(src)
+	// t.Error(got)
+
+	// dummy check.
+	if got == "" {
+		t.Error(got)
+	}
+
 }
