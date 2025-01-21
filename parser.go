@@ -526,15 +526,10 @@ func (p *Parser) parseParams() []*Var {
 	return params
 }
 
+/*
+FUNC_DEF_LET = 'let' IDENTIFIER PARAMS '=' EOL BLOCK
+*/
 func (p *Parser) parseFuncDefLet() Stmt {
-	/*
-		expext
-
-		let hoge () =
-			expr
-
-		for a while.
-	*/
 	p.consume(LET)
 	fname := p.Current()
 	if fname.ttype != IDENTIFIER {
