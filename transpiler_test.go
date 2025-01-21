@@ -246,3 +246,64 @@ func TestUnionDefConstructorHandling(t *testing.T) {
 	}
 
 }
+
+func TestPatternMatchUnion(t *testing.T) {
+	unionFT := &FUnion{"IntOrString", []NameTypePair{{"I", FInt}, {"S", FString}}}
+	target := &Var{"udata", unionFT}
+	matchExpr := &MatchExpr{
+		target,
+		[]*MatchRule{
+			{
+				&MatchPattern{
+					"I",
+					"ival",
+				},
+				&Block{
+					nil,
+					&StringLiteral{"I match."},
+				},
+			},
+			{
+				&MatchPattern{
+					"S",
+					"sval",
+				},
+				&Block{
+					nil,
+					&StringLiteral{"s match."},
+				},
+			},
+		},
+	}
+	got1 := matchExpr.ToGoReturn()
+	want1 :=
+		`switch _v1 := (udata).(type){
+case *IntOrString_I:
+ival := _v1
+return "I match."
+case *IntOrString_S:
+sval := _v1
+return "s match."
+default:
+panic("Union pattern fail. Never reached here.")
+}`
+	if got1 != want1 {
+		t.Errorf("want: %s, got: %s", want1, got1)
+	}
+	want2 :=
+		`(func () string {
+switch _v2 := (udata).(type){
+case *IntOrString_I:
+ival := _v2
+return "I match."
+case *IntOrString_S:
+sval := _v2
+return "s match."
+default:
+panic("Union pattern fail. Never reached here.")
+}})()`
+	got2 := matchExpr.ToGo()
+	if got2 != want2 {
+		t.Errorf("want: %s, got: %s", want2, got2)
+	}
+}

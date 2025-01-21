@@ -22,6 +22,7 @@ func (*FunCall) expr()       {}
 func (*Var) expr()           {}
 func (*RecordGen) expr()     {}
 func (*Block) expr()         {}
+func (*MatchExpr) expr()     {}
 
 /*
 Some expr is OK for just return in some situation (like body of function).
@@ -154,14 +155,18 @@ type Block struct {
 
 func (b *Block) FType() FType { return b.FinalExpr.FType() }
 
-func (b *Block) ToGo() string {
+func wrapFunCall(returnType FType, goReturnBody string) string {
 	var buf bytes.Buffer
 	buf.WriteString("(func () ")
-	buf.WriteString(b.FType().ToGo())
+	buf.WriteString(returnType.ToGo())
 	buf.WriteString(" {\n")
-	buf.WriteString(b.ToGoReturn())
+	buf.WriteString(goReturnBody)
 	buf.WriteString("})()")
 	return buf.String()
+}
+
+func (b *Block) ToGo() string {
+	return wrapFunCall(b.FType(), b.ToGoReturn())
 }
 
 func (b *Block) ToGoReturn() string {
@@ -178,6 +183,106 @@ func (b *Block) ToGoReturn() string {
 	buf.WriteString(last.ToGo())
 
 	return buf.String()
+}
+
+var uniqueId = 0
+
+func UniqueTmpVarName() string {
+	uniqueId++
+	return fmt.Sprintf("_v%d", uniqueId)
+}
+
+/*
+Union case matching.
+Only support variable match for a while:
+| I i -> ...
+| Record r -> ...
+*/
+type MatchPattern struct {
+	caseId  string
+	varName string
+}
+
+type MatchRule struct {
+	pattern *MatchPattern
+	body    *Block
+}
+
+/*
+	produce
+
+case *IntOrBool_I:
+
+	[varName] := tmpV
+	body...
+
+or
+
+default:
+
+	...body...
+*/
+func (mr *MatchRule) ToGo(uname string, tmpVarName string) string {
+	var buf bytes.Buffer
+	pat := mr.pattern
+	if pat.caseId == "_" {
+		buf.WriteString("default:\n")
+	} else {
+		buf.WriteString("case *")
+		buf.WriteString(UnionCaseStructName(uname, pat.caseId))
+		buf.WriteString(":\n")
+		buf.WriteString(pat.varName)
+		buf.WriteString(" := ")
+		buf.WriteString(tmpVarName)
+		buf.WriteString("\n")
+	}
+	buf.WriteString(mr.body.ToGoReturn())
+	buf.WriteString("\n")
+	return buf.String()
+}
+
+type MatchExpr struct {
+	target Expr
+	rules  []*MatchRule
+}
+
+func (me *MatchExpr) FType() FType {
+	// return type must be the same for all rules, so I use first one.
+	return me.rules[0].body.FType()
+}
+
+func (me *MatchExpr) ToGoReturn() string {
+	ut, ok := me.target.FType().(*FUnion)
+	if !ok {
+		panic("NYI, non union match expr")
+	}
+
+	var buf bytes.Buffer
+	tmpV := UniqueTmpVarName()
+
+	buf.WriteString("switch ")
+	buf.WriteString(tmpV)
+	buf.WriteString(" := (")
+	buf.WriteString(me.target.ToGo())
+
+	buf.WriteString(").(type){\n")
+	hasDefault := false
+	for _, rule := range me.rules {
+		if rule.pattern.caseId == "_" {
+			hasDefault = true
+		}
+		buf.WriteString(rule.ToGo(ut.name, tmpV))
+	}
+	if !hasDefault {
+		buf.WriteString("default:\npanic(\"Union pattern fail. Never reached here.\")\n")
+	}
+
+	buf.WriteString("}")
+	return buf.String()
+}
+
+func (me *MatchExpr) ToGo() string {
+	return wrapFunCall(me.FType(), me.ToGoReturn())
 }
 
 /*
@@ -314,7 +419,7 @@ type UnionDef struct {
 
 // Return IntOrString_I
 func (ud *UnionDef) CaseStructName(index int) string {
-	return fmt.Sprintf("%s_%s", ud.Name, ud.Cases[index].Name)
+	return UnionCaseStructName(ud.Name, ud.Cases[index].Name)
 }
 
 /*

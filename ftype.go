@@ -1,6 +1,9 @@
 package main
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+)
 
 type FType interface {
 	ftype()
@@ -144,4 +147,9 @@ type FUnion struct {
 // FUnion is interface in go. No need to add *.
 func (fu *FUnion) ToGo() string {
 	return fu.name
+}
+
+// Return IntOrString_I
+func UnionCaseStructName(unionName string, caseName string) string {
+	return fmt.Sprintf("%s_%s", unionName, caseName)
 }
