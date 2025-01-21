@@ -242,6 +242,11 @@ func (tkz *Tokenizer) GotoNext() {
 	tkz.analyzeCur()
 }
 
+func (tkz *Tokenizer) RevertTo(token *Token) {
+	tkz.pos = token.begin
+	tkz.currentToken = token
+}
+
 type Parser struct {
 	tokenizer *Tokenizer
 }
@@ -256,6 +261,14 @@ func (p *Parser) skipSpace() {
 		p.tokenizer.GotoNext()
 		tk = p.Current()
 	}
+}
+
+func (p *Parser) PeekNext() *Token {
+	tk := p.Current()
+	defer p.tokenizer.RevertTo(tk)
+
+	p.gotoNext()
+	return p.Current()
 }
 
 func (p *Parser) gotoNext() {
@@ -274,6 +287,13 @@ func (p *Parser) skipEOL() {
 	for tk.ttype == EOL {
 		p.gotoNext()
 		tk = p.Current()
+	}
+}
+
+func (p *Parser) skipEOLOne() {
+	tk := p.Current()
+	if tk.ttype == EOL {
+		p.gotoNext()
 	}
 }
 
@@ -329,7 +349,7 @@ func (p *Parser) parseGoEval() Expr {
 }
 
 func (p *Parser) isEndOfExpr() bool {
-	return p.Current().ttype == EOL || p.Current().ttype == EOF
+	return p.Current().ttype == EOL || p.Current().ttype == EOF || p.Current().ttype == SEMICOLON || p.Current().ttype == RBRACE || p.Current().ttype == RPAREN
 }
 
 /*
@@ -362,12 +382,12 @@ func (p *Parser) parseRecordGen() Expr {
 	return NewRecordGen(fnames, fvals)
 }
 
-func (p *Parser) parseExpr() Expr {
+/*
+Grammar says Application Expression is expr expr.
+So create singleExpr parser that does not handle application expressions.
+*/
+func (p *Parser) parseSingleExpr() Expr {
 	tk := p.Current()
-	// spcial handling
-	if tk.ttype == IDENTIFIER && tk.stringVal == "GoEval" {
-		return p.parseGoEval()
-	}
 
 	switch {
 	case tk.ttype == STRING:
@@ -387,6 +407,39 @@ func (p *Parser) parseExpr() Expr {
 	}
 }
 
+func (p *Parser) parseExpr() Expr {
+	tk := p.Current()
+	// spcial handling for a while.
+	if tk.ttype == IDENTIFIER && tk.stringVal == "GoEval" {
+		return p.parseGoEval()
+	}
+
+	var exprs []Expr
+	for !p.isEndOfExpr() {
+		expr := p.parseSingleExpr()
+		exprs = append(exprs, expr)
+	}
+
+	if len(exprs) == 1 {
+		return exprs[0]
+	}
+
+	v, ok := exprs[0].(*Var)
+	if !ok {
+		panic("application expr with non variable start, NYI")
+	}
+
+	return &FunCall{v, exprs[1:]}
+}
+
+/*
+Should consider offside rule.
+But just check EOL for a while.
+*/
+func (p *Parser) isEndOfBlock() bool {
+	return p.Current().ttype == EOL || p.Current().ttype == EOF
+}
+
 /*
 BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
 
@@ -396,25 +449,21 @@ func (p *Parser) parseBlock() *Block {
 	var stmts []Stmt
 
 	p.skipSpace()
-	expr := p.parseExpr()
 
-	if p.isEndOfExpr() {
+	expr := p.parseExpr()
+	p.skipEOLOne()
+
+	if p.isEndOfBlock() {
 		return &Block{stmts, expr}
 	}
 
-	// application expression: expr expr
-	v, ok := expr.(*Var)
-	if !ok {
-		panic("applicationn expr with non variable start, NYI")
+	for !p.isEndOfBlock() {
+		stmts = append(stmts, &ExprStmt{expr})
+		expr = p.parseExpr()
+		p.skipEOLOne()
 	}
 
-	var exprs []Expr
-	for !p.isEndOfExpr() {
-		expr = p.parseExpr()
-		exprs = append(exprs, expr)
-	}
-	one := &FunCall{v, exprs}
-	return &Block{stmts, one}
+	return &Block{stmts, expr}
 }
 
 /*
