@@ -54,11 +54,13 @@ func (s *IntImm) ToGo() string { return fmt.Sprintf("%d", s.Value) }
 
 // Goのコードを直接持つinline asm的な抜け穴
 type GoEval struct {
-	GoStmt string
+	GoStmt  string
+	TypeArg FType
 }
 
-func (*GoEval) FType() FType   { return FUnit }
-func (e *GoEval) ToGo() string { return e.GoStmt }
+func (e *GoEval) FType() FType     { return e.TypeArg }
+func (e *GoEval) ToGo() string     { return e.GoStmt }
+func NewGoEval(src string) *GoEval { return &GoEval{src, FUnit} }
 
 // 変数。仮引数などの場合と変数自身の参照の場合の両方をこれで賄う。
 type Var struct {

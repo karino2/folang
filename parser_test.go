@@ -235,6 +235,16 @@ func New_IntOrString_S(v string) IntOrString { return &IntOrString_S{v} }
 
 `,
 		},
+		{
+			`let ika() =
+  GoEval<int> "3+4"
+`,
+			`func ika() int{
+return 3+4
+}
+
+`,
+		},
 	}
 
 	for _, test := range tests {

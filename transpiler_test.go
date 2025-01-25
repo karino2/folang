@@ -12,7 +12,7 @@ func TestCompile(t *testing.T) {
 		{
 			[]Stmt{
 				&Import{"fmt"},
-				&FuncDef{"main", nil, &Block{nil, &GoEval{"fmt.Println(\"Hello World\")"}}},
+				&FuncDef{"main", nil, &Block{nil, NewGoEval("fmt.Println(\"Hello World\")")}},
 			},
 			`import "fmt"
 
@@ -26,7 +26,7 @@ fmt.Println("Hello World")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)")}},
 				&FuncDef{"main", nil,
 					&Block{nil,
 						&FunCall{
@@ -54,7 +54,7 @@ hello("Hoge")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)")}},
 				&FuncDef{"main", nil,
 					&Block{nil,
 						&FunCall{
@@ -109,7 +109,7 @@ func TestResolver(t *testing.T) {
 	f := NewFile([]Stmt{
 		&Package{"main"},
 		&Import{"fmt"},
-		&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, &GoEval{"fmt.Printf(\"Hello %s\\n\", msg)"}}},
+		&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)")}},
 		&FuncDef{"main", nil,
 			&Block{nil, funCall},
 		},

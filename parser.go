@@ -22,6 +22,8 @@ const (
 	RPAREN
 	LBRACE
 	RBRACE
+	LT
+	GT
 	STRING
 	COLON
 	SEMICOLON
@@ -236,6 +238,10 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(SEMICOLON, b)
 	case b == '|':
 		cur.setOneChar(BAR, b)
+	case b == '<':
+		cur.setOneChar(LT, b)
+	case b == '>':
+		cur.setOneChar(GT, b)
 	case b == '-':
 		if tkz.isCharAt(tkz.pos+1, '>') {
 			cur.ttype = RARROW
@@ -385,14 +391,31 @@ func (p *Parser) parseImport() *Import {
 	return &Import{tk.stringVal}
 }
 
+/*
+GO_EVAL = 'GoEval' string | 'GoEval' '<' TYPE '>' string
+
+It should not have space between 'GoEval' and '<' though currently we just don't care those differences.
+*/
 func (p *Parser) parseGoEval() Expr {
 	p.gotoNext()
 	arg := p.Current()
-	if arg.ttype != STRING {
+	switch arg.ttype {
+	case STRING:
+		p.gotoNext()
+		return NewGoEval(arg.stringVal)
+	case LT:
+		p.gotoNext()
+		ft := p.parseType()
+		p.consume(GT)
+		arg = p.Current()
+		if arg.ttype != STRING {
+			panic(arg)
+		}
+		p.gotoNext()
+		return &GoEval{arg.stringVal, ft}
+	default:
 		panic(arg)
 	}
-	p.gotoNext()
-	return &GoEval{arg.stringVal}
 }
 
 func (p *Parser) isEndOfExpr() bool {
