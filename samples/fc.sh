@@ -1,4 +1,4 @@
 #!/bin/sh
 
-./folang $1
-go fmt *gen.go
+./tinyfo $1
+go fmt gen_*.go
