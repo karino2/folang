@@ -31,7 +31,7 @@ func main() {
 
 		dir := filepath.Dir(file)
 		base := strings.TrimSuffix(filepath.Base(file), ".fo")
-		dest := filepath.Join(dir, base+"_gen.go")
+		dest := filepath.Join(dir, "gen_"+base+".go")
 		os.WriteFile(dest, []byte(res), 0644)
 	}
 }
