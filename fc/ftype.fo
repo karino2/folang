@@ -1,0 +1,27 @@
+package main
+
+import "bytes"
+import "fmt"
+
+type FType =
+| FInt
+| FString
+| FUnit
+| FUnresolved
+| FFunc of FuncType
+| FRecord of RecordType
+| FUnion of UnionType
+
+
+type NameTypePair = {Name: string; Type: FType}
+
+type RecordType = {name: string; fiedls: []NameTypePair}
+type UnionType = {name: string; cases: []NameTypePair}
+
+type FUncType = {targets: []FType}
+
+let IsUnresolved (ft:FType) =
+  match ft with
+  | FUnresoled -> true
+  | _ -> false
+
