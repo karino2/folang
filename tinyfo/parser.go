@@ -496,13 +496,17 @@ func (p *Parser) parseMatchRule() *MatchRule {
 	caseName := p.Current().stringVal
 	p.gotoNext()
 	var varName string
-	if p.Current().ttype == UNDER_SCORE {
-		varName = "_"
+	if p.Current().ttype == RARROW {
+		// no content case. use "" for varName.
 	} else {
-		p.expect(IDENTIFIER)
-		varName = p.Current().stringVal
+		if p.Current().ttype == UNDER_SCORE {
+			varName = "_"
+		} else {
+			p.expect(IDENTIFIER)
+			varName = p.Current().stringVal
+		}
+		p.gotoNext()
 	}
-	p.gotoNext()
 	p.consume(RARROW)
 	p.skipEOLOne()
 	p.skipSpace()
@@ -594,7 +598,7 @@ func (p *Parser) parseBlock() *Block {
 }
 
 /*
-TYPE = 'string' | 'int'
+TYPE = 'string' | 'int' | IDENTIFIER
 */
 func (p *Parser) parseType() FType {
 	p.expect(IDENTIFIER)
@@ -607,7 +611,8 @@ func (p *Parser) parseType() FType {
 		p.gotoNext()
 		return FInt
 	default:
-		panic(tname)
+		p.gotoNext()
+		return &FCustom{tname}
 	}
 }
 
@@ -690,11 +695,17 @@ func (p *Parser) parseUnionDef(uname string) Stmt {
 		cname := p.Current().stringVal
 
 		p.gotoNext()
-		p.consume(OF)
+		if p.Current().ttype == OF {
+			p.consume(OF)
 
-		tp := p.parseType()
-		cases = append(cases, NameTypePair{cname, tp})
-		p.consume(EOL)
+			tp := p.parseType()
+			cases = append(cases, NameTypePair{cname, tp})
+			p.consume(EOL)
+		} else {
+			// no "of", unit case.
+			cases = append(cases, NameTypePair{cname, FUnit})
+			p.consume(EOL)
+		}
 	}
 	return &UnionDef{uname, cases}
 }

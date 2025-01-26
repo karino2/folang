@@ -1,0 +1,14 @@
+package main
+import "fmt"
+
+type AorB =
+ | A 
+ | B
+
+
+let main () =
+  match A with
+  | A -> GoEval "fmt.Println(\"match A\")"
+  | B -> GoEval "fmt.Println(\"match B\")"
+
+

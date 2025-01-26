@@ -16,9 +16,15 @@ func (*FFunc) ftype()       {}
 func (*FUnresolved) ftype() {}
 func (*FRecord) ftype()     {}
 func (*FUnion) ftype()      {}
+func (*FCustom) ftype()     {}
 
 func IsUnresolved(ft FType) bool {
 	_, ok := ft.(*FUnresolved)
+	return ok
+}
+
+func IsCustom(ft FType) bool {
+	_, ok := ft.(*FCustom)
 	return ok
 }
 
@@ -38,6 +44,12 @@ func (p *FUnitType) ToGo() string {
 	return ""
 }
 
+var (
+	FInt    = &FPrimitive{"int"}
+	FString = &FPrimitive{"string"}
+	FUnit   = &FUnitType{}
+)
+
 // type inferenceでまだ未解決の状態。
 // 最終的にはこれは無くならないとinference error。
 type FUnresolved struct {
@@ -50,11 +62,18 @@ func (p *FUnresolved) ToGo() string {
 	return ""
 }
 
-var (
-	FInt    = &FPrimitive{"int"}
-	FString = &FPrimitive{"string"}
-	FUnit   = &FUnitType{}
-)
+/*
+Custom type. Mostly user defined type.
+Some type is defined after using.
+So first keep identifier as is, then resolve.
+*/
+type FCustom struct {
+	name string
+}
+
+func (p *FCustom) ToGo() string {
+	return p.name
+}
 
 type FFunc struct {
 	// カリー化されている前提で、引数も戻りも区別せず持つ

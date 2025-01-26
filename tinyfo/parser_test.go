@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -245,6 +246,32 @@ return 3+4
 
 `,
 		},
+		{
+			`type AorB =
+  | A
+  | B
+`,
+			`type AorB interface {
+  AorB_Union()
+}
+
+func (*AorB_A) AorB_Union(){}
+func (*AorB_B) AorB_Union(){}
+
+type AorB_A struct {
+}
+
+var New_AorB_A AorB = &AorB_A{}
+
+type AorB_B struct {
+}
+
+var New_AorB_B AorB = &AorB_B{}
+
+
+
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -376,6 +403,53 @@ type IorS =
 	// dummy check.
 	if got == "" {
 		t.Error(got)
+	}
+
+}
+
+func TestParserMatchExpressionNoContent(t *testing.T) {
+	src :=
+		`package main
+
+type AorB =
+ | A
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+`
+
+	got := transpile(src)
+	want := "switch (ab).(type)"
+	// t.Error(got)
+	if !strings.Contains(got, want) {
+		t.Errorf("want no var def type assert(%s), but got %s", want, got)
+	}
+
+}
+
+func TestParserNoContentCaseConstructor(t *testing.T) {
+	src :=
+		`package main
+
+type AorB =
+ | A
+ | B
+
+let main () =
+  match A with
+  | A -> GoEval "fmt.Println(\"A match\")"
+  | B -> GoEval "fmt.Println(\"B match\")"
+`
+
+	got := transpile(src)
+	// t.Error(got)
+
+	want := "switch (New_AorB_A).(type)"
+	if !strings.Contains(got, want) {
+		t.Errorf("want no var def type assert(%s), but got %s", want, got)
 	}
 
 }

@@ -86,6 +86,9 @@ func (fc *FunCall) ArgTypes() []FType {
 }
 
 func (fc *FunCall) FType() FType {
+	if fc.Func.IsUnresolved() {
+		return fc.Func.Type // return FUnresolved.
+	}
 	ftype := fc.FuncType()
 	if len(fc.Args) == len(ftype.Args()) {
 		return ftype.ReturnType()
@@ -242,7 +245,7 @@ func (mr *MatchRule) ToGo(uname string, tmpVarName string) string {
 		buf.WriteString("case *")
 		buf.WriteString(UnionCaseStructName(uname, pat.caseId))
 		buf.WriteString(":\n")
-		if pat.varName != "_" {
+		if pat.varName != "_" && pat.varName != "" {
 			buf.WriteString(pat.varName)
 			buf.WriteString(" := ")
 			buf.WriteString(tmpVarName)
@@ -265,6 +268,18 @@ func (me *MatchExpr) FType() FType {
 	return me.rules[0].body.FType()
 }
 
+/*
+At least one rule has "of" and not "_"
+*/
+func (me *MatchExpr) ruleHasContent() bool {
+	for _, rule := range me.rules {
+		if rule.pattern.caseId != "_" && rule.pattern.varName != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func (me *MatchExpr) ToGoReturn() string {
 	ut, ok := me.target.FType().(*FUnion)
 	if !ok {
@@ -275,8 +290,11 @@ func (me *MatchExpr) ToGoReturn() string {
 	tmpV := UniqueTmpVarName()
 
 	buf.WriteString("switch ")
-	buf.WriteString(tmpV)
-	buf.WriteString(" := (")
+	if me.ruleHasContent() {
+		buf.WriteString(tmpV)
+		buf.WriteString(" := ")
+	}
+	buf.WriteString("(")
 	buf.WriteString(me.target.ToGo())
 
 	buf.WriteString(").(type){\n")
@@ -362,11 +380,16 @@ func (fd *FuncDef) ToGoParams(buf *bytes.Buffer) {
 }
 
 func (fd *FuncDef) FuncFType() FType {
+	retType := fd.Body.FType()
+	if IsUnresolved(retType) {
+		return retType
+	}
+
 	var fts []FType
 	for _, arg := range fd.Params {
 		fts = append(fts, arg.Type)
 	}
-	fts = append(fts, fd.Body.FType())
+	fts = append(fts, retType)
 	return &FFunc{fts}
 }
 
@@ -474,9 +497,13 @@ func (ud *UnionDef) buildCaseStructDef(buf *bytes.Buffer, index int) {
 	buf.WriteString("type ")
 	buf.WriteString(ud.CaseStructName(index))
 	buf.WriteString(" struct {\n")
-	buf.WriteString("  Value ")
-	buf.WriteString(ud.Cases[index].Type.ToGo())
-	buf.WriteString("\n}\n")
+	contentTp := ud.Cases[index].Type
+	if contentTp != FUnit {
+		buf.WriteString("  Value ")
+		buf.WriteString(contentTp.ToGo())
+		buf.WriteString("\n")
+	}
+	buf.WriteString("}\n")
 }
 
 // New_IntOrString_I
@@ -487,7 +514,7 @@ func (ud *UnionDef) caseStructConstructorName(index int) string {
 /*
 func New_IntOrString_I(v int) IntOrString { return &IntOrString_I{v} }
 */
-func (ud *UnionDef) buildCaseStructConstructor(buf *bytes.Buffer, index int) {
+func (ud *UnionDef) buildCaseStructConstructorContent(buf *bytes.Buffer, index int) {
 	buf.WriteString("func ")
 	buf.WriteString(ud.caseStructConstructorName(index))
 	buf.WriteString("(v ")
@@ -497,6 +524,33 @@ func (ud *UnionDef) buildCaseStructConstructor(buf *bytes.Buffer, index int) {
 	buf.WriteString(" { return &")
 	buf.WriteString(ud.CaseStructName(index))
 	buf.WriteString("{v} }\n")
+}
+
+/*
+No arg case constructor case.
+In this case, folang regard no arg func as variable.
+So the result must be following:
+
+New_IntOrString_I IntOrString = &IntOrString_I{}
+*/
+func (ud *UnionDef) buildCaseStructConstructorAsVar(buf *bytes.Buffer, index int) {
+	buf.WriteString("var ")
+	buf.WriteString(ud.caseStructConstructorName(index))
+	buf.WriteString(" ")
+	buf.WriteString(ud.Name)
+	buf.WriteString(" = ")
+	buf.WriteString("&")
+	buf.WriteString(ud.CaseStructName(index))
+	buf.WriteString("{}\n")
+}
+
+func (ud *UnionDef) buildCaseStructConstructor(buf *bytes.Buffer, index int) {
+	contentTp := ud.Cases[index].Type
+	if contentTp == FUnit {
+		ud.buildCaseStructConstructorAsVar(buf, index)
+	} else {
+		ud.buildCaseStructConstructorContent(buf, index)
+	}
 }
 
 func (ud *UnionDef) ToGo() string {
@@ -520,14 +574,23 @@ func (ud *UnionDef) UnionFType() *FUnion {
 	return &FUnion{ud.Name, ud.Cases}
 }
 
-func (ud *UnionDef) RegisterConstructorAlias(resolver *TypeResolver) {
+func (ud *UnionDef) registerConstructor(resolver *TypeResolver) {
 	utype := ud.UnionFType()
 
 	for i, cs := range ud.Cases {
-		tps := []FType{cs.Type, utype}
-		ftype := &FFunc{tps}
-		resolver.AliasMap[cs.Name] = &Var{ud.caseStructConstructorName(i), ftype}
+		if cs.Type == FUnit {
+			resolver.AliasMap[cs.Name] = &Var{ud.caseStructConstructorName(i), utype}
+		} else {
+			tps := []FType{cs.Type, utype}
+			ftype := &FFunc{tps}
+			resolver.AliasMap[cs.Name] = &Var{ud.caseStructConstructorName(i), ftype}
+		}
 	}
+}
+
+func (ud *UnionDef) ResiterUnionTypeInfo(resolver *TypeResolver) {
+	ud.registerConstructor(resolver)
+	resolver.RegisterType(ud.Name, ud.UnionFType())
 }
 
 /*

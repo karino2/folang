@@ -1,0 +1,13 @@
+package main
+import "fmt"
+
+type AorB =
+ | A 
+ | B
+
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
