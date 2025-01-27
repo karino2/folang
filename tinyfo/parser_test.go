@@ -356,12 +356,16 @@ func TestParserMatchExpression(t *testing.T) {
 }
 
 /*
-This result is too complex to assert.
-Check by eye.
+The results of this category are too complex to assert whole.
+Check only part of it.
 */
-func TestParserMatchExpressionWhole(t *testing.T) {
-	src :=
-		`package main
+func TestParserContainTest(t *testing.T) {
+	var tests = []struct {
+		input string
+		want  string
+	}{
+		{
+			`package main
 
 type IorS =
  | IT of int
@@ -371,45 +375,27 @@ type IorS =
   match IT 3 with
   | IT ival -> "i match"
   | ST sval -> "s match"
-`
-
-	got := transpile(src)
-	// t.Error(got)
-
-	// dummy check.
-	if got == "" {
-		t.Error(got)
-	}
-
-}
-
-func TestParserMatchExpressionNoVar(t *testing.T) {
-	src :=
-		`package main
+`,
+			"case *IorS_IT:",
+		},
+		// no var case.
+		{`package main
 
 type IorS =
- | IT of int
- | ST of string
+  | IT of int
+  | ST of string
 
- let ika () =
+  let ika () =
   match IT 3 with
   | IT _ -> "i match"
   | ST sval -> "s match"
-`
-
-	got := transpile(src)
-	// t.Error(got)
-
-	// dummy check.
-	if got == "" {
-		t.Error(got)
-	}
-
-}
-
-func TestParserMatchExpressionNoContent(t *testing.T) {
-	src :=
-		`package main
+`,
+			`case *IorS_IT:
+return "i match"`,
+		},
+		// no content case
+		{
+			`package main
 
 type AorB =
  | A
@@ -419,20 +405,35 @@ let ika (ab:AorB) =
   match ab with
   | A -> "a match"
   | B -> "b match"
-`
+`, "switch (ab).(type)",
+		},
+		{
+			`package main
 
-	got := transpile(src)
-	want := "switch (ab).(type)"
-	// t.Error(got)
-	if !strings.Contains(got, want) {
-		t.Errorf("want no var def type assert(%s), but got %s", want, got)
+type AorB =
+ | A
+ | B
+
+let main () =
+  match A with
+  | A -> GoEval "fmt.Println(\"A match\")"
+  | B -> GoEval "fmt.Println(\"B match\")"
+`, "switch (New_AorB_A).(type)",
+		},
 	}
 
+	for _, test := range tests {
+		got := transpile(test.input)
+
+		// t.Error(got)
+		if !strings.Contains(got, test.want) {
+			t.Errorf("want to contain '%s', but got '%s'", test.want, got)
+		}
+	}
 }
 
-func TestParserNoContentCaseConstructor(t *testing.T) {
-	src :=
-		`package main
+func TestParserAddhook(t *testing.T) {
+	src := `package main
 
 type AorB =
  | A
