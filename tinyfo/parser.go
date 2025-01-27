@@ -22,6 +22,8 @@ const (
 	RPAREN
 	LBRACE
 	RBRACE
+	LSBRACKET
+	RSBRACKET
 	LT
 	GT
 	STRING
@@ -232,6 +234,10 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(LBRACE, b)
 	case b == '}':
 		cur.setOneChar(RBRACE, b)
+	case b == '[':
+		cur.setOneChar(LSBRACKET, b)
+	case b == ']':
+		cur.setOneChar(RSBRACKET, b)
 	case b == ':':
 		cur.setOneChar(COLON, b)
 	case b == ';':
@@ -598,9 +604,17 @@ func (p *Parser) parseBlock() *Block {
 }
 
 /*
-TYPE = 'string' | 'int' | IDENTIFIER
+TYPE = 'string' | 'int' | IDENTIFIER | '[”]' TYPE
 */
 func (p *Parser) parseType() FType {
+
+	if p.Current().ttype == LSBRACKET {
+		p.consume(LSBRACKET)
+		p.consume(RSBRACKET)
+		etype := p.parseType()
+		return &FSlice{etype}
+	}
+
 	p.expect(IDENTIFIER)
 	tname := p.Current().stringVal
 	switch tname {

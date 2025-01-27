@@ -420,6 +420,14 @@ let main () =
   | B -> GoEval "fmt.Println(\"B match\")"
 `, "switch (New_AorB_A).(type)",
 		},
+		{
+			`
+type NameTypePair = {Name: string; Type: string}
+
+type RecordType = {name: string; fiedls: []NameTypePair}
+`,
+			"fiedls []NameTypePair",
+		},
 	}
 
 	for _, test := range tests {
@@ -433,22 +441,16 @@ let main () =
 }
 
 func TestParserAddhook(t *testing.T) {
-	src := `package main
+	src := `
+type NameTypePair = {Name: string; Type: string}
 
-type IorS =
-  | IT of int
-  | ST of string
-
-  let ika () =
-  match IT 3 with
-  | IT ival -> "i match"
-  | ST sval -> "s match"
+type RecordType = {name: string; fiedls: []NameTypePair}
 `
 
 	got := transpile(src)
 	// t.Error(got)
 
-	want := "switch"
+	want := "struct"
 	if !strings.Contains(got, want) {
 		t.Errorf("want to contains(%s), but got %s", want, got)
 	}

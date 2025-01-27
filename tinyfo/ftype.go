@@ -17,6 +17,7 @@ func (*FUnresolved) ftype() {}
 func (*FRecord) ftype()     {}
 func (*FUnion) ftype()      {}
 func (*FCustom) ftype()     {}
+func (*FSlice) ftype()      {}
 
 func IsUnresolved(ft FType) bool {
 	_, ok := ft.(*FUnresolved)
@@ -73,6 +74,14 @@ type FCustom struct {
 
 func (p *FCustom) ToGo() string {
 	return p.name
+}
+
+type FSlice struct {
+	elemType FType
+}
+
+func (s *FSlice) ToGo() string {
+	return "[]" + s.elemType.ToGo()
 }
 
 type FFunc struct {
