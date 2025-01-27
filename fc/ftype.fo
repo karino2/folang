@@ -18,10 +18,10 @@ type NameTypePair = {Name: string; Type: FType}
 type RecordType = {name: string; fiedls: []NameTypePair}
 type UnionType = {name: string; cases: []NameTypePair}
 
-type FUncType = {targets: []FType}
+type FuncType = {targets: []FType}
 
 let IsUnresolved (ft:FType) =
   match ft with
-  | FUnresoled -> true
+  | FUnresolved -> true
   | _ -> false
 
