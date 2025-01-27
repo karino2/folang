@@ -342,7 +342,7 @@ func TestPatternMatchUnionUnusedVar(t *testing.T) {
 	}
 	got1 := matchExpr.ToGoReturn()
 	want1 :=
-		`switch _v1 := (udata).(type){
+		`switch (udata).(type){
 case IntOrString_I:
 return "I match."
 case IntOrString_S:

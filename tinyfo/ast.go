@@ -272,7 +272,7 @@ At least one rule has "of" and not "_"
 */
 func (me *MatchExpr) ruleHasContent() bool {
 	for _, rule := range me.rules {
-		if rule.pattern.caseId != "_" && rule.pattern.varName != "" {
+		if rule.pattern.caseId != "_" && rule.pattern.varName != "" && rule.pattern.varName != "_" {
 			return true
 		}
 	}

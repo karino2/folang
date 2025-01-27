@@ -10,7 +10,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${fileDirname}",
-      "args": ["samples/union_simple.fo"]
+      "args": ["../fc/ftype.fo"]
     }
   ]
 }

@@ -492,12 +492,25 @@ func (p *Parser) parseSingleExpr() Expr {
 /*
 MATCH_RULE = '|' IDENTIFIER IDENTIFIER '->' BLOCK
 
+	| '|' '_' '->' BLOCK
+
 ex:
 
 	| Record r -> hoge r
 */
 func (p *Parser) parseMatchRule() *MatchRule {
 	p.consume(BAR)
+
+	if p.Current().ttype == UNDER_SCORE {
+		// default case.
+		p.gotoNext()
+		p.consume(RARROW)
+		p.skipEOLOne()
+		p.skipSpace()
+		block := p.parseBlock()
+		return &MatchRule{&MatchPattern{"_", ""}, block}
+	}
+
 	p.expect(IDENTIFIER)
 	caseName := p.Current().stringVal
 	p.gotoNext()

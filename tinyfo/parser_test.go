@@ -428,6 +428,18 @@ type RecordType = {name: string; fiedls: []NameTypePair}
 `,
 			"fiedls []NameTypePair",
 		},
+		{
+			`type IorS =
+  | IT of int
+  | ST of string
+
+  let ika () =
+  match IT 3 with
+  | IT _ -> "i match"
+  | _ -> "default"
+`,
+			"default:\nreturn \"default\"",
+		},
 	}
 
 	for _, test := range tests {
@@ -441,16 +453,20 @@ type RecordType = {name: string; fiedls: []NameTypePair}
 }
 
 func TestParserAddhook(t *testing.T) {
-	src := `
-type NameTypePair = {Name: string; Type: string}
+	src := `type IorS =
+  | IT of int
+  | ST of string
 
-type RecordType = {name: string; fiedls: []NameTypePair}
+  let ika () =
+  match IT 3 with
+  | IT _ -> "i match"
+  | _ -> "default"
 `
 
 	got := transpile(src)
 	// t.Error(got)
 
-	want := "struct"
+	want := "default:\nreturn \"default\""
 	if !strings.Contains(got, want) {
 		t.Errorf("want to contains(%s), but got %s", want, got)
 	}
