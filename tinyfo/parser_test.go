@@ -119,7 +119,7 @@ func TestParserEasiest(t *testing.T) {
 		`package main
 import "fmt"
 `
-	parser := &Parser{}
+	parser := NewParser()
 	res := parser.Parse("", []byte(src))
 	if len(res) != 2 {
 		t.Errorf("expect 2 stmt, got %d, %v", len(res), res)
@@ -138,7 +138,7 @@ func transpile(src string) string {
 	ResetUniqueTmpCounter()
 	defer ResetUniqueTmpCounter()
 
-	parser := &Parser{}
+	parser := NewParser()
 	res := parser.Parse("", []byte(src))
 	tp := NewTranspiler()
 	f := NewFile(res)
@@ -287,7 +287,7 @@ func TestParserRecordDef(t *testing.T) {
 	src := `type Hoge = {X: string; Y: string}
 `
 
-	parser := &Parser{}
+	parser := NewParser()
 	res := parser.Parse("", []byte(src))
 	if len(res) != 1 {
 		t.Errorf("expect 1 stmt, got %d, %v", len(res), res)
@@ -310,7 +310,7 @@ func TestParserRecordExpression(t *testing.T) {
 	src := `{X="hoge"; Y="ika"}
 `
 
-	parser := &Parser{}
+	parser := NewParser()
 	parser.Setup("", []byte(src))
 	res := parser.parseExpr()
 	if res == nil {
@@ -333,8 +333,13 @@ func TestParserMatchExpression(t *testing.T) {
     | I ival -> "i match"
     | S sval -> "s match"
 `
-	parser := &Parser{}
+
+	unionDef := &UnionDef{"IntOrString", []NameTypePair{{"I", FInt}, {"S", FString}}}
+	varX := &Var{"x", unionDef.UnionFType()}
+
+	parser := NewParser()
 	parser.Setup("", []byte(src))
+	parser.scope.DefineVar("x", varX)
 	parser.skipSpace()
 	parser.pushOffside()
 	res := parser.parseExpr()

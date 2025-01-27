@@ -12,7 +12,7 @@ func TestCompile(t *testing.T) {
 		{
 			[]Stmt{
 				&Import{"fmt"},
-				&FuncDef{"main", nil, &Block{nil, NewGoEval("fmt.Println(\"Hello World\")")}},
+				&FuncDef{"main", nil, &Block{nil, NewGoEval("fmt.Println(\"Hello World\")"), nil}},
 			},
 			`import "fmt"
 
@@ -26,42 +26,14 @@ fmt.Println("Hello World")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)")}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)"), nil}},
 				&FuncDef{"main", nil,
 					&Block{nil,
 						&FunCall{
 							&Var{"hello", &FFunc{[]FType{FString, FUnit}}},
 							[]Expr{&StringLiteral{"Hoge"}},
 						},
-					},
-				},
-			},
-			`package main
-
-import "fmt"
-
-func hello(msg string) {
-fmt.Printf("Hello %s\n", msg)
-}
-
-func main() {
-hello("Hoge")
-}
-
-`,
-		},
-		{
-			[]Stmt{
-				&Package{"main"},
-				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)")}},
-				&FuncDef{"main", nil,
-					&Block{nil,
-						&FunCall{
-							// 型解決が動くか？
-							&Var{"hello", &FUnresolved{}},
-							[]Expr{&StringLiteral{"Hoge"}},
-						},
+						nil,
 					},
 				},
 			},
@@ -99,31 +71,6 @@ hello("Hoge")
 		}
 	}
 }
-func TestResolver(t *testing.T) {
-	funCall := &FunCall{
-		&Var{"hello", &FUnresolved{}},
-		[]Expr{&StringLiteral{"Hoge"}},
-	}
-
-	tp := NewTranspiler()
-	f := NewFile([]Stmt{
-		&Package{"main"},
-		&Import{"fmt"},
-		&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)")}},
-		&FuncDef{"main", nil,
-			&Block{nil, funCall},
-		},
-	})
-
-	tp.resolveAndRegisterType(f.Stmts)
-
-	got := funCall.Func.Type.ToGo()
-	want := "func (string)"
-	if got != want {
-		t.Errorf("got %s, want %s", got, want)
-	}
-}
-
 func TestRecordDefLookup(t *testing.T) {
 	f := NewFile([]Stmt{
 		&RecordDef{"hoge", []NameTypePair{{"X", FString}, {"Y", FString}}},
@@ -169,6 +116,7 @@ func TestRecordGen(t *testing.T) {
 			&Block{
 				nil,
 				recGen,
+				nil,
 			},
 		},
 	})
@@ -218,35 +166,6 @@ func New_IntOrString_S(v string) IntOrString { return IntOrString_S{v} }
 	}
 }
 
-func TestUnionDefConstructorHandling(t *testing.T) {
-	funCall := &FunCall{
-		&Var{"I", &FUnresolved{}},
-		[]Expr{&IntImm{123}},
-	}
-
-	f := NewFile([]Stmt{
-		&UnionDef{"IntOrString", []NameTypePair{{"I", FInt}, {"S", FString}}},
-		&FuncDef{"test_func", nil, &Block{nil, funCall}},
-	})
-
-	tp := NewTranspiler()
-	tp.resolveAndRegisterType(f.Stmts)
-
-	fn := funCall.Func
-	if fn.Name != "New_IntOrString_I" {
-		t.Errorf("want New_IntOrString_I, got %v", fn)
-	}
-	ft, ok := fn.Type.(*FFunc)
-	if !ok {
-		t.Errorf("want FFunc type, got %v", fn)
-	}
-	got := ft.String()
-	if got != "int -> IntOrString" {
-		t.Errorf("want 'int -> IntOrString', got %s", got)
-	}
-
-}
-
 func TestPatternMatchUnion(t *testing.T) {
 	ResetUniqueTmpCounter()
 	defer ResetUniqueTmpCounter()
@@ -263,6 +182,7 @@ func TestPatternMatchUnion(t *testing.T) {
 				&Block{
 					nil,
 					&StringLiteral{"I match."},
+					nil,
 				},
 			},
 			{
@@ -273,6 +193,7 @@ func TestPatternMatchUnion(t *testing.T) {
 				&Block{
 					nil,
 					&StringLiteral{"s match."},
+					nil,
 				},
 			},
 		},
@@ -326,6 +247,7 @@ func TestPatternMatchUnionUnusedVar(t *testing.T) {
 				&Block{
 					nil,
 					&StringLiteral{"I match."},
+					nil,
 				},
 			},
 			{
@@ -336,6 +258,7 @@ func TestPatternMatchUnionUnusedVar(t *testing.T) {
 				&Block{
 					nil,
 					&StringLiteral{"s match."},
+					nil,
 				},
 			},
 		},

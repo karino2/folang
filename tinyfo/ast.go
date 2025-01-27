@@ -164,6 +164,7 @@ Block contains stmts and final return expr.
 type Block struct {
 	Stmts     []Stmt
 	FinalExpr Expr
+	scope     *Scope // block has own scope.
 }
 
 func (b *Block) FType() FType { return b.FinalExpr.FType() }
@@ -582,22 +583,21 @@ func (ud *UnionDef) UnionFType() *FUnion {
 	return &FUnion{ud.Name, ud.Cases}
 }
 
-func (ud *UnionDef) registerConstructor(resolver *TypeResolver) {
+func (ud *UnionDef) registerConstructor(scope *Scope) {
 	utype := ud.UnionFType()
 
 	for i, cs := range ud.Cases {
 		if cs.Type == FUnit {
-			resolver.AliasMap[cs.Name] = &Var{ud.caseStructConstructorName(i), utype}
+			scope.DefineVar(cs.Name, &Var{ud.caseStructConstructorName(i), utype})
 		} else {
 			tps := []FType{cs.Type, utype}
 			ftype := &FFunc{tps}
-			resolver.AliasMap[cs.Name] = &Var{ud.caseStructConstructorName(i), ftype}
+			scope.DefineVar(cs.Name, &Var{ud.caseStructConstructorName(i), ftype})
 		}
 	}
 }
 
 func (ud *UnionDef) ResiterUnionTypeInfo(resolver *TypeResolver) {
-	ud.registerConstructor(resolver)
 	resolver.RegisterType(ud.Name, ud.UnionFType())
 }
 

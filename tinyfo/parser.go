@@ -287,9 +287,54 @@ func (tkz *Tokenizer) RevertTo(token *Token) {
 	tkz.currentToken = token
 }
 
+type Scope struct {
+	varMap map[string]*Var
+	parent *Scope
+}
+
+func NewScope(parent *Scope) *Scope {
+	s := &Scope{}
+	s.varMap = make(map[string]*Var)
+	s.parent = parent
+	return s
+}
+
+func (s *Scope) DefineVar(name string, v *Var) {
+	s.varMap[name] = v
+}
+
+func (s *Scope) LookupVar(name string) *Var {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.varMap[name]
+		if ok {
+			return ret
+		}
+		cur = cur.parent
+	}
+	return nil
+}
+
 type Parser struct {
 	tokenizer  *Tokenizer
 	offsideCol []int
+	scope      *Scope
+}
+
+func NewParser() *Parser {
+	p := &Parser{}
+	p.scope = NewScope(nil)
+	return p
+}
+
+func (p *Parser) pushScope() {
+	p.scope = NewScope(p.scope)
+}
+
+func (p *Parser) popScope() *Scope {
+	ret := p.scope
+	p.scope = ret.parent
+	return ret
 }
 
 func (p *Parser) Current() *Token {
@@ -483,8 +528,11 @@ func (p *Parser) parseSingleExpr() Expr {
 		p.gotoNext()
 		return &IntImm{tk.intVal}
 	case tk.ttype == IDENTIFIER:
-		v := &Var{tk.stringVal, &FUnresolved{}}
+		v := p.scope.LookupVar(tk.stringVal)
 		p.gotoNext()
+		if v == nil {
+			panic("Undefined var: " + tk.stringVal)
+		}
 		return v
 	case tk.ttype == LBRACE:
 		return p.parseRecordGen()
@@ -601,6 +649,7 @@ BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
 STMT_LIKE = LET_STMT | EXPR
 */
 func (p *Parser) parseBlock() *Block {
+	p.pushScope()
 	var stmts []Stmt
 
 	p.skipSpace()
@@ -613,7 +662,7 @@ func (p *Parser) parseBlock() *Block {
 
 	if p.isEndOfBlock() {
 		p.popOffside()
-		return &Block{stmts, expr}
+		return &Block{stmts, expr, p.popScope()}
 	}
 
 	for !p.isEndOfBlock() {
@@ -623,7 +672,7 @@ func (p *Parser) parseBlock() *Block {
 	}
 	p.popOffside()
 
-	return &Block{stmts, expr}
+	return &Block{stmts, expr, p.popScope()}
 }
 
 /*
@@ -672,7 +721,9 @@ func (p *Parser) parseParam() *Var {
 	p.consume(COLON)
 	ft := p.parseType()
 	p.consume(RPAREN)
-	return &Var{varName, ft}
+	ret := &Var{varName, ft}
+	p.scope.DefineVar(varName, ret)
+	return ret
 }
 
 /*
@@ -704,6 +755,12 @@ func (p *Parser) parseFuncDefLet() Stmt {
 	if fname.ttype != IDENTIFIER {
 		panic(fname)
 	}
+
+	// for recursive call, define symbol at first.
+	// Use this pointer and replace type after defined.
+	v := &Var{fname.stringVal, &FUnresolved{}}
+	p.scope.DefineVar(fname.stringVal, v)
+
 	p.gotoNext()
 	params := p.parseParams()
 
@@ -711,7 +768,10 @@ func (p *Parser) parseFuncDefLet() Stmt {
 
 	block := p.parseBlock()
 
-	return &FuncDef{fname.stringVal, params, block}
+	ret := &FuncDef{fname.stringVal, params, block}
+	// update type.
+	v.Type = ret.FuncFType()
+	return ret
 }
 
 func (p *Parser) parseLet() Stmt {
@@ -744,7 +804,9 @@ func (p *Parser) parseUnionDef(uname string) Stmt {
 			p.consume(EOL)
 		}
 	}
-	return &UnionDef{uname, cases}
+	ret := &UnionDef{uname, cases}
+	ret.registerConstructor(p.scope)
+	return ret
 }
 
 // RECORD_DEF = '{' FIELD_DEFS '}'

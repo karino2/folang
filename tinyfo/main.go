@@ -21,7 +21,7 @@ func main() {
 	}
 
 	tp := NewTranspiler()
-	parser := &Parser{}
+	parser := NewParser()
 	for _, file := range files {
 		buf, err := os.ReadFile(file)
 		check(err)
