@@ -1,9 +1,5 @@
 package main
 
-import "bytes"
-
-import "fmt"
-
 type FType interface {
 	FType_Union()
 }
@@ -73,7 +69,7 @@ type FuncType struct {
 	targets []FType
 }
 
-func IsUnresolved(ft FType) {
+func IsUnresolved(ft FType) bool {
 	switch (ft).(type) {
 	case FType_FUnresolved:
 		return true

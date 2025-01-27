@@ -1,8 +1,5 @@
 package main
 
-import "bytes"
-import "fmt"
-
 type FType =
 | FInt
 | FString
