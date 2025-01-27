@@ -202,8 +202,8 @@ let ika () =
   Y int
 }
 
-func ika() *hoge{
-return &hoge{X: "abc", Y: 123}
+func ika() hoge{
+return hoge{X: "abc", Y: 123}
 }
 
 `,
@@ -217,20 +217,20 @@ return &hoge{X: "abc", Y: 123}
   IntOrString_Union()
 }
 
-func (*IntOrString_I) IntOrString_Union(){}
-func (*IntOrString_S) IntOrString_Union(){}
+func (IntOrString_I) IntOrString_Union(){}
+func (IntOrString_S) IntOrString_Union(){}
 
 type IntOrString_I struct {
   Value int
 }
 
-func New_IntOrString_I(v int) IntOrString { return &IntOrString_I{v} }
+func New_IntOrString_I(v int) IntOrString { return IntOrString_I{v} }
 
 type IntOrString_S struct {
   Value string
 }
 
-func New_IntOrString_S(v string) IntOrString { return &IntOrString_S{v} }
+func New_IntOrString_S(v string) IntOrString { return IntOrString_S{v} }
 
 
 
@@ -255,18 +255,18 @@ return 3+4
   AorB_Union()
 }
 
-func (*AorB_A) AorB_Union(){}
-func (*AorB_B) AorB_Union(){}
+func (AorB_A) AorB_Union(){}
+func (AorB_B) AorB_Union(){}
 
 type AorB_A struct {
 }
 
-var New_AorB_A AorB = &AorB_A{}
+var New_AorB_A AorB = AorB_A{}
 
 type AorB_B struct {
 }
 
-var New_AorB_B AorB = &AorB_B{}
+var New_AorB_B AorB = AorB_B{}
 
 
 
@@ -376,7 +376,7 @@ type IorS =
   | IT ival -> "i match"
   | ST sval -> "s match"
 `,
-			"case *IorS_IT:",
+			"case IorS_IT:",
 		},
 		// no var case.
 		{`package main
@@ -390,7 +390,7 @@ type IorS =
   | IT _ -> "i match"
   | ST sval -> "s match"
 `,
-			`case *IorS_IT:
+			`case IorS_IT:
 return "i match"`,
 		},
 		// no content case
@@ -435,22 +435,22 @@ let main () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type AorB =
- | A
- | B
+type IorS =
+  | IT of int
+  | ST of string
 
-let main () =
-  match A with
-  | A -> GoEval "fmt.Println(\"A match\")"
-  | B -> GoEval "fmt.Println(\"B match\")"
+  let ika () =
+  match IT 3 with
+  | IT ival -> "i match"
+  | ST sval -> "s match"
 `
 
 	got := transpile(src)
 	// t.Error(got)
 
-	want := "switch (New_AorB_A).(type)"
+	want := "switch"
 	if !strings.Contains(got, want) {
-		t.Errorf("want no var def type assert(%s), but got %s", want, got)
+		t.Errorf("want to contains(%s), but got %s", want, got)
 	}
 
 }

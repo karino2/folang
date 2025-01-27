@@ -133,7 +133,6 @@ func (rg *RecordGen) ToGo() string {
 	}
 
 	var buf bytes.Buffer
-	buf.WriteString("&")
 
 	buf.WriteString(rtype.StructName())
 	buf.WriteString("{")
@@ -225,7 +224,7 @@ type MatchRule struct {
 /*
 	produce
 
-case *IntOrBool_I:
+case IntOrBool_I:
 
 	[varName] := tmpV
 	body...
@@ -242,7 +241,7 @@ func (mr *MatchRule) ToGo(uname string, tmpVarName string) string {
 	if pat.caseId == "_" {
 		buf.WriteString("default:\n")
 	} else {
-		buf.WriteString("case *")
+		buf.WriteString("case ")
 		buf.WriteString(UnionCaseStructName(uname, pat.caseId))
 		buf.WriteString(":\n")
 		if pat.varName != "_" && pat.varName != "" {
@@ -475,13 +474,13 @@ func (ud *UnionDef) buildUnionDef(buf *bytes.Buffer) {
 }
 
 /*
-func (*IntOrString_I) IntOrString_Union(){}
-func (*IntOrString_B) IntOrString_Union(){}
+func (IntOrString_I) IntOrString_Union(){}
+func (IntOrString_B) IntOrString_Union(){}
 */
 func (ud *UnionDef) buildCaseStructConformMethod(buf *bytes.Buffer) {
 	method := ud.Name + "_Union(){}\n"
 	for i := range ud.Cases {
-		buf.WriteString("func (*")
+		buf.WriteString("func (")
 		buf.WriteString(ud.CaseStructName(i))
 		buf.WriteString(") ")
 		buf.WriteString(method)
@@ -521,7 +520,7 @@ func (ud *UnionDef) buildCaseStructConstructorContent(buf *bytes.Buffer, index i
 	buf.WriteString(ud.Cases[index].Type.ToGo())
 	buf.WriteString(") ")
 	buf.WriteString(ud.Name)
-	buf.WriteString(" { return &")
+	buf.WriteString(" { return ")
 	buf.WriteString(ud.CaseStructName(index))
 	buf.WriteString("{v} }\n")
 }
@@ -539,7 +538,7 @@ func (ud *UnionDef) buildCaseStructConstructorAsVar(buf *bytes.Buffer, index int
 	buf.WriteString(" ")
 	buf.WriteString(ud.Name)
 	buf.WriteString(" = ")
-	buf.WriteString("&")
+	buf.WriteString("")
 	buf.WriteString(ud.CaseStructName(index))
 	buf.WriteString("{}\n")
 }

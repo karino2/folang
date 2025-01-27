@@ -179,8 +179,8 @@ func TestRecordGen(t *testing.T) {
   Y int
 }
 
-func ika() *hoge{
-return &hoge{X: "abc", Y: 123}
+func ika() hoge{
+return hoge{X: "abc", Y: 123}
 }
 
 `
@@ -197,20 +197,20 @@ func TestUnionDef(t *testing.T) {
   IntOrString_Union()
 }
 
-func (*IntOrString_I) IntOrString_Union(){}
-func (*IntOrString_S) IntOrString_Union(){}
+func (IntOrString_I) IntOrString_Union(){}
+func (IntOrString_S) IntOrString_Union(){}
 
 type IntOrString_I struct {
   Value int
 }
 
-func New_IntOrString_I(v int) IntOrString { return &IntOrString_I{v} }
+func New_IntOrString_I(v int) IntOrString { return IntOrString_I{v} }
 
 type IntOrString_S struct {
   Value string
 }
 
-func New_IntOrString_S(v string) IntOrString { return &IntOrString_S{v} }
+func New_IntOrString_S(v string) IntOrString { return IntOrString_S{v} }
 
 `
 	if got != want {
@@ -280,10 +280,10 @@ func TestPatternMatchUnion(t *testing.T) {
 	got1 := matchExpr.ToGoReturn()
 	want1 :=
 		`switch _v1 := (udata).(type){
-case *IntOrString_I:
+case IntOrString_I:
 ival := _v1.Value
 return "I match."
-case *IntOrString_S:
+case IntOrString_S:
 sval := _v1.Value
 return "s match."
 default:
@@ -295,10 +295,10 @@ panic("Union pattern fail. Never reached here.")
 	want2 :=
 		`(func () string {
 switch _v2 := (udata).(type){
-case *IntOrString_I:
+case IntOrString_I:
 ival := _v2.Value
 return "I match."
-case *IntOrString_S:
+case IntOrString_S:
 sval := _v2.Value
 return "s match."
 default:
@@ -343,9 +343,9 @@ func TestPatternMatchUnionUnusedVar(t *testing.T) {
 	got1 := matchExpr.ToGoReturn()
 	want1 :=
 		`switch _v1 := (udata).(type){
-case *IntOrString_I:
+case IntOrString_I:
 return "I match."
-case *IntOrString_S:
+case IntOrString_S:
 return "s match."
 default:
 panic("Union pattern fail. Never reached here.")

@@ -130,10 +130,8 @@ type FRecord struct {
 	fields []NameTypePair
 }
 
-// Use for cast and variable declaration.
-// Use pointer type as record type.
 func (fr *FRecord) ToGo() string {
-	return "*" + fr.name
+	return fr.name
 }
 
 func (fr *FRecord) StructName() string {

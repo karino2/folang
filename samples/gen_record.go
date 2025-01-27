@@ -5,6 +5,6 @@ type hoge struct {
 	Y string
 }
 
-func ika() *hoge {
-	return &hoge{X: "abc", Y: "def"}
+func ika() hoge {
+	return hoge{X: "abc", Y: "def"}
 }
