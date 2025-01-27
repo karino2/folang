@@ -48,6 +48,7 @@ func (p *FUnitType) ToGo() string {
 var (
 	FInt    = &FPrimitive{"int"}
 	FString = &FPrimitive{"string"}
+	FBool   = &FPrimitive{"bool"}
 	FUnit   = &FUnitType{}
 )
 

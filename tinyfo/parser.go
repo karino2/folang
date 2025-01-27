@@ -36,6 +36,8 @@ const (
 	UNDER_SCORE
 	MATCH
 	WITH
+	TRUE
+	FALSE
 	/*
 		INDENT
 		UNDENT
@@ -52,6 +54,8 @@ var keywordMap = map[string]TokenType{
 	"_":       UNDER_SCORE,
 	"match":   MATCH,
 	"with":    WITH,
+	"true":    TRUE,
+	"false":   FALSE,
 }
 
 type Token struct {
@@ -484,6 +488,12 @@ func (p *Parser) parseSingleExpr() Expr {
 		return v
 	case tk.ttype == LBRACE:
 		return p.parseRecordGen()
+	case tk.ttype == TRUE:
+		p.gotoNext()
+		return &BoolLiteral{true}
+	case tk.ttype == FALSE:
+		p.gotoNext()
+		return &BoolLiteral{false}
 	default:
 		panic("NYI")
 	}

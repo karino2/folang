@@ -18,6 +18,7 @@ type Expr interface {
 func (*GoEval) expr()        {}
 func (*StringLiteral) expr() {}
 func (*IntImm) expr()        {}
+func (*BoolLiteral) expr()   {}
 func (*FunCall) expr()       {}
 func (*Var) expr()           {}
 func (*RecordGen) expr()     {}
@@ -43,6 +44,14 @@ func (*StringLiteral) FType() FType { return FString }
 
 // TODO: エスケープ
 func (s *StringLiteral) ToGo() string { return fmt.Sprintf(`"%s"`, s.Value) }
+
+type BoolLiteral struct {
+	Value bool
+}
+
+func (*BoolLiteral) FType() FType { return FBool }
+
+func (s *BoolLiteral) ToGo() string { return fmt.Sprintf("%t", s.Value) }
 
 type IntImm struct {
 	Value int
@@ -619,7 +628,7 @@ func Walk(n Node, f func(Node) bool) {
 	case *Import, *Package, *RecordDef, *UnionDef:
 		// no-op
 	// ここからexpr
-	case *GoEval, *StringLiteral, *Var, *IntImm:
+	case *GoEval, *StringLiteral, *Var, *IntImm, *BoolLiteral:
 		// no-op
 	case *FunCall:
 		Walk(n.Func, f)
