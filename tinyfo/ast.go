@@ -339,6 +339,7 @@ type Stmt interface {
 }
 
 func (*FuncDef) stmt()   {}
+func (*LetVarDef) stmt() {}
 func (*Import) stmt()    {}
 func (*Package) stmt()   {}
 func (*ExprStmt) stmt()  {}
@@ -440,6 +441,25 @@ func (rd *RecordDef) ToGo() string {
 
 func (rd *RecordDef) ToFType() *FRecord {
 	return &FRecord{rd.Name, rd.Fields}
+}
+
+/*
+let a = expr
+
+Name: "a"
+Rhs: expr
+*/
+type LetVarDef struct {
+	Name string
+	Rhs  Expr
+}
+
+func (lvd *LetVarDef) ToGo() string {
+	var buf bytes.Buffer
+	buf.WriteString(lvd.Name)
+	buf.WriteString(" := ")
+	buf.WriteString(lvd.Rhs.ToGo())
+	return buf.String()
 }
 
 /*
@@ -625,6 +645,8 @@ func Walk(n Node, f func(Node) bool) {
 			Walk(stmt, f)
 		}
 		Walk(n.FinalExpr, f)
+	case *LetVarDef:
+		Walk(n.Rhs, f)
 	case *Import, *Package, *RecordDef, *UnionDef:
 		// no-op
 	// ここからexpr

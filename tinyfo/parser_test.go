@@ -272,6 +272,25 @@ var New_AorB_B AorB = AorB_B{}
 
 `,
 		},
+		{
+			`let a = "abc"
+`,
+			`a := "abc"
+
+`,
+		},
+		{
+			`let hoge () =
+  let a = "abc"
+  a
+`,
+			`func hoge() string{
+a := "abc"
+return a
+}
+
+`,
+		},
 	}
 
 	for _, test := range tests {

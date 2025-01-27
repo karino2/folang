@@ -379,6 +379,15 @@ func (p *Parser) PeekNext() *Token {
 	return p.Current()
 }
 
+func (p *Parser) PeekNextNext() *Token {
+	tk := p.Current()
+	defer p.tokenizer.RevertTo(tk)
+
+	p.gotoNext()
+	p.gotoNext()
+	return p.Current()
+}
+
 func (p *Parser) gotoNext() {
 	p.tokenizer.GotoNext()
 	p.skipSpace()
@@ -651,28 +660,28 @@ STMT_LIKE = LET_STMT | EXPR
 func (p *Parser) parseBlock() *Block {
 	p.pushScope()
 	var stmts []Stmt
+	var last Expr
 
 	p.skipSpace()
 
 	// limited implementation of offside rule.
 	p.pushOffside()
 
-	expr := p.parseExpr()
-	p.skipEOLOne()
-
-	if p.isEndOfBlock() {
-		p.popOffside()
-		return &Block{stmts, expr, p.popScope()}
+	for {
+		if p.Current().ttype == LET {
+			stmts = append(stmts, p.parseLet())
+			p.skipEOLOne()
+		} else {
+			last = p.parseExpr()
+			p.skipEOLOne()
+			if p.isEndOfBlock() {
+				p.popOffside()
+				return &Block{stmts, last, p.popScope()}
+			} else {
+				stmts = append(stmts, &ExprStmt{last})
+			}
+		}
 	}
-
-	for !p.isEndOfBlock() {
-		stmts = append(stmts, &ExprStmt{expr})
-		expr = p.parseExpr()
-		p.skipEOLOne()
-	}
-	p.popOffside()
-
-	return &Block{stmts, expr, p.popScope()}
 }
 
 /*
@@ -774,8 +783,39 @@ func (p *Parser) parseFuncDefLet() Stmt {
 	return ret
 }
 
+/*
+LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+*/
+func (p *Parser) parseLetDefVar() Stmt {
+	p.consume(LET)
+	vnameTk := p.Current()
+	if vnameTk.ttype != IDENTIFIER {
+		panic(vnameTk)
+	}
+	p.gotoNext()
+	p.consume(EQ)
+
+	rhs := p.parseExpr()
+	vname := vnameTk.stringVal
+
+	v := &Var{vname, rhs.FType()}
+	p.scope.DefineVar(vname, v)
+
+	return &LetVarDef{vname, rhs}
+}
+
+/*
+LET = LET_VAR_DEF | LET_FUNC_DEF
+
+LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+*/
 func (p *Parser) parseLet() Stmt {
-	return p.parseFuncDefLet()
+	nn := p.PeekNextNext()
+	if nn.ttype == EQ {
+		return p.parseLetDefVar()
+	} else {
+		return p.parseFuncDefLet()
+	}
 }
 
 /*

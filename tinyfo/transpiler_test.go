@@ -62,6 +62,14 @@ hello("Hoge")
 
 `,
 		},
+		{
+			[]Stmt{
+				&LetVarDef{"hoge", &StringLiteral{"ABC"}},
+			},
+			`hoge := "ABC"
+
+`,
+		},
 	} {
 		tp := NewTranspiler()
 		f := NewFile(test.stmts)
