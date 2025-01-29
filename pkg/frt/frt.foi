@@ -1,0 +1,3 @@
+package_info frt =
+  let Println: string->()
+

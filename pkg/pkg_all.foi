@@ -1,0 +1,8 @@
+package_info frt =
+  let Println: string->()
+
+package_info buf =
+  type Buffer
+  let New: ()->Buffer
+  let Write: Buffer->string->()
+  let String: Buffer->string

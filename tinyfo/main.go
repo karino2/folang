@@ -29,9 +29,14 @@ func main() {
 		f := NewFile(stmts)
 		res := tp.Transpile(f)
 
-		dir := filepath.Dir(file)
-		base := strings.TrimSuffix(filepath.Base(file), ".fo")
-		dest := filepath.Join(dir, "gen_"+base+".go")
-		os.WriteFile(dest, []byte(res), 0644)
+		// for .foi file, just skip writing.
+		// only write result for .fo file.
+		if strings.HasSuffix(file, ".fo") {
+			dir := filepath.Dir(file)
+			base := strings.TrimSuffix(filepath.Base(file), ".fo")
+			dest := filepath.Join(dir, "gen_"+base+".go")
+			os.WriteFile(dest, []byte(res), 0644)
+		}
+
 	}
 }
