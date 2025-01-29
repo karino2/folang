@@ -629,14 +629,14 @@ This emit no go code, but treat as dummy Stmt.
 type PackageInfo struct {
 	name     string
 	funcInfo map[string]*FFunc
-	typeInfo map[string]FType
+	typeInfo map[string]*FCustom
 }
 
 func (*PackageInfo) ToGo() string { return "" }
 func NewPackageInfo(name string) *PackageInfo {
 	pi := &PackageInfo{name: name}
 	pi.funcInfo = make(map[string]*FFunc)
-	pi.typeInfo = make(map[string]FType)
+	pi.typeInfo = make(map[string]*FCustom)
 	return pi
 }
 

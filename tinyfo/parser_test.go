@@ -502,17 +502,13 @@ func TestPkgInfoTypeDef(t *testing.T) {
 		t.Errorf("Not pkg info: %v", got)
 	}
 
-	tp, ok2 := pi.typeInfo["Buffer"]
+	ctp, ok2 := pi.typeInfo["Buffer"]
 	if !ok2 {
 		t.Error("Buffer type does not exist")
 	}
 
-	if ctp, ok := tp.(*FCustom); !ok {
-		t.Error("Not FCustom type.")
-	} else {
-		if ctp.name != "slice.Buffer" {
-			t.Errorf("want slice.Buffer, got %s", ctp.name)
-		}
+	if ctp.name != "slice.Buffer" {
+		t.Errorf("want slice.Buffer, got %s", ctp.name)
 	}
 }
 
