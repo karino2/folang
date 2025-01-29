@@ -508,6 +508,17 @@ type RecordType = {name: string; fiedls: []NameTypePair}
 `,
 			"func ika() bool{",
 		},
+		{
+			`package_info buf =
+  type Buffer
+  let WriteString: Buffer->string->()
+
+let main () =
+  let b = GoEval<buf.Buffer> "buf.Buffer{}"
+  buf.WriteString b "hogehoge"
+`,
+			"buf.WriteString(b, \"hogehoge\")",
+		},
 	}
 
 	for _, test := range tests {
@@ -579,15 +590,18 @@ func TestPkfInfoTypeFun(t *testing.T) {
 
 }
 
-/*
 func TestParserAddhook(t *testing.T) {
 	src := `package_info buf =
   type Buffer
-  let WriteString: Buffer->()
+  let WriteString: Buffer->string->()
 
 let main () =
-  let buf = GoEval<buf.Buffer>()
+  let b = GoEval<buf.Buffer> "buf.Buffer{}"
+  buf.WriteString b "hogehoge"
 `
 
+	got := transpile(src)
+	if got == "" {
+		t.Error(got)
+	}
 }
-*/

@@ -39,11 +39,7 @@ const (
 	TRUE
 	FALSE
 	PACKAGE_INFO
-	/*
-		INDENT
-		UNDENT
-
-	*/
+	DOT
 )
 
 var keywordMap = map[string]TokenType{
@@ -246,6 +242,8 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(RSBRACKET, b)
 	case b == ':':
 		cur.setOneChar(COLON, b)
+	case b == '.':
+		cur.setOneChar(DOT, b)
 	case b == ';':
 		cur.setOneChar(SEMICOLON, b)
 	case b == '|':
@@ -586,10 +584,10 @@ func (p *Parser) parseSingleExpr() Expr {
 		p.gotoNext()
 		return &IntImm{tk.intVal}
 	case tk.ttype == IDENTIFIER:
-		v := p.scope.LookupVar(tk.stringVal)
-		p.gotoNext()
+		fullName := p.parseFullName()
+		v := p.scope.LookupVar(fullName)
 		if v == nil {
-			panic("Undefined var: " + tk.stringVal)
+			panic("Undefined var: " + fullName)
 		}
 		return v
 	case tk.ttype == LBRACE:
@@ -732,6 +730,29 @@ func (p *Parser) parseBlock() *Block {
 }
 
 /*
+FULL_NAME = (IDENTIFIER.)* IDENTIFIER
+
+return concat string like "buf.WriteString"
+*/
+func (p *Parser) parseFullName() string {
+	var buf bytes.Buffer
+
+	last := p.identName()
+	p.gotoNext()
+	buf.WriteString(last)
+
+	for p.Current().ttype == DOT {
+		p.gotoNext()
+		buf.WriteString(".")
+
+		last = p.identName()
+		p.gotoNext()
+		buf.WriteString(last)
+	}
+	return buf.String()
+}
+
+/*
 TYPE = 'string' | 'int' | '(' ')' | REGITERED_TYPE | '[”]' TYPE
 */
 func (p *Parser) parseType() FType {
@@ -758,10 +779,10 @@ func (p *Parser) parseType() FType {
 		p.gotoNext()
 		return FInt
 	default:
-		p.gotoNext()
-		resT := p.scope.LookupType(tname)
+		fullName := p.parseFullName()
+		resT := p.scope.LookupType(fullName)
 		if resT == nil {
-			panic(tname) // unknown type.
+			panic(fullName) // unknown type.
 		}
 		return resT
 	}

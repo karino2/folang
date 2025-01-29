@@ -654,7 +654,7 @@ func (pi *PackageInfo) registerExtType(name string) *FCustom {
 
 func (pi *PackageInfo) registerToScope(scope *Scope) {
 	for _, tp := range pi.typeInfo {
-		fullName := pi.name + "." + tp.name
+		fullName := tp.name
 		scope.typeMap[fullName] = tp
 	}
 
