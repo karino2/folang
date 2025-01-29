@@ -642,7 +642,7 @@ func NewPackageInfo(name string) *PackageInfo {
 
 // register extType as FCustom
 func (pi *PackageInfo) registerExtType(name string) {
-	pi.typeInfo[name] = &FCustom{name}
+	pi.typeInfo[name] = &FCustom{pi.name + "." + name}
 }
 
 /*

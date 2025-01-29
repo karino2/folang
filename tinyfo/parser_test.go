@@ -510,8 +510,8 @@ func TestPkgInfoTypeDef(t *testing.T) {
 	if ctp, ok := tp.(*FCustom); !ok {
 		t.Error("Not FCustom type.")
 	} else {
-		if ctp.name != "Buffer" {
-			t.Errorf("want Buffer, got %s", ctp.name)
+		if ctp.name != "slice.Buffer" {
+			t.Errorf("want slice.Buffer, got %s", ctp.name)
 		}
 	}
 }

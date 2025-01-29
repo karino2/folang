@@ -521,8 +521,7 @@ func (p *Parser) parseRecordGen() Expr {
 			p.consumeSL(SEMICOLON)
 		}
 
-		p.expect(IDENTIFIER)
-		fnames = append(fnames, p.Current().stringVal)
+		fnames = append(fnames, p.identName())
 
 		p.gotoNextSL()
 		p.consumeSL(EQ)
@@ -590,8 +589,7 @@ func (p *Parser) parseMatchRule() *MatchRule {
 		return &MatchRule{&MatchPattern{"_", ""}, block}
 	}
 
-	p.expect(IDENTIFIER)
-	caseName := p.Current().stringVal
+	caseName := p.identName()
 	p.gotoNext()
 	var varName string
 	if p.Current().ttype == RARROW {
@@ -600,8 +598,7 @@ func (p *Parser) parseMatchRule() *MatchRule {
 		if p.Current().ttype == UNDER_SCORE {
 			varName = "_"
 		} else {
-			p.expect(IDENTIFIER)
-			varName = p.Current().stringVal
+			varName = p.identName()
 		}
 		p.gotoNext()
 	}
@@ -714,8 +711,7 @@ func (p *Parser) parseType() FType {
 		return FUnit
 	}
 
-	p.expect(IDENTIFIER)
-	tname := p.Current().stringVal
+	tname := p.identName()
 	switch tname {
 	case "string":
 		p.gotoNext()
@@ -741,8 +737,7 @@ func (p *Parser) parseParam() *Var {
 		p.consume(RPAREN)
 		return nil
 	}
-	p.expect(IDENTIFIER)
-	varName := p.Current().stringVal
+	varName := p.identName()
 
 	p.gotoNext()
 	p.consume(COLON)
@@ -846,8 +841,7 @@ func (p *Parser) parseUnionDef(uname string) Stmt {
 
 	for p.Current().ttype == BAR {
 		p.gotoNext()
-		p.expect(IDENTIFIER)
-		cname := p.Current().stringVal
+		cname := p.identName()
 
 		p.gotoNext()
 		if p.Current().ttype == OF {
@@ -881,8 +875,7 @@ func (p *Parser) parseRecordDef(rname string) Stmt {
 			p.consumeSL(SEMICOLON)
 		}
 
-		p.expect(IDENTIFIER)
-		fname := p.Current().stringVal
+		fname := p.identName()
 
 		p.gotoNextSL()
 		p.consumeSL(COLON)
@@ -901,9 +894,8 @@ func (p *Parser) parseRecordDef(rname string) Stmt {
 // UNION_DEF = '|'...
 func (p *Parser) parseTypeDef() Stmt {
 	p.consume(TYPE)
-	p.expect(IDENTIFIER)
 
-	tname := p.Current().stringVal
+	tname := p.identName()
 	p.gotoNextSL()
 
 	p.consumeSL(EQ)
