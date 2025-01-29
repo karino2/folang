@@ -3,23 +3,15 @@ package main
 import "bytes"
 
 type TypeResolver struct {
-	// variable type map.
-	VarTypeMap map[string]FType
-
 	RecordMap map[string]*FRecord
 	TypeMap   map[string]FType
 }
 
 func NewResolver() *TypeResolver {
 	res := TypeResolver{}
-	res.VarTypeMap = make(map[string]FType)
 	res.RecordMap = make(map[string]*FRecord)
 	res.TypeMap = make(map[string]FType)
 	return &res
-}
-
-func (res *TypeResolver) RegisterVarType(name string, ftype FType) {
-	res.VarTypeMap[name] = ftype
 }
 
 func (res *TypeResolver) RegisterRecord(name string, frtype *FRecord) {
@@ -29,20 +21,6 @@ func (res *TypeResolver) RegisterRecord(name string, frtype *FRecord) {
 
 func (res *TypeResolver) RegisterType(name string, ftype FType) {
 	res.TypeMap[name] = ftype
-}
-
-// LookupVarType type of variable by variable name.
-func (res *TypeResolver) LookupVarType(name string) FType {
-	v := res.VarTypeMap[name]
-	if v != nil {
-		if vt, ok := v.(*FCustom); ok {
-			nt := res.LookupByTypeName(vt.name)
-			if nt != nil {
-				return nt
-			}
-		}
-	}
-	return v
 }
 
 // Lookup custom defined type by typename. Not by variable name.

@@ -499,11 +499,6 @@ func (p *Parser) isEndOfExpr() bool {
 		ttype == WITH
 }
 
-// is (EOL | EOF)
-func (p *Parser) isEOLF() bool {
-	return p.Current().ttype == EOL || p.Current().ttype == EOF
-}
-
 /*
 RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
 
