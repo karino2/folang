@@ -489,23 +489,101 @@ type RecordType = {name: string; fiedls: []NameTypePair}
 	}
 }
 
-func TestParserAddhook(t *testing.T) {
-	src := `type IorS =
-  | IT of int
-  | ST of string
+func TestPkgInfoTypeDef(t *testing.T) {
+	src := `package_info slice =
+  type Buffer
 
-  let ika () =
-  match IT 3 with
-  | IT _ -> true
-  | _ -> false
 `
+	parser := NewParser()
+	got := parser.Parse("", []byte(src))
 
-	got := transpile(src)
-	// t.Error(got)
+	pi, ok := got[0].(*PackageInfo)
+	if !ok {
+		t.Errorf("Not pkg info: %v", got)
+	}
 
-	want := "ika() bool{"
-	if !strings.Contains(got, want) {
-		t.Errorf("want to contains(%s), but got %s", want, got)
+	tp, ok2 := pi.typeInfo["Buffer"]
+	if !ok2 {
+		t.Error("Buffer type does not exist")
+	}
+
+	if ctp, ok := tp.(*FCustom); !ok {
+		t.Error("Not FCustom type.")
+	} else {
+		if ctp.name != "Buffer" {
+			t.Errorf("want Buffer, got %s", ctp.name)
+		}
+	}
+}
+
+func TestPkfInfoTypeFun(t *testing.T) {
+	src := `package_info slice =
+  type Buffer
+  let WriteString: Buffer->()
+`
+	parser := NewParser()
+	got := parser.Parse("", []byte(src))
+
+	pi, ok := got[0].(*PackageInfo)
+	if !ok {
+		t.Errorf("Not pkg info: %v", got)
+	}
+
+	if len(pi.typeInfo) != 1 {
+		t.Errorf("want 1 type, but %v", pi.typeInfo)
+	}
+
+	ft, ok2 := pi.funcInfo["WriteString"]
+	if !ok2 {
+		t.Error("WriteString does not exist")
+	}
+
+	if len(ft.Targets) != 2 {
+		t.Errorf("WriteString Targets is not 2. %v", ft.Targets)
+	}
+
+	if ft.Targets[1] != FUnit {
+		t.Errorf("Return value must be FUnit, but not. %v", ft.Targets[1])
+	}
+
+	if ft.Targets[0] != pi.typeInfo["Buffer"] {
+		t.Errorf("Want argument be Buffer type, but not. arg: %v, Buffer type %v", ft.Targets[0], pi.typeInfo["Buffer"])
+	}
+
+}
+
+func TestParserAddhook(t *testing.T) {
+	src := `package_info slice =
+  type Buffer
+  let WriteString: Buffer->()
+`
+	parser := NewParser()
+	got := parser.Parse("", []byte(src))
+
+	pi, ok := got[0].(*PackageInfo)
+	if !ok {
+		t.Errorf("Not pkg info: %v", got)
+	}
+
+	if len(pi.typeInfo) != 1 {
+		t.Errorf("want 1 type, but %v", pi.typeInfo)
+	}
+
+	ft, ok2 := pi.funcInfo["WriteString"]
+	if !ok2 {
+		t.Error("WriteString does not exist")
+	}
+
+	if len(ft.Targets) != 2 {
+		t.Errorf("WriteString Targets is not 2. %v", ft.Targets)
+	}
+
+	if ft.Targets[1] != FUnit {
+		t.Errorf("Return value must be FUnit, but not. %v", ft.Targets[1])
+	}
+
+	if ft.Targets[0] != pi.typeInfo["Buffer"] {
+		t.Errorf("Want argument be Buffer type, but not. arg: %v, Buffer type %v", ft.Targets[0], pi.typeInfo["Buffer"])
 	}
 
 }

@@ -338,13 +338,14 @@ type Stmt interface {
 	ToGo() string
 }
 
-func (*FuncDef) stmt()   {}
-func (*LetVarDef) stmt() {}
-func (*Import) stmt()    {}
-func (*Package) stmt()   {}
-func (*ExprStmt) stmt()  {}
-func (*RecordDef) stmt() {}
-func (*UnionDef) stmt()  {}
+func (*FuncDef) stmt()     {}
+func (*LetVarDef) stmt()   {}
+func (*Import) stmt()      {}
+func (*Package) stmt()     {}
+func (*ExprStmt) stmt()    {}
+func (*RecordDef) stmt()   {}
+func (*UnionDef) stmt()    {}
+func (*PackageInfo) stmt() {}
 
 type Import struct {
 	PackageName string
@@ -619,6 +620,29 @@ func (ud *UnionDef) registerConstructor(scope *Scope) {
 
 func (ud *UnionDef) ResiterUnionTypeInfo(resolver *TypeResolver) {
 	resolver.RegisterType(ud.Name, ud.UnionFType())
+}
+
+/*
+External package info.
+This emit no go code, but treat as dummy Stmt.
+*/
+type PackageInfo struct {
+	name     string
+	funcInfo map[string]*FFunc
+	typeInfo map[string]FType
+}
+
+func (*PackageInfo) ToGo() string { return "" }
+func NewPackageInfo(name string) *PackageInfo {
+	pi := &PackageInfo{name: name}
+	pi.funcInfo = make(map[string]*FFunc)
+	pi.typeInfo = make(map[string]FType)
+	return pi
+}
+
+// register extType as FCustom
+func (pi *PackageInfo) registerExtType(name string) {
+	pi.typeInfo[name] = &FCustom{name}
 }
 
 /*

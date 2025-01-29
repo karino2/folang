@@ -38,6 +38,7 @@ const (
 	WITH
 	TRUE
 	FALSE
+	PACKAGE_INFO
 	/*
 		INDENT
 		UNDENT
@@ -46,16 +47,17 @@ const (
 )
 
 var keywordMap = map[string]TokenType{
-	"let":     LET,
-	"package": PACKAGE,
-	"import":  IMPORT,
-	"type":    TYPE,
-	"of":      OF,
-	"_":       UNDER_SCORE,
-	"match":   MATCH,
-	"with":    WITH,
-	"true":    TRUE,
-	"false":   FALSE,
+	"let":          LET,
+	"package":      PACKAGE,
+	"import":       IMPORT,
+	"type":         TYPE,
+	"of":           OF,
+	"_":            UNDER_SCORE,
+	"match":        MATCH,
+	"with":         WITH,
+	"true":         TRUE,
+	"false":        FALSE,
+	"package_info": PACKAGE_INFO,
 }
 
 type Token struct {
@@ -421,6 +423,11 @@ func (p *Parser) expect(ttype TokenType) {
 	}
 }
 
+func (p *Parser) identName() string {
+	p.expect(IDENTIFIER)
+	return p.Current().stringVal
+}
+
 func (p *Parser) consume(ttype TokenType) {
 	tk := p.Current()
 	if tk.ttype != ttype {
@@ -490,6 +497,11 @@ func (p *Parser) isEndOfExpr() bool {
 		ttype == RBRACE ||
 		ttype == RPAREN ||
 		ttype == WITH
+}
+
+// is (EOL | EOF)
+func (p *Parser) isEOLF() bool {
+	return p.Current().ttype == EOL || p.Current().ttype == EOF
 }
 
 /*
@@ -685,7 +697,7 @@ func (p *Parser) parseBlock() *Block {
 }
 
 /*
-TYPE = 'string' | 'int' | IDENTIFIER | '[”]' TYPE
+TYPE = 'string' | 'int' | '(' ')' | IDENTIFIER | '[”]' TYPE
 */
 func (p *Parser) parseType() FType {
 
@@ -694,6 +706,12 @@ func (p *Parser) parseType() FType {
 		p.consume(RSBRACKET)
 		etype := p.parseType()
 		return &FSlice{etype}
+	}
+
+	if p.Current().ttype == LPAREN {
+		p.consume(LPAREN)
+		p.consume(RPAREN)
+		return FUnit
 	}
 
 	p.expect(IDENTIFIER)
@@ -898,6 +916,80 @@ func (p *Parser) parseTypeDef() Stmt {
 	return p.parseUnionDef(tname)
 }
 
+/*
+EXT_TYPE_DEF = 'type' IDENTIFIER
+*/
+func (p *Parser) parseExtTypeDef(pi *PackageInfo) {
+	p.consume(TYPE)
+	typeName := p.identName()
+	p.gotoNext()
+	pi.registerExtType(typeName)
+}
+
+func (p *Parser) parseAndResolveExtType(pi *PackageInfo) FType {
+	one := p.parseType()
+	if ctype, ok := one.(*FCustom); ok {
+		resolved, ok2 := pi.typeInfo[ctype.name]
+		if ok2 {
+			return resolved
+		}
+	}
+	return one
+}
+
+/*
+EXT_FUNC_DEF = 'let' IDENTIFIER ':' (TYPE '->')+ TYPE
+*/
+func (p *Parser) parseExtFuncDef(pi *PackageInfo) {
+	p.consume(LET)
+	funcName := p.identName()
+	p.gotoNext()
+	p.consume(COLON)
+	var types []FType
+	one := p.parseAndResolveExtType(pi)
+	types = append(types, one)
+	for p.Current().ttype == RARROW {
+		p.consume(RARROW)
+		one = p.parseAndResolveExtType(pi)
+		types = append(types, one)
+	}
+	pi.funcInfo[funcName] = &FFunc{types}
+}
+
+func (p *Parser) parseExtDef(pi *PackageInfo) {
+	switch p.Current().ttype {
+	case LET:
+		p.parseExtFuncDef(pi)
+	case TYPE:
+		p.parseExtTypeDef(pi)
+	default:
+		panic("Unknown pkginfo def")
+	}
+}
+
+/*
+PACKAGE_INFO = 'package_info' IDENTIFIER '=' EOL (OFFSIDE EXT_DEF EOL)*
+
+EXT_DEF = (EXT_TYPE_DEF|EXT_FUNC_DEF)
+*/
+func (p *Parser) parsePackageInfo() *PackageInfo {
+	p.consume(PACKAGE_INFO)
+	pkgName := p.identName()
+	p.gotoNext()
+	p.consume(EQ)
+	p.skipEOLOne()
+	p.skipSpace()
+	p.pushOffside()
+	pi := NewPackageInfo(pkgName)
+	defer p.popOffside()
+	for !p.isEndOfBlock() {
+		p.parseExtDef(pi)
+		p.skipEOLOne()
+	}
+
+	return pi
+}
+
 func (p *Parser) parseStmt() Stmt {
 	tk := p.Current()
 	switch tk.ttype {
@@ -905,6 +997,8 @@ func (p *Parser) parseStmt() Stmt {
 		return p.parsePackage()
 	case IMPORT:
 		return p.parseImport()
+	case PACKAGE_INFO:
+		return p.parsePackageInfo()
 	case LET:
 		return p.parseLet()
 	case TYPE:
