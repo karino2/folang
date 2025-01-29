@@ -2,82 +2,6 @@ package main
 
 import "bytes"
 
-type TypeResolver struct {
-	RecordMap map[string]*FRecord
-	TypeMap   map[string]FType
-}
-
-func NewResolver() *TypeResolver {
-	res := TypeResolver{}
-	res.RecordMap = make(map[string]*FRecord)
-	res.TypeMap = make(map[string]FType)
-	return &res
-}
-
-func (res *TypeResolver) RegisterRecord(name string, frtype *FRecord) {
-	res.RecordMap[name] = frtype
-	res.TypeMap[name] = frtype
-}
-
-func (res *TypeResolver) RegisterType(name string, ftype FType) {
-	res.TypeMap[name] = ftype
-}
-
-// Lookup custom defined type by typename. Not by variable name.
-func (res *TypeResolver) LookupByTypeName(tname string) FType {
-	return res.TypeMap[tname]
-}
-
-func (res *TypeResolver) LookupRecord(fieldNames []string) *FRecord {
-	for _, rt := range res.RecordMap {
-		if rt.Match(fieldNames) {
-			return rt
-		}
-	}
-	return nil
-}
-
-func (res *TypeResolver) Resolve(n Node) {
-	Walk(n, func(n Node) bool {
-		switch n := n.(type) {
-		case *Var:
-			switch vt := n.Type.(type) {
-			case *FCustom:
-				nt := res.LookupByTypeName(vt.name)
-				if nt != nil {
-					n.Type = nt
-				}
-			}
-			return true
-		case *RecordGen:
-			rt := res.LookupRecord(n.fieldNames)
-			if rt != nil {
-				n.recordType = rt
-			}
-			return true
-		default:
-			return true
-		}
-	})
-}
-
-func registerType(resolver *TypeResolver, root Stmt) {
-	Walk(root, func(n Node) bool {
-		switch n := n.(type) {
-		case *FuncDef:
-			return false
-		case *RecordDef:
-			resolver.RegisterRecord(n.Name, n.ToFType())
-			return false
-		case *UnionDef:
-			n.ResiterUnionTypeInfo(resolver)
-			return false
-		default:
-			return true
-		}
-	})
-}
-
 type File struct {
 	FileName string
 	Stmts    []Stmt
@@ -96,19 +20,10 @@ func NewFile(stmts []Stmt) *File {
 }
 
 type Transpiler struct {
-	Resolver *TypeResolver
-}
-
-func (tp *Transpiler) resolveAndRegisterType(stmts []Stmt) {
-	for _, stmt := range stmts {
-		registerType(tp.Resolver, stmt)
-		tp.Resolver.Resolve(stmt)
-	}
 }
 
 func (tp *Transpiler) Transpile(file *File) string {
 	var buf bytes.Buffer
-	tp.resolveAndRegisterType(file.Stmts)
 	for _, stmt := range file.Stmts {
 		buf.WriteString(stmt.ToGo())
 		buf.WriteString("\n\n")
@@ -118,6 +33,5 @@ func (tp *Transpiler) Transpile(file *File) string {
 
 func NewTranspiler() *Transpiler {
 	var tp Transpiler
-	tp.Resolver = NewResolver()
 	return &tp
 }

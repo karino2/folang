@@ -618,8 +618,13 @@ func (ud *UnionDef) registerConstructor(scope *Scope) {
 	}
 }
 
-func (ud *UnionDef) ResiterUnionTypeInfo(resolver *TypeResolver) {
-	resolver.RegisterType(ud.Name, ud.UnionFType())
+func (ud *UnionDef) registerUnionTypeInfo(scope *Scope) {
+	scope.typeMap[ud.Name] = ud.UnionFType()
+}
+
+func (ud *UnionDef) registerToScope(scope *Scope) {
+	ud.registerConstructor(scope)
+	ud.registerUnionTypeInfo(scope)
 }
 
 /*
@@ -641,8 +646,22 @@ func NewPackageInfo(name string) *PackageInfo {
 }
 
 // register extType as FCustom
-func (pi *PackageInfo) registerExtType(name string) {
-	pi.typeInfo[name] = &FCustom{pi.name + "." + name}
+func (pi *PackageInfo) registerExtType(name string) *FCustom {
+	ret := &FCustom{pi.name + "." + name}
+	pi.typeInfo[name] = ret
+	return ret
+}
+
+func (pi *PackageInfo) registerToScope(scope *Scope) {
+	for _, tp := range pi.typeInfo {
+		fullName := pi.name + "." + tp.name
+		scope.typeMap[fullName] = tp
+	}
+
+	for fname, ftp := range pi.funcInfo {
+		fullName := pi.name + "." + fname
+		scope.DefineVar(fullName, &Var{fullName, ftp})
+	}
 }
 
 /*
@@ -671,7 +690,7 @@ func Walk(n Node, f func(Node) bool) {
 		Walk(n.FinalExpr, f)
 	case *LetVarDef:
 		Walk(n.Rhs, f)
-	case *Import, *Package, *RecordDef, *UnionDef:
+	case *Import, *Package, *RecordDef, *UnionDef, *PackageInfo:
 		// no-op
 	// ここからexpr
 	case *GoEval, *StringLiteral, *Var, *IntImm, *BoolLiteral:

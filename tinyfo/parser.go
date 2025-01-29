@@ -290,13 +290,17 @@ func (tkz *Tokenizer) RevertTo(token *Token) {
 }
 
 type Scope struct {
-	varMap map[string]*Var
-	parent *Scope
+	varMap    map[string]*Var
+	recordMap map[string]*FRecord
+	typeMap   map[string]FType
+	parent    *Scope
 }
 
 func NewScope(parent *Scope) *Scope {
 	s := &Scope{}
 	s.varMap = make(map[string]*Var)
+	s.recordMap = make(map[string]*FRecord)
+	s.typeMap = make(map[string]FType)
 	s.parent = parent
 	return s
 }
@@ -310,6 +314,40 @@ func (s *Scope) LookupVar(name string) *Var {
 	for cur != nil {
 		ret, ok := cur.varMap[name]
 		if ok {
+			return ret
+		}
+		cur = cur.parent
+	}
+	return nil
+}
+
+func (s *Scope) LookupType(name string) FType {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.typeMap[name]
+		if ok {
+			return ret
+		}
+		cur = cur.parent
+	}
+	return nil
+}
+
+func (s *Scope) lookupRecordCur(fieldNames []string) *FRecord {
+	for _, rt := range s.recordMap {
+		if rt.Match(fieldNames) {
+			return rt
+		}
+	}
+	return nil
+
+}
+
+func (s *Scope) LookupRecord(fieldNames []string) *FRecord {
+	cur := s
+	for cur != nil {
+		ret := cur.lookupRecordCur(fieldNames)
+		if ret != nil {
 			return ret
 		}
 		cur = cur.parent
@@ -525,7 +563,12 @@ func (p *Parser) parseRecordGen() Expr {
 	}
 
 	p.consume(RBRACE)
-	return NewRecordGen(fnames, fvals)
+	rg := NewRecordGen(fnames, fvals)
+
+	rtype := p.scope.LookupRecord(rg.fieldNames)
+	rg.recordType = rtype
+
+	return rg
 }
 
 /*
@@ -689,7 +732,7 @@ func (p *Parser) parseBlock() *Block {
 }
 
 /*
-TYPE = 'string' | 'int' | '(' ')' | IDENTIFIER | '[”]' TYPE
+TYPE = 'string' | 'int' | '(' ')' | REGITERED_TYPE | '[”]' TYPE
 */
 func (p *Parser) parseType() FType {
 
@@ -716,7 +759,11 @@ func (p *Parser) parseType() FType {
 		return FInt
 	default:
 		p.gotoNext()
-		return &FCustom{tname}
+		resT := p.scope.LookupType(tname)
+		if resT == nil {
+			panic(tname) // unknown type.
+		}
+		return resT
 	}
 }
 
@@ -852,7 +899,7 @@ func (p *Parser) parseUnionDef(uname string) Stmt {
 		}
 	}
 	ret := &UnionDef{uname, cases}
-	ret.registerConstructor(p.scope)
+	ret.registerToScope(p.scope)
 	return ret
 }
 
@@ -879,7 +926,13 @@ func (p *Parser) parseRecordDef(rname string) Stmt {
 	}
 	p.consume(RBRACE)
 
-	return &RecordDef{rname, fields}
+	rd := &RecordDef{rname, fields}
+
+	recType := rd.ToFType()
+	p.scope.recordMap[rname] = recType
+	p.scope.typeMap[rname] = recType
+
+	return rd
 }
 
 // TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)
@@ -910,18 +963,8 @@ func (p *Parser) parseExtTypeDef(pi *PackageInfo) {
 	p.consume(TYPE)
 	typeName := p.identName()
 	p.gotoNext()
-	pi.registerExtType(typeName)
-}
-
-func (p *Parser) parseAndResolveExtType(pi *PackageInfo) FType {
-	one := p.parseType()
-	if ctype, ok := one.(*FCustom); ok {
-		resolved, ok2 := pi.typeInfo[ctype.name]
-		if ok2 {
-			return resolved
-		}
-	}
-	return one
+	tp := pi.registerExtType(typeName)
+	p.scope.typeMap[typeName] = tp
 }
 
 /*
@@ -933,14 +976,16 @@ func (p *Parser) parseExtFuncDef(pi *PackageInfo) {
 	p.gotoNext()
 	p.consume(COLON)
 	var types []FType
-	one := p.parseAndResolveExtType(pi)
+	one := p.parseType()
 	types = append(types, one)
 	for p.Current().ttype == RARROW {
 		p.consume(RARROW)
-		one = p.parseAndResolveExtType(pi)
+		one = p.parseType()
 		types = append(types, one)
 	}
-	pi.funcInfo[funcName] = &FFunc{types}
+	ft := &FFunc{types}
+	pi.funcInfo[funcName] = ft
+	p.scope.varMap[funcName] = &Var{funcName, ft}
 }
 
 func (p *Parser) parseExtDef(pi *PackageInfo) {
@@ -968,11 +1013,16 @@ func (p *Parser) parsePackageInfo() *PackageInfo {
 	p.skipSpace()
 	p.pushOffside()
 	pi := NewPackageInfo(pkgName)
+
+	p.pushScope()
 	defer p.popOffside()
 	for !p.isEndOfBlock() {
 		p.parseExtDef(pi)
 		p.skipEOLOne()
 	}
+
+	p.popScope()
+	pi.registerToScope(p.scope)
 
 	return pi
 }

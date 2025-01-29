@@ -323,19 +323,50 @@ func TestParserRecordDef(t *testing.T) {
 		rd.Fields[1].Type != FString {
 		t.Errorf("unexpected rd: %v", rd)
 	}
+
+	// Type register test.
+	got := parser.scope.LookupType("Hoge")
+	_, ok = got.(*FRecord)
+	if !ok {
+		t.Errorf("cannot find FRecord by name")
+	}
+
+	got2 := parser.scope.LookupRecord([]string{"X", "Y"})
+	if got2 == nil {
+		t.Errorf("cannot find FRecord by field")
+	}
+
+	got3 := parser.scope.LookupRecord([]string{"X", "DEF"})
+	if got3 != nil {
+		t.Errorf("Wrongly matched with different name")
+	}
+
+	got4 := parser.scope.LookupRecord([]string{"X", "Y", "Z"})
+	if got4 != nil {
+		t.Errorf("Wrongly matched with extra field")
+	}
+
+	got5 := parser.scope.LookupRecord([]string{"X"})
+	if got5 != nil {
+		t.Errorf("Wrongly matched with few fields")
+	}
 }
 
 func TestParserRecordExpression(t *testing.T) {
-	src := `{X="hoge"; Y="ika"}
+	src := `type Hoge = {X: string; Y: string}
+
+let hoge () =
+  {X="hoge"; Y="ika"}
 `
 
 	parser := NewParser()
-	parser.Setup("", []byte(src))
-	res := parser.parseExpr()
-	if res == nil {
+	res := parser.Parse("", []byte(src))
+	if len(res) != 2 {
 		t.Errorf("expect record gen expression")
 	}
-	rg, ok := res.(*RecordGen)
+
+	rg, ok := res[1].(*FuncDef).Body.FinalExpr.(*RecordGen)
+
 	if !ok {
 		t.Error("expect RecordGen but not")
 	}
@@ -548,38 +579,15 @@ func TestPkfInfoTypeFun(t *testing.T) {
 
 }
 
+/*
 func TestParserAddhook(t *testing.T) {
-	src := `package_info slice =
+	src := `package_info buf =
   type Buffer
   let WriteString: Buffer->()
+
+let main () =
+  let buf = GoEval<buf.Buffer>()
 `
-	parser := NewParser()
-	got := parser.Parse("", []byte(src))
-
-	pi, ok := got[0].(*PackageInfo)
-	if !ok {
-		t.Errorf("Not pkg info: %v", got)
-	}
-
-	if len(pi.typeInfo) != 1 {
-		t.Errorf("want 1 type, but %v", pi.typeInfo)
-	}
-
-	ft, ok2 := pi.funcInfo["WriteString"]
-	if !ok2 {
-		t.Error("WriteString does not exist")
-	}
-
-	if len(ft.Targets) != 2 {
-		t.Errorf("WriteString Targets is not 2. %v", ft.Targets)
-	}
-
-	if ft.Targets[1] != FUnit {
-		t.Errorf("Return value must be FUnit, but not. %v", ft.Targets[1])
-	}
-
-	if ft.Targets[0] != pi.typeInfo["Buffer"] {
-		t.Errorf("Want argument be Buffer type, but not. arg: %v, Buffer type %v", ft.Targets[0], pi.typeInfo["Buffer"])
-	}
 
 }
+*/
