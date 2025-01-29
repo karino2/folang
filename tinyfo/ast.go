@@ -18,6 +18,7 @@ type Expr interface {
 func (*GoEval) expr()        {}
 func (*StringLiteral) expr() {}
 func (*IntImm) expr()        {}
+func (*UnitVal) expr()       {}
 func (*BoolLiteral) expr()   {}
 func (*FunCall) expr()       {}
 func (*Var) expr()           {}
@@ -60,6 +61,13 @@ type IntImm struct {
 func (*IntImm) FType() FType { return FInt }
 
 func (s *IntImm) ToGo() string { return fmt.Sprintf("%d", s.Value) }
+
+type UnitVal struct{}
+
+func (*UnitVal) FType() FType { return FUnit }
+func (*UnitVal) ToGo() string { return "" }
+
+var gUnitVal = &UnitVal{}
 
 // Goのコードを直接持つinline asm的な抜け穴
 type GoEval struct {
@@ -111,11 +119,15 @@ func (fc *FunCall) ToGo() string {
 	}
 	buf.WriteString(fc.Func.Name)
 	buf.WriteString("(")
-	for i, arg := range fc.Args {
-		if i != 0 {
-			buf.WriteString(", ")
+
+	oneUnitArg := len(fc.Args) == 1 && fc.Args[0] == gUnitVal
+	if !oneUnitArg {
+		for i, arg := range fc.Args {
+			if i != 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(arg.ToGo())
 		}
-		buf.WriteString(arg.ToGo())
 	}
 	buf.WriteString(")")
 	return buf.String()

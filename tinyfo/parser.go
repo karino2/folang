@@ -592,6 +592,10 @@ func (p *Parser) parseSingleExpr() Expr {
 		return v
 	case tk.ttype == LBRACE:
 		return p.parseRecordGen()
+	case tk.ttype == LPAREN:
+		p.consume(LPAREN)
+		p.consume(RPAREN)
+		return gUnitVal
 	case tk.ttype == TRUE:
 		p.gotoNext()
 		return &BoolLiteral{true}

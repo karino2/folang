@@ -519,6 +519,18 @@ let main () =
 `,
 			"buf.WriteString(b, \"hogehoge\")",
 		},
+		{
+			`package_info buf =
+  type Buffer
+  let WriteString: Buffer->string->()
+  let New: ()->Buffer
+
+let main () =
+  let b = buf.New ()
+  buf.WriteString b "hogehoge"
+`,
+			"buf.New()",
+		},
 	}
 
 	for _, test := range tests {
@@ -594,13 +606,15 @@ func TestParserAddhook(t *testing.T) {
 	src := `package_info buf =
   type Buffer
   let WriteString: Buffer->string->()
+  let New: ()->Buffer
 
 let main () =
-  let b = GoEval<buf.Buffer> "buf.Buffer{}"
+  let b = buf.New ()
   buf.WriteString b "hogehoge"
 `
 
 	got := transpile(src)
+	// t.Errorf(got)
 	if got == "" {
 		t.Error(got)
 	}
