@@ -696,7 +696,7 @@ func (p *Parser) parseExpr() Expr {
 		panic("application expr with non variable start, NYI")
 	}
 
-	fc := &FunCall{v, exprs[1:]}
+	fc := &FunCall{v, exprs[1:], nil}
 	fc.ResolveTypeParam()
 	return fc
 }
@@ -807,7 +807,7 @@ func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
 		p.consume(RARROW)
 		types = append(types, p.parseAtomType())
 	}
-	return &FFunc{types}
+	return &FFunc{types, []string{}}
 }
 
 /*
@@ -843,7 +843,7 @@ func (p *Parser) parseFuncType() *FFunc {
 		p.consume(RARROW)
 		types = append(types, p.parseFuncElemType())
 	}
-	return &FFunc{types}
+	return &FFunc{types, []string{}}
 }
 
 /*
@@ -869,7 +869,7 @@ func (p *Parser) parseType() FType {
 			p.consume(RARROW)
 			types = append(types, p.parseFuncElemType())
 		}
-		return &FFunc{types}
+		return &FFunc{types, []string{}}
 	} else {
 		return one
 	}
@@ -1077,37 +1077,44 @@ func (p *Parser) parseExtTypeDef(pi *PackageInfo) {
 
 /*
 TYPE_PARAM = '<' IDENTIFIER (',' IDENTIFIER)* '>'
+
+Register generic type and return list of type param names.
 */
-func (p *Parser) parseTypeParam() {
+func (p *Parser) parseTypeParam() []string {
+	var res []string
 	p.consume(LT)
 	ident := p.identName()
+	res = append(res, ident)
 	p.gotoNext()
 	p.scope.typeMap[ident] = &FParametrized{ident}
 	for p.Current().ttype == COMMA {
 		p.gotoNext()
 		ident = p.identName()
+		res = append(res, ident)
 		p.gotoNext()
 		p.scope.typeMap[ident] = &FParametrized{ident}
 	}
 	p.consume(GT)
+	return res
 }
 
 /*
 EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' FUNC_TYPE
-
-TYPE_PARAM = '<' IDENTIFIER '>'
 */
 func (p *Parser) parseExtFuncDef(pi *PackageInfo) {
 	p.consume(LET)
 	funcName := p.identName()
 	p.gotoNext()
 
+	var tps []string
+
 	if p.Current().ttype == LT {
-		p.parseTypeParam()
+		tps = p.parseTypeParam()
 	}
 
 	p.consume(COLON)
 	ft := p.parseFuncType()
+	ft.TypeParams = tps
 	pi.funcInfo[funcName] = ft
 	p.scope.varMap[funcName] = &Var{funcName, ft}
 }

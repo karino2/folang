@@ -89,9 +89,15 @@ func (v *Var) FType() FType       { return v.Type }
 func (v *Var) ToGo() string       { return v.Name }
 func (v *Var) IsUnresolved() bool { return IsUnresolved(v.Type) }
 
+type ResolvedTypeParam struct {
+	Name         string
+	ResolvedType FType // nil if not resoled.
+}
+
 type FunCall struct {
-	Func *Var
-	Args []Expr
+	Func       *Var
+	Args       []Expr
+	TypeParams []ResolvedTypeParam
 }
 
 func (fc *FunCall) FuncType() *FFunc {
@@ -117,7 +123,9 @@ func (fc *FunCall) FType() FType {
 
 	// partial apply
 	newtypes := ftype.Targets[len(fc.Args):]
-	return &FFunc{newtypes}
+	// For partial apply, Type parameters might be resolved.
+	// But I don't know how to handle this here, so I ignore until I need it.
+	return &FFunc{newtypes, nil}
 }
 
 func (fc *FunCall) toGoPartialApply() string {
@@ -152,6 +160,26 @@ func (fc *FunCall) toGoPartialApply() string {
 	return buf.String()
 }
 
+func (fc *FunCall) writeTypeParam(buf *bytes.Buffer) {
+	if len(fc.TypeParams) > 0 {
+		firstTypeParam := true
+		for _, tp := range fc.TypeParams {
+			if tp.ResolvedType != nil {
+				if firstTypeParam {
+					buf.WriteString("[")
+					firstTypeParam = false
+				} else {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(tp.ResolvedType.ToGo())
+			}
+		}
+		if !firstTypeParam {
+			buf.WriteString("]")
+		}
+	}
+}
+
 func (fc *FunCall) ToGo() string {
 	if len(fc.Args) > len(fc.ArgTypes()) {
 		panic("too many argument")
@@ -162,6 +190,7 @@ func (fc *FunCall) ToGo() string {
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fc.Func.Name)
+	fc.writeTypeParam(&buf)
 	buf.WriteString("(")
 
 	oneUnitArg := len(fc.Args) == 1 && fc.Args[0] == gUnitVal
@@ -244,7 +273,21 @@ func (fc *FunCall) ResolveTypeParam() {
 	default:
 		newTypes = append(newTypes, rt)
 	}
-	fc.Func = &Var{fc.Func.Name, &FFunc{newTypes}}
+
+	var notResoledTypeParam []string
+	var resolvedTypeParams []ResolvedTypeParam
+
+	for _, pname := range ft.TypeParams {
+		if rt, ok := tinfo[pname]; ok {
+			resolvedTypeParams = append(resolvedTypeParams, ResolvedTypeParam{pname, rt})
+		} else {
+			notResoledTypeParam = append(notResoledTypeParam, pname)
+			resolvedTypeParams = append(resolvedTypeParams, ResolvedTypeParam{pname, nil})
+		}
+	}
+
+	fc.Func = &Var{fc.Func.Name, &FFunc{newTypes, notResoledTypeParam}}
+	fc.TypeParams = resolvedTypeParams
 }
 
 type RecordGen struct {
@@ -527,7 +570,8 @@ func (fd *FuncDef) FuncFType() FType {
 		fts = append(fts, arg.Type)
 	}
 	fts = append(fts, retType)
-	return &FFunc{fts}
+	// type parameter NYI.
+	return &FFunc{fts, nil}
 }
 
 func (fd *FuncDef) ToGo() string {
@@ -738,7 +782,7 @@ func (ud *UnionDef) registerConstructor(scope *Scope) {
 			scope.DefineVar(cs.Name, &Var{ud.caseStructConstructorName(i), utype})
 		} else {
 			tps := []FType{cs.Type, utype}
-			ftype := &FFunc{tps}
+			ftype := &FFunc{tps, nil}
 			scope.DefineVar(cs.Name, &Var{ud.caseStructConstructorName(i), ftype})
 		}
 	}

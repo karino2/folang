@@ -97,7 +97,8 @@ func (p *FParametrized) ToGo() string {
 
 type FFunc struct {
 	// カリー化されている前提で、引数も戻りも区別せず持つ
-	Targets []FType
+	Targets    []FType
+	TypeParams []string // might not exists.
 }
 
 func (p *FFunc) Args() []FType {

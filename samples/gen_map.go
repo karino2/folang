@@ -10,6 +10,6 @@ func conv(i int) string {
 
 func main() {
 	s := []int{5, 6, 7, 8}
-	s2 := slice.Map(conv, s)
+	s2 := slice.Map[int, string](conv, s)
 	fmt.Printf("%v", s2)
 }

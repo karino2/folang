@@ -545,6 +545,16 @@ let ika () =
 		},
 		{
 			`package_info slice =
+  let Take<T> : int->[]T->[]T
+
+let ika () =
+  let s = GoEval<[]int> "int[]{1, 2}"
+  slice.Take 2 s
+`,
+			"return slice.Take[int](2, s)", // specify resolved type param.
+		},
+		{
+			`package_info slice =
   let Map<T, U> : (T->U)->[]T->[]U
 
 let conv (i:int) =
@@ -633,9 +643,13 @@ func TestParserAddhook(t *testing.T) {
 
 let ika () =
   let s = GoEval<[]int> "[]int{1, 2, 3}"
-  let take2 = slice.Take 2
-  take2 s
+  slice.Take 2 s
 `
+
+	/*
+	   let take2 = slice.Take 2
+	   take2 s
+	*/
 
 	got := transpile(src)
 	// t.Error(got)
