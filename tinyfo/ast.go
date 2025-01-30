@@ -112,6 +112,7 @@ func (fc *FunCall) FType() FType {
 	}
 	panic("partial apply, NYI")
 }
+
 func (fc *FunCall) ToGo() string {
 	var buf bytes.Buffer
 	if len(fc.Args) != len(fc.ArgTypes()) {
@@ -131,6 +132,55 @@ func (fc *FunCall) ToGo() string {
 	}
 	buf.WriteString(")")
 	return buf.String()
+}
+
+/*
+If target is generic type, register that type in paramInfo as exprType.
+*/
+func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
+	switch gt := target.(type) {
+	case *FParametrized:
+		paramInfo[gt.name] = exprType
+	case *FSlice:
+		// only check one level of []T
+		if pet, ok := gt.elemType.(*FParametrized); ok {
+			// exprType must be slice to.
+			est := exprType.(*FSlice)
+			paramInfo[pet.name] = est.elemType
+		}
+	default:
+		return
+	}
+}
+
+/*
+Resolve type param from arguments.
+*/
+func (fc *FunCall) ResolveTypeParam() {
+	tinfo := make(map[string]FType)
+	ft := fc.FuncType()
+	fargs := ft.Args()
+	var newTypes []FType
+	for i, at := range fargs {
+		realT := fc.Args[i].FType()
+		resolveOneType(at, realT, tinfo)
+		newTypes = append(newTypes, realT)
+	}
+	rt := ft.ReturnType()
+	switch grt := rt.(type) {
+	case *FParametrized:
+		newTypes = append(newTypes, tinfo[grt.name])
+	case *FSlice:
+		// only check one level of []T
+		if pet, ok := grt.elemType.(*FParametrized); ok {
+			newTypes = append(newTypes, &FSlice{tinfo[pet.name]})
+		} else {
+			newTypes = append(newTypes, rt)
+		}
+	default:
+		newTypes = append(newTypes, rt)
+	}
+	fc.Func = &Var{fc.Func.Name, &FFunc{newTypes}}
 }
 
 type RecordGen struct {

@@ -531,6 +531,18 @@ let main () =
 `,
 			"buf.New()",
 		},
+		// resolve type parameter test.
+		{
+			`package_info slice =
+  let Length<T>: []T -> int
+  let Take<T> : int->[]T->[]T
+
+let ika () =
+  let s = GoEval<[]int> "int[]{1, 2}"
+  slice.Take 2 s
+`,
+			"ika() []int{", // Take T must becomes int
+		},
 	}
 
 	for _, test := range tests {
@@ -603,18 +615,17 @@ func TestPkfInfoTypeFun(t *testing.T) {
 }
 
 func TestParserAddhook(t *testing.T) {
-	src := `package_info buf =
-  type Buffer
-  let WriteString: Buffer->string->()
-  let New: ()->Buffer
+	src := `package_info slice =
+   let Length<T>: []T -> int
+   let Take<T> : int->[]T->[]T
 
-let main () =
-  let b = buf.New ()
-  buf.WriteString b "hogehoge"
+let ika () =
+  let s = GoEval<[]int> "int[]{1, 2}"
+  slice.Take 2 s
 `
 
 	got := transpile(src)
-	// t.Errorf(got)
+	// t.Error(got)
 	if got == "" {
 		t.Error(got)
 	}

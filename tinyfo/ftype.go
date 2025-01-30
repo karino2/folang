@@ -10,14 +10,15 @@ type FType interface {
 	ToGo() string // Goでの型を表す文字列、表せないものをどうするかはあとで考える
 }
 
-func (*FPrimitive) ftype()  {}
-func (*FUnitType) ftype()   {}
-func (*FFunc) ftype()       {}
-func (*FUnresolved) ftype() {}
-func (*FRecord) ftype()     {}
-func (*FUnion) ftype()      {}
-func (*FCustom) ftype()     {}
-func (*FSlice) ftype()      {}
+func (*FPrimitive) ftype()    {}
+func (*FUnitType) ftype()     {}
+func (*FFunc) ftype()         {}
+func (*FUnresolved) ftype()   {}
+func (*FRecord) ftype()       {}
+func (*FUnion) ftype()        {}
+func (*FCustom) ftype()       {}
+func (*FSlice) ftype()        {}
+func (*FParametrized) ftype() {}
 
 func IsUnresolved(ft FType) bool {
 	_, ok := ft.(*FUnresolved)
@@ -83,6 +84,15 @@ type FSlice struct {
 
 func (s *FSlice) ToGo() string {
 	return "[]" + s.elemType.ToGo()
+}
+
+// parametrized type(generics)
+type FParametrized struct {
+	name string
+}
+
+func (p *FParametrized) ToGo() string {
+	return p.name
 }
 
 type FFunc struct {

@@ -693,7 +693,9 @@ func (p *Parser) parseExpr() Expr {
 		panic("application expr with non variable start, NYI")
 	}
 
-	return &FunCall{v, exprs[1:]}
+	fc := &FunCall{v, exprs[1:]}
+	fc.ResolveTypeParam()
+	return fc
 }
 
 func (p *Parser) isEndOfBlock() bool {
@@ -993,12 +995,30 @@ func (p *Parser) parseExtTypeDef(pi *PackageInfo) {
 }
 
 /*
-EXT_FUNC_DEF = 'let' IDENTIFIER ':' (TYPE '->')+ TYPE
+TYPE_PARAM = '<' IDENTIFIER '>'
+*/
+func (p *Parser) parseTypeParam() {
+	p.consume(LT)
+	ident := p.identName()
+	p.gotoNext()
+	p.consume(GT)
+	p.scope.typeMap[ident] = &FParametrized{ident}
+}
+
+/*
+EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' (TYPE '->')+ TYPE
+
+TYPE_PARAM = '<' IDENTIFIER '>'
 */
 func (p *Parser) parseExtFuncDef(pi *PackageInfo) {
 	p.consume(LET)
 	funcName := p.identName()
 	p.gotoNext()
+
+	if p.Current().ttype == LT {
+		p.parseTypeParam()
+	}
+
 	p.consume(COLON)
 	var types []FType
 	one := p.parseType()
