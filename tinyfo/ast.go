@@ -110,14 +110,57 @@ func (fc *FunCall) FType() FType {
 	if len(fc.Args) == len(ftype.Args()) {
 		return ftype.ReturnType()
 	}
-	panic("partial apply, NYI")
+
+	if len(fc.Args) > len(ftype.Args()) {
+		panic("too many arguments")
+	}
+
+	// partial apply
+	newtypes := ftype.Targets[len(fc.Args):]
+	return &FFunc{newtypes}
+}
+
+func (fc *FunCall) toGoPartialApply() string {
+	var buf bytes.Buffer
+	restArgTypes := fc.ArgTypes()[len(fc.Args):]
+	buf.WriteString("(func (")
+	for i, rt := range restArgTypes {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		// arg name is _r0, _r1, _r2, ...
+		buf.WriteString(fmt.Sprintf("_r%d ", i))
+		buf.WriteString(rt.ToGo())
+
+	}
+	buf.WriteString(")")
+	// write return type
+	buf.WriteString("{ return ")
+	buf.WriteString(fc.Func.Name)
+	buf.WriteString("(")
+
+	for i, arg := range fc.Args {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(arg.ToGo())
+	}
+	for i := range restArgTypes {
+		buf.WriteString(fmt.Sprintf(", _r%d ", i))
+	}
+	buf.WriteString(") })")
+	return buf.String()
 }
 
 func (fc *FunCall) ToGo() string {
-	var buf bytes.Buffer
-	if len(fc.Args) != len(fc.ArgTypes()) {
-		panic("partial apply, NYI")
+	if len(fc.Args) > len(fc.ArgTypes()) {
+		panic("too many argument")
 	}
+
+	if len(fc.Args) < len(fc.ArgTypes()) {
+		return fc.toGoPartialApply()
+	}
+	var buf bytes.Buffer
 	buf.WriteString(fc.Func.Name)
 	buf.WriteString("(")
 
@@ -170,21 +213,34 @@ func (fc *FunCall) ResolveTypeParam() {
 	fargs := ft.Args()
 	var newTypes []FType
 	for i, at := range fargs {
-		realT := fc.Args[i].FType()
-		resolveOneType(at, realT, tinfo)
-		newTypes = append(newTypes, realT)
+		if i >= len(fc.Args) {
+			newTypes = append(newTypes, at)
+		} else {
+			realT := fc.Args[i].FType()
+			resolveOneType(at, realT, tinfo)
+			newTypes = append(newTypes, realT)
+		}
 	}
 	rt := ft.ReturnType()
 	switch grt := rt.(type) {
 	case *FParametrized:
-		newTypes = append(newTypes, tinfo[grt.name])
-	case *FSlice:
-		// only check one level of []T
-		if pet, ok := grt.elemType.(*FParametrized); ok {
-			newTypes = append(newTypes, &FSlice{tinfo[pet.name]})
+		if nt, ok := tinfo[grt.name]; ok {
+			newTypes = append(newTypes, nt)
 		} else {
 			newTypes = append(newTypes, rt)
 		}
+	case *FSlice:
+		// only check one level of []T
+		if pet, ok := grt.elemType.(*FParametrized); ok {
+			if nt, ok := tinfo[pet.name]; ok {
+				newTypes = append(newTypes, &FSlice{nt})
+			} else {
+				newTypes = append(newTypes, rt)
+			}
+		} else {
+			newTypes = append(newTypes, rt)
+		}
+	// TODO: *FFunc support.
 	default:
 		newTypes = append(newTypes, rt)
 	}

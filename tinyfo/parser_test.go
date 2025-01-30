@@ -629,14 +629,12 @@ func TestPkfInfoTypeFun(t *testing.T) {
 
 func TestParserAddhook(t *testing.T) {
 	src := `package_info slice =
-  let Map<T, U> : (T->U)->[]T->[]U
-
-let conv (i:int) =
-  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
+  let Take<T> : int->[]T->[]T
 
 let ika () =
-  let s = GoEval<[]int> "int[]{1, 2}"
-  slice.Map conv s
+  let s = GoEval<[]int> "[]int{1, 2, 3}"
+  let take2 = slice.Take 2
+  take2 s
 `
 
 	got := transpile(src)

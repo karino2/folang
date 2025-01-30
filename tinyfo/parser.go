@@ -1108,18 +1108,6 @@ func (p *Parser) parseExtFuncDef(pi *PackageInfo) {
 
 	p.consume(COLON)
 	ft := p.parseFuncType()
-	/*
-		)
-		var types []FType
-		one := p.parseType()
-		types = append(types, one)
-		for p.Current().ttype == RARROW {
-			p.consume(RARROW)
-			one = p.parseType()
-			types = append(types, one)
-		}
-		ft := &FFunc{types}
-	*/
 	pi.funcInfo[funcName] = ft
 	p.scope.varMap[funcName] = &Var{funcName, ft}
 }
