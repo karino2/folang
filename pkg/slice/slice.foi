@@ -1,0 +1,4 @@
+package_info slice =
+  let Length<T>: []T -> int
+  let Take<T> : int->[]T->[]T
+

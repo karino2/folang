@@ -3,3 +3,4 @@ package_info buf =
   let New: ()->Buffer
   let Write: Buffer->string->()
   let String: Buffer->string
+

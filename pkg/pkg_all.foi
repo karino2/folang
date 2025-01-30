@@ -6,3 +6,8 @@ package_info buf =
   let New: ()->Buffer
   let Write: Buffer->string->()
   let String: Buffer->string
+
+package_info slice =
+  let Length<T>: []T -> int
+  let Take<T> : int->[]T->[]T
+
