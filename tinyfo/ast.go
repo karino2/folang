@@ -148,6 +148,14 @@ func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
 			est := exprType.(*FSlice)
 			paramInfo[pet.name] = est.elemType
 		}
+	case *FFunc:
+		// only check one level of T->U
+		eft := exprType.(*FFunc)
+		for i, tt := range gt.Targets {
+			if ptt, ok := tt.(*FParametrized); ok {
+				paramInfo[ptt.name] = eft.Targets[i]
+			}
+		}
 	default:
 		return
 	}

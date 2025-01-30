@@ -13,3 +13,11 @@ func Take[T any](num int, s []T) []T {
 
 	return res
 }
+
+func Map[T any, U any](f func(T) U, s []T) []U {
+	var res []U
+	for _, e := range s {
+		res = append(res, f(e))
+	}
+	return res
+}

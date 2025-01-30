@@ -28,6 +28,7 @@ const (
 	GT
 	STRING
 	COLON
+	COMMA
 	SEMICOLON
 	INT_IMM
 	OF
@@ -242,6 +243,8 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(RSBRACKET, b)
 	case b == ':':
 		cur.setOneChar(COLON, b)
+	case b == ',':
+		cur.setOneChar(COMMA, b)
 	case b == '.':
 		cur.setOneChar(DOT, b)
 	case b == ';':
@@ -409,7 +412,7 @@ func (p *Parser) skipSpace() {
 	}
 }
 
-func (p *Parser) PeekNext() *Token {
+func (p *Parser) peekNext() *Token {
 	tk := p.Current()
 	defer p.tokenizer.RevertTo(tk)
 
@@ -417,7 +420,7 @@ func (p *Parser) PeekNext() *Token {
 	return p.Current()
 }
 
-func (p *Parser) PeekNextNext() *Token {
+func (p *Parser) peekNextNext() *Token {
 	tk := p.Current()
 	defer p.tokenizer.RevertTo(tk)
 
@@ -759,14 +762,13 @@ func (p *Parser) parseFullName() string {
 }
 
 /*
-TYPE = 'string' | 'int' | '(' ')' | REGITERED_TYPE | '[”]' TYPE
+ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TYPE
 */
-func (p *Parser) parseType() FType {
-
+func (p *Parser) parseAtomType() FType {
 	if p.Current().ttype == LSBRACKET {
 		p.consume(LSBRACKET)
 		p.consume(RSBRACKET)
-		etype := p.parseType()
+		etype := p.parseAtomType()
 		return &FSlice{etype}
 	}
 
@@ -791,6 +793,85 @@ func (p *Parser) parseType() FType {
 			panic(fullName) // unknown type.
 		}
 		return resT
+	}
+}
+
+/*
+NONE_COMPOUND_FUNC_TYPE = ATOME_TYPE '->' ATOM_TYPE ('->' ATOM_TYPE)*
+
+Pass first ATOM_TYPE as argument.
+*/
+func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
+	types := []FType{first}
+	for p.Current().ttype == RARROW {
+		p.consume(RARROW)
+		types = append(types, p.parseAtomType())
+	}
+	return &FFunc{types}
+}
+
+/*
+FUNC_ELEM = ATOME_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
+
+Only One nesting is supported like (a->b)->c->d resolved as func (arg1:func(a)b, arg2: c) d
+*/
+func (p *Parser) parseFuncElemType() FType {
+	if p.Current().ttype == LPAREN {
+		next := p.peekNext()
+		if next.ttype == RPAREN {
+			p.consume(LPAREN)
+			p.consume(RPAREN)
+			return FUnit
+		}
+		p.consume(LPAREN)
+		first := p.parseAtomType()
+		ft := p.parseNoneCompoundFuncType(first)
+		p.consume(RPAREN)
+		return ft
+	}
+	return p.parseAtomType()
+}
+
+/*
+FUNC_TYPE = FUNC_ELEM '->' FUNC_ELEM ('->' FUNC_ELEM)*
+*/
+func (p *Parser) parseFuncType() *FFunc {
+	elem := p.parseFuncElemType()
+	types := []FType{elem}
+
+	for p.Current().ttype == RARROW {
+		p.consume(RARROW)
+		types = append(types, p.parseFuncElemType())
+	}
+	return &FFunc{types}
+}
+
+/*
+TYPE =  ATOM_TYPE | FUNC_TYPE
+*/
+func (p *Parser) parseType() FType {
+	if p.Current().ttype == LPAREN {
+		next := p.peekNext()
+		if next.ttype == RPAREN {
+			p.consume(LPAREN)
+			p.consume(RPAREN)
+			return FUnit
+		}
+		return p.parseFuncType()
+	}
+	one := p.parseAtomType()
+
+	if p.Current().ttype == RARROW {
+		// func type
+		types := []FType{one}
+
+		for p.Current().ttype == RARROW {
+			p.consume(RARROW)
+			types = append(types, p.parseFuncElemType())
+		}
+		return &FFunc{types}
+	} else {
+		return one
 	}
 }
 
@@ -892,7 +973,7 @@ LET = LET_VAR_DEF | LET_FUNC_DEF
 LET_VAR_DEF = 'let' IDENTIFIER '=' expr
 */
 func (p *Parser) parseLet() Stmt {
-	nn := p.PeekNextNext()
+	nn := p.peekNextNext()
 	if nn.ttype == EQ {
 		return p.parseLetDefVar()
 	} else {
@@ -995,18 +1076,24 @@ func (p *Parser) parseExtTypeDef(pi *PackageInfo) {
 }
 
 /*
-TYPE_PARAM = '<' IDENTIFIER '>'
+TYPE_PARAM = '<' IDENTIFIER (',' IDENTIFIER)* '>'
 */
 func (p *Parser) parseTypeParam() {
 	p.consume(LT)
 	ident := p.identName()
 	p.gotoNext()
-	p.consume(GT)
 	p.scope.typeMap[ident] = &FParametrized{ident}
+	for p.Current().ttype == COMMA {
+		p.gotoNext()
+		ident = p.identName()
+		p.gotoNext()
+		p.scope.typeMap[ident] = &FParametrized{ident}
+	}
+	p.consume(GT)
 }
 
 /*
-EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' (TYPE '->')+ TYPE
+EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' FUNC_TYPE
 
 TYPE_PARAM = '<' IDENTIFIER '>'
 */
@@ -1020,15 +1107,19 @@ func (p *Parser) parseExtFuncDef(pi *PackageInfo) {
 	}
 
 	p.consume(COLON)
-	var types []FType
-	one := p.parseType()
-	types = append(types, one)
-	for p.Current().ttype == RARROW {
-		p.consume(RARROW)
-		one = p.parseType()
+	ft := p.parseFuncType()
+	/*
+		)
+		var types []FType
+		one := p.parseType()
 		types = append(types, one)
-	}
-	ft := &FFunc{types}
+		for p.Current().ttype == RARROW {
+			p.consume(RARROW)
+			one = p.parseType()
+			types = append(types, one)
+		}
+		ft := &FFunc{types}
+	*/
 	pi.funcInfo[funcName] = ft
 	p.scope.varMap[funcName] = &Var{funcName, ft}
 }
