@@ -752,7 +752,8 @@ func (p *Parser) parseExpr() Expr {
 	for p.nextNonEOLIsBinOp() {
 		p.skipEOL()
 		p.consume(PIPE) // currently, only pipe.
-		rhs := p.parseExpr()
+		// left associative. So parseTerm instead of parseExpr.
+		rhs := p.parseTerm()
 		expr = NewPipeCall(expr, rhs)
 	}
 	return expr
