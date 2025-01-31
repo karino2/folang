@@ -26,6 +26,7 @@ const (
 	RSBRACKET
 	LT
 	GT
+	PIPE
 	STRING
 	COLON
 	COMMA
@@ -250,6 +251,12 @@ func (tkz *Tokenizer) analyzeCur() {
 	case b == ';':
 		cur.setOneChar(SEMICOLON, b)
 	case b == '|':
+		if tkz.isCharAt(tkz.pos+1, '>') {
+			cur.ttype = PIPE
+			cur.stringVal = "|>"
+			cur.len = 2
+			return
+		}
 		cur.setOneChar(BAR, b)
 	case b == '<':
 		cur.setOneChar(LT, b)
@@ -528,14 +535,24 @@ func (p *Parser) parseGoEval() Expr {
 	}
 }
 
-func (p *Parser) isEndOfExpr() bool {
+func (p *Parser) nextIs(ttype TokenType) bool {
+	nt := p.peekNext()
+	return nt.ttype == ttype
+}
+
+func (p *Parser) currentIs(ttype TokenType) bool {
+	return p.Current().ttype == ttype
+}
+
+func (p *Parser) isEndOfTerm() bool {
 	ttype := p.Current().ttype
 	return ttype == EOL ||
 		ttype == EOF ||
 		ttype == SEMICOLON ||
 		ttype == RBRACE ||
 		ttype == RPAREN ||
-		ttype == WITH
+		ttype == WITH ||
+		p.nextNonEOLIsBinOp()
 }
 
 /*
@@ -574,9 +591,11 @@ func (p *Parser) parseRecordGen() Expr {
 
 /*
 Grammar says Application Expression is expr expr.
-So create singleExpr parser that does not handle application expressions.
+So create ATOM parser that does not handle application expressions.
+
+ATOM = LITERAL | VARIABLE | REC_GEN | '(' ')' | '(' EXPR ')'
 */
-func (p *Parser) parseSingleExpr() Expr {
+func (p *Parser) parseAtom() Expr {
 	tk := p.Current()
 
 	switch {
@@ -597,8 +616,14 @@ func (p *Parser) parseSingleExpr() Expr {
 		return p.parseRecordGen()
 	case tk.ttype == LPAREN:
 		p.consume(LPAREN)
-		p.consume(RPAREN)
-		return gUnitVal
+		if p.currentIs(RPAREN) {
+			p.consume(RPAREN)
+			return gUnitVal
+		} else {
+			ret := p.parseExpr()
+			p.consume(RPAREN)
+			return ret
+		}
 	case tk.ttype == TRUE:
 		p.gotoNext()
 		return &BoolLiteral{true}
@@ -670,7 +695,10 @@ func (p *Parser) parseMatchExpr() Expr {
 	return &MatchExpr{target, rules}
 }
 
-func (p *Parser) parseExpr() Expr {
+/*
+TERM = GOEVAL | MATCH_EXPR | ATOM ATOM*
+*/
+func (p *Parser) parseTerm() Expr {
 	tk := p.Current()
 	// spcial handling for a while.
 	if tk.ttype == IDENTIFIER && tk.stringVal == "GoEval" {
@@ -682,8 +710,8 @@ func (p *Parser) parseExpr() Expr {
 	}
 
 	var exprs []Expr
-	for !p.isEndOfExpr() {
-		expr := p.parseSingleExpr()
+	for !p.isEndOfTerm() {
+		expr := p.parseAtom()
 		exprs = append(exprs, expr)
 	}
 
@@ -697,8 +725,37 @@ func (p *Parser) parseExpr() Expr {
 	}
 
 	fc := &FunCall{v, exprs[1:], nil}
-	fc.ResolveTypeParam()
+	fc.ResolveTypeParamByArgs()
 	return fc
+}
+
+func (p *Parser) peekNextNonEOLToken() *Token {
+	if !p.currentIs(EOL) {
+		return p.Current()
+	}
+	tk := p.Current()
+	defer p.tokenizer.RevertTo(tk)
+	p.skipEOL()
+	return p.Current()
+}
+
+func (p *Parser) nextNonEOLIsBinOp() bool {
+	tk := p.peekNextNonEOLToken()
+	return tk.ttype == PIPE
+}
+
+/*
+EXPR = TERM (BINOP EXPR)*
+*/
+func (p *Parser) parseExpr() Expr {
+	expr := p.parseTerm()
+	for p.nextNonEOLIsBinOp() {
+		p.skipEOL()
+		p.consume(PIPE) // currently, only pipe.
+		rhs := p.parseExpr()
+		expr = NewPipeCall(expr, rhs)
+	}
+	return expr
 }
 
 func (p *Parser) isEndOfBlock() bool {
@@ -797,7 +854,7 @@ func (p *Parser) parseAtomType() FType {
 }
 
 /*
-NONE_COMPOUND_FUNC_TYPE = ATOME_TYPE '->' ATOM_TYPE ('->' ATOM_TYPE)*
+NONE_COMPOUND_FUNC_TYPE = ATOM_TYPE '->' ATOM_TYPE ('->' ATOM_TYPE)*
 
 Pass first ATOM_TYPE as argument.
 */
@@ -811,7 +868,7 @@ func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
 }
 
 /*
-FUNC_ELEM = ATOME_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
+FUNC_ELEM = ATOM_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
 
 Only One nesting is supported like (a->b)->c->d resolved as func (arg1:func(a)b, arg2: c) d
 */

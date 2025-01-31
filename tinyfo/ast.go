@@ -141,9 +141,9 @@ func (fc *FunCall) toGoPartialApply() string {
 		buf.WriteString(rt.ToGo())
 
 	}
-	buf.WriteString(")")
-	// write return type
-	buf.WriteString("{ return ")
+	buf.WriteString(") ")
+	buf.WriteString(fc.FuncType().ReturnType().ToGo())
+	buf.WriteString(" { return ")
 	buf.WriteString(fc.Func.Name)
 	buf.WriteString("(")
 
@@ -233,11 +233,60 @@ func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
 	}
 }
 
+func (fc *FunCall) buildResolvedInfo() map[string]FType {
+	tinfo := make(map[string]FType)
+	for _, rt := range fc.TypeParams {
+		if rt.ResolvedType != nil {
+			tinfo[rt.Name] = rt.ResolvedType
+		}
+	}
+	return tinfo
+}
+
+func updateType(old FType, tinfo map[string]FType) FType {
+	switch grt := old.(type) {
+	case *FParametrized:
+		if nt, ok := tinfo[grt.name]; ok {
+			return nt
+		} else {
+			return old
+		}
+	case *FSlice:
+		// only check one level of []T
+		if pet, ok := grt.elemType.(*FParametrized); ok {
+			if nt, ok := tinfo[pet.name]; ok {
+				return &FSlice{nt}
+			} else {
+				return old
+			}
+		} else {
+			return old
+		}
+		// TODO: *FFunc support.
+	default:
+		return old
+	}
+
+}
+
+func (fc *FunCall) buildNewTypeParams(tinfo map[string]FType) (resolved []ResolvedTypeParam, notResolved []string) {
+	ft := fc.FuncType()
+	for _, pname := range ft.TypeParams {
+		if rt, ok := tinfo[pname]; ok {
+			resolved = append(resolved, ResolvedTypeParam{pname, rt})
+		} else {
+			notResolved = append(notResolved, pname)
+			resolved = append(resolved, ResolvedTypeParam{pname, nil})
+		}
+	}
+	return
+}
+
 /*
 Resolve type param from arguments.
 */
-func (fc *FunCall) ResolveTypeParam() {
-	tinfo := make(map[string]FType)
+func (fc *FunCall) ResolveTypeParamByArgs() {
+	tinfo := fc.buildResolvedInfo()
 	ft := fc.FuncType()
 	fargs := ft.Args()
 	var newTypes []FType
@@ -251,43 +300,149 @@ func (fc *FunCall) ResolveTypeParam() {
 		}
 	}
 	rt := ft.ReturnType()
-	switch grt := rt.(type) {
-	case *FParametrized:
-		if nt, ok := tinfo[grt.name]; ok {
-			newTypes = append(newTypes, nt)
-		} else {
-			newTypes = append(newTypes, rt)
-		}
-	case *FSlice:
-		// only check one level of []T
-		if pet, ok := grt.elemType.(*FParametrized); ok {
-			if nt, ok := tinfo[pet.name]; ok {
-				newTypes = append(newTypes, &FSlice{nt})
-			} else {
-				newTypes = append(newTypes, rt)
-			}
-		} else {
-			newTypes = append(newTypes, rt)
-		}
-	// TODO: *FFunc support.
-	default:
-		newTypes = append(newTypes, rt)
-	}
+	nt := updateType(rt, tinfo)
+	newTypes = append(newTypes, nt)
 
-	var notResoledTypeParam []string
-	var resolvedTypeParams []ResolvedTypeParam
+	resolvedTypeParams, notResoledTypeParams := fc.buildNewTypeParams(tinfo)
 
-	for _, pname := range ft.TypeParams {
-		if rt, ok := tinfo[pname]; ok {
-			resolvedTypeParams = append(resolvedTypeParams, ResolvedTypeParam{pname, rt})
-		} else {
-			notResoledTypeParam = append(notResoledTypeParam, pname)
-			resolvedTypeParams = append(resolvedTypeParams, ResolvedTypeParam{pname, nil})
-		}
-	}
-
-	fc.Func = &Var{fc.Func.Name, &FFunc{newTypes, notResoledTypeParam}}
+	fc.Func = &Var{fc.Func.Name, &FFunc{newTypes, notResoledTypeParams}}
 	fc.TypeParams = resolvedTypeParams
+}
+
+/*
+T, int -> paramName=T, matchType=int, ok=true
+[]T, []int -> paramName=T, matchType=int, ok=true
+*/
+func matchTypeParam(target FType, realType FType) (paramName string, matchType FType, matched bool) {
+	switch tt := target.(type) {
+	case *FParametrized:
+		paramName = tt.name
+		matchType = realType
+		matched = true
+		return
+	case *FSlice:
+		if elemPt, ok := tt.elemType.(*FParametrized); ok {
+			realSlice := realType.(*FSlice)
+			paramName = elemPt.name
+			matchType = realSlice.elemType
+			matched = true
+			return
+		}
+	}
+	matched = false
+	return
+}
+
+/*
+Try to resolve like:
+ss |> slice.Take 2
+
+In this case, argType is the type of 'ss'.
+f is 'slice.Take 2', which is FunCall.
+
+For f, there is also another possibility like:
+
+ss |> slice.Length
+
+For this case, f is "&Var".
+In this case, the result go code becomes
+
+frt.Pipe(ss, slice.Length)
+
+and resolved by go lang. So only the type of &Var is important.
+*/
+func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
+	switch fe := f.(type) {
+	case *FunCall:
+		/*
+			FunCall, in this case, This FunCall must be partial apply.
+			And something like
+			slice.Take 2
+			The only important type is whole expr type, not arg type or slice.Take type.
+			And this must be: argTyp->X
+		*/
+		patType, ok := fe.FType().(*FFunc)
+		if !ok {
+			panic("func application but not func")
+		}
+		fargType := patType.Targets[0]
+
+		if matchPname, matchType, ok := matchTypeParam(fargType, argType); ok {
+			// can resolve.
+			tinfo := fe.buildResolvedInfo()
+			tinfo[matchPname] = matchType
+
+			oldFtype := fe.FuncType() // head Func var type.
+			var newTypes []FType
+			for _, old := range oldFtype.Targets {
+				newTypes = append(newTypes, updateType(old, tinfo))
+			}
+			resolvedTypeParams, notResoledTypeParams := fe.buildNewTypeParams(tinfo)
+
+			fe.Func = &Var{fe.Func.Name, &FFunc{newTypes, notResoledTypeParams}}
+			fe.TypeParams = resolvedTypeParams
+			return fe
+		}
+		return f
+	case *Var:
+		// for this case, only need to update FType.
+		// golang will resolve type parameter for this function automatically.
+		patType, ok := fe.FType().(*FFunc)
+		if !ok {
+			panic("func application but not func(2)")
+		}
+		fargType := patType.Targets[0]
+
+		if fpt, ok := fargType.(*FParametrized); ok {
+			// can resolve.
+			tinfo := make(map[string]FType)
+			tinfo[fpt.name] = argType
+
+			var newTypes []FType
+			for _, old := range patType.Targets {
+				newTypes = append(newTypes, updateType(old, tinfo))
+			}
+			var notResolved []string
+			for _, tp := range patType.TypeParams {
+				if _, ok := tinfo[tp]; !ok {
+					notResolved = append(notResolved, tp)
+				}
+			}
+
+			return &Var{fe.Name, &FFunc{newTypes, notResolved}}
+		}
+		return f
+	default:
+		return f
+	}
+}
+
+// frt.Pipe<T1, T2> : T1->(T1->T2)->T2
+//
+// lhs |> rhs
+// rhs must be T1->T2 and we might resolve T1 or T2 by lhs T1 type.
+func NewPipeCall(lhs Expr, rhs Expr) *FunCall {
+	t1name := UniqueTmpTypeParamName()
+	t2name := UniqueTmpTypeParamName()
+
+	// resolve type by lhs ftype.
+	rhs2 := resolveFuncTypeByArgType(rhs, lhs.FType())
+
+	rt1 := lhs.FType()
+	rt2 := rhs2.FType().(*FFunc).ReturnType()
+
+	var typeparams []ResolvedTypeParam
+
+	typeparams = append(typeparams, ResolvedTypeParam{t1name, rt1})
+	if _, ok := rt2.(*FParametrized); ok {
+		typeparams = append(typeparams, ResolvedTypeParam{t2name, nil})
+	} else {
+		typeparams = append(typeparams, ResolvedTypeParam{t2name, rt2})
+	}
+
+	pvar := &Var{"frt.Pipe", &FFunc{[]FType{rt1, &FFunc{[]FType{rt1, rt2}, []string{t1name, t2name}}, rt2}, []string{t1name, t2name}}}
+	return &FunCall{pvar, []Expr{lhs, rhs2}, typeparams}
+
 }
 
 type RecordGen struct {
@@ -378,6 +533,11 @@ var uniqueId = 0
 func UniqueTmpVarName() string {
 	uniqueId++
 	return fmt.Sprintf("_v%d", uniqueId)
+}
+
+func UniqueTmpTypeParamName() string {
+	uniqueId++
+	return fmt.Sprintf("_T%d", uniqueId)
 }
 
 func ResetUniqueTmpCounter() {

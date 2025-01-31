@@ -637,13 +637,30 @@ func TestPkfInfoTypeFun(t *testing.T) {
 
 }
 
+func TestPipe(t *testing.T) {
+	src := `package_info slice =
+  let Take<T> : int->[]T->[]T
+
+let ika () =
+  let s = GoEval<[]int> "[]int{1, 2, 3}"
+  s |> slice.Take 2
+`
+
+	got := transpile(src)
+	for _, want := range []string{"func (_r0 []int) []int", "frt.Pipe[[]int, []int]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want to contain '%s', but got '%s'", want, got)
+		}
+	}
+}
+
 func TestParserAddhook(t *testing.T) {
 	src := `package_info slice =
   let Take<T> : int->[]T->[]T
 
 let ika () =
   let s = GoEval<[]int> "[]int{1, 2, 3}"
-  slice.Take 2 s
+  s |> slice.Take 2
 `
 
 	/*
