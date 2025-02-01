@@ -16,7 +16,7 @@ func (*FFunc) ftype()         {}
 func (*FUnresolved) ftype()   {}
 func (*FRecord) ftype()       {}
 func (*FUnion) ftype()        {}
-func (*FCustom) ftype()       {}
+func (*FExtType) ftype()      {}
 func (*FSlice) ftype()        {}
 func (*FParametrized) ftype() {}
 
@@ -26,7 +26,7 @@ func IsUnresolved(ft FType) bool {
 }
 
 func IsCustom(ft FType) bool {
-	_, ok := ft.(*FCustom)
+	_, ok := ft.(*FExtType)
 	return ok
 }
 
@@ -66,15 +66,14 @@ func (p *FUnresolved) ToGo() string {
 }
 
 /*
-Custom type. Mostly user defined type.
-Some type is defined after using.
-So first keep identifier as is, then resolve.
+External defined type.
+Only posses type identifier.
 */
-type FCustom struct {
+type FExtType struct {
 	name string
 }
 
-func (p *FCustom) ToGo() string {
+func (p *FExtType) ToGo() string {
 	return p.name
 }
 

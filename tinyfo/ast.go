@@ -974,20 +974,19 @@ This emit no go code, but treat as dummy Stmt.
 type PackageInfo struct {
 	name     string
 	funcInfo map[string]*FFunc
-	typeInfo map[string]*FCustom
+	typeInfo map[string]*FExtType
 }
 
 func (*PackageInfo) ToGo() string { return "" }
 func NewPackageInfo(name string) *PackageInfo {
 	pi := &PackageInfo{name: name}
 	pi.funcInfo = make(map[string]*FFunc)
-	pi.typeInfo = make(map[string]*FCustom)
+	pi.typeInfo = make(map[string]*FExtType)
 	return pi
 }
 
-// register extType as FCustom
-func (pi *PackageInfo) registerExtType(name string) *FCustom {
-	ret := &FCustom{pi.name + "." + name}
+func (pi *PackageInfo) registerExtType(name string) *FExtType {
+	ret := &FExtType{pi.name + "." + name}
 	pi.typeInfo[name] = ret
 	return ret
 }
