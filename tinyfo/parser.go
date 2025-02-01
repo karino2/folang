@@ -43,6 +43,7 @@ const (
 	FALSE
 	PACKAGE_INFO
 	DOT
+	AND
 )
 
 var keywordMap = map[string]TokenType{
@@ -57,6 +58,7 @@ var keywordMap = map[string]TokenType{
 	"true":         TRUE,
 	"false":        FALSE,
 	"package_info": PACKAGE_INFO,
+	"and":          AND,
 }
 
 type Token struct {
@@ -413,15 +415,67 @@ func (s *Scope) LookupRecord(fieldNames []string) *FRecord {
 	return nil
 }
 
+// parser context inside type definition.
+type typeDefCtx struct {
+	defined   map[string]FType
+	inTypeDef bool
+}
+
+func newTypeDefCtx() *typeDefCtx {
+	tdc := &typeDefCtx{}
+	tdc.defined = make(map[string]FType)
+	return tdc
+}
+
+func (tdc *typeDefCtx) clear() {
+	clear(tdc.defined)
+	tdc.inTypeDef = false
+}
+
+func (tdc *typeDefCtx) resolvePreUsedType(md *MultipleDefs) {
+	Walk(md, func(n Node) bool {
+		switch dt := n.(type) {
+		case *MultipleDefs:
+			return true
+		case *RecordDef:
+			for i, np := range dt.Fields {
+				if pt, ok := np.Type.(*FPreUsed); ok {
+					if rt, ok := tdc.defined[pt.name]; ok {
+						dt.Fields[i].Type = rt
+					} else {
+						panic("type used but not found: " + pt.name)
+					}
+				}
+			}
+			return false
+		case *UnionDef:
+			for i, cs := range dt.Cases {
+				if pt, ok := cs.Type.(*FPreUsed); ok {
+					if rt, ok := tdc.defined[pt.name]; ok {
+						dt.Cases[i].Type = rt
+					} else {
+						panic("type used but not found2: " + pt.name)
+					}
+				}
+			}
+			return false
+		default:
+			return false
+		}
+	})
+}
+
 type Parser struct {
 	tokenizer  *Tokenizer
 	offsideCol []int
 	scope      *Scope
+	typeDefCtx *typeDefCtx
 }
 
 func NewParser() *Parser {
 	p := &Parser{}
 	p.scope = NewScope(nil)
+	p.typeDefCtx = newTypeDefCtx()
 	return p
 }
 
@@ -433,6 +487,19 @@ func (p *Parser) popScope() *Scope {
 	ret := p.scope
 	p.scope = ret.parent
 	return ret
+}
+
+func (p *Parser) isInTypeDef() bool {
+	return p.typeDefCtx.inTypeDef
+}
+
+func (p *Parser) enterTypeDef() {
+	p.typeDefCtx.inTypeDef = true
+}
+
+func (p *Parser) leaveTypeDef() {
+	p.typeDefCtx.clear()
+	p.typeDefCtx.inTypeDef = false
 }
 
 func (p *Parser) Current() *Token {
@@ -968,7 +1035,17 @@ func (p *Parser) parseAtomType() FType {
 		fullName := p.parseFullName()
 		resT := p.scope.LookupType(fullName)
 		if resT == nil {
-			panic(fullName) // unknown type.
+			// unknown type.
+
+			// if inside typedef,
+			// this type might be defined in later 'and' definition.
+			// So return FUndefined and resolve later.
+			if p.isInTypeDef() {
+				return &FPreUsed{fullName}
+			}
+
+			// not in typedef and unknown, unknown type.
+			panic(fullName)
 		}
 		return resT
 	}
@@ -1159,6 +1236,11 @@ func (p *Parser) parseLet() Stmt {
 	}
 }
 
+func (p *Parser) registerUnionType(ud *UnionDef) {
+	ud.registerToScope(p.scope)
+	p.typeDefCtx.defined[ud.Name] = ud.UnionFType()
+}
+
 /*
 UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
 
@@ -1185,8 +1267,14 @@ func (p *Parser) parseUnionDef(uname string) Stmt {
 		}
 	}
 	ret := &UnionDef{uname, cases}
-	ret.registerToScope(p.scope)
+	p.registerUnionType(ret)
 	return ret
+}
+
+func (p *Parser) registerRecordType(rname string, recType *FRecord) {
+	p.scope.recordMap[rname] = recType
+	p.scope.typeMap[rname] = recType
+	p.typeDefCtx.defined[rname] = recType
 }
 
 // RECORD_DEF = '{' FIELD_DEFS '}'
@@ -1215,20 +1303,17 @@ func (p *Parser) parseRecordDef(rname string) Stmt {
 	rd := &RecordDef{rname, fields}
 
 	recType := rd.ToFType()
-	p.scope.recordMap[rname] = recType
-	p.scope.typeMap[rname] = recType
+	p.registerRecordType(rname, recType)
 
 	return rd
 }
 
-// TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)
+// TYPE_DEF_BODY = ID '=' (RECORD_DEF | UNION_DEF)
 //
 // RECORD_DEF = '{' FIELD_DEFS '}'
 //
 // UNION_DEF = '|'...
-func (p *Parser) parseTypeDef() Stmt {
-	p.consume(TYPE)
-
+func (p *Parser) parseTypeDefBody() Stmt {
 	tname := p.identName()
 	p.gotoNextSL()
 
@@ -1240,6 +1325,31 @@ func (p *Parser) parseTypeDef() Stmt {
 
 	p.expect(BAR)
 	return p.parseUnionDef(tname)
+}
+
+// TYPE_DEF = 'type' TYPE_DEF_BODY ('and' TYPE_DEF_BODY)*
+func (p *Parser) parseTypeDef() Stmt {
+	p.enterTypeDef()
+	defer p.leaveTypeDef()
+
+	p.consume(TYPE)
+	stmt := p.parseTypeDefBody()
+
+	if !p.currentIs(AND) {
+		return stmt
+	}
+
+	var stmts []Stmt
+	stmts = append(stmts, stmt)
+	for p.currentIs(AND) {
+		p.consume(AND)
+		stmt = p.parseTypeDefBody()
+		stmts = append(stmts, stmt)
+	}
+
+	md := &MultipleDefs{stmts}
+	p.typeDefCtx.resolvePreUsedType(md)
+	return md
 }
 
 /*

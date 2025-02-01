@@ -688,6 +688,22 @@ let hoge () =
 `,
 			[]string{"hoge() int", "r.ival"},
 		},
+		{
+			`package main
+
+type FType =
+| FInt
+| FSlice of SliceType
+and SliceType = {elemType: FType}
+
+let hoge () =
+  let rec = FSlice {elemType=FInt}
+  match rec with
+	| FSlice s-> s.elemType
+	| _ -> FInt
+`,
+			[]string{"Value SliceType", "elemType FType", "hoge() FType", "s.elemType"},
+		},
 	}
 
 	for _, test := range tests {
@@ -722,11 +738,16 @@ let ika () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type Hoge = {X: string; Y: string}
+type FType =
+| FInt
+| FSlice of SliceType
+and SliceType = {elemType: FType}
 
 let hoge () =
-  let rec = {X="hoge"; Y="ika"}
-  rec.Y
+  let rec = FSlice {elemType=FInt}
+  match rec with
+	| FSlice s-> s.elemType
+	| _ -> FInt
 `
 
 	got := transpile(src)

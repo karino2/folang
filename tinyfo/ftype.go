@@ -17,6 +17,7 @@ func (*FUnresolved) ftype()   {}
 func (*FRecord) ftype()       {}
 func (*FUnion) ftype()        {}
 func (*FExtType) ftype()      {}
+func (*FPreUsed) ftype()      {}
 func (*FSlice) ftype()        {}
 func (*FParametrized) ftype() {}
 
@@ -74,6 +75,19 @@ type FExtType struct {
 }
 
 func (p *FExtType) ToGo() string {
+	return p.name
+}
+
+/*
+Used before defined.
+This is only occur inside type definition(mutually recursive type case.)
+This type must be resolved while leaving typedef context.
+*/
+type FPreUsed struct {
+	name string
+}
+
+func (p *FPreUsed) ToGo() string {
 	return p.name
 }
 
@@ -193,6 +207,16 @@ type FUnion struct {
 // FUnion is interface in go. No need to add *.
 func (fu *FUnion) ToGo() string {
 	return fu.name
+}
+
+func (fu *FUnion) lookupCase(caseName string) NameTypePair {
+	for _, uc := range fu.cases {
+		if uc.Name == caseName {
+			return uc
+		}
+	}
+	panic("no case")
+
 }
 
 // Return IntOrString_I

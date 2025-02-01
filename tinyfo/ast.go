@@ -677,14 +677,15 @@ type Stmt interface {
 	ToGo() string
 }
 
-func (*FuncDef) stmt()     {}
-func (*LetVarDef) stmt()   {}
-func (*Import) stmt()      {}
-func (*Package) stmt()     {}
-func (*ExprStmt) stmt()    {}
-func (*RecordDef) stmt()   {}
-func (*UnionDef) stmt()    {}
-func (*PackageInfo) stmt() {}
+func (*FuncDef) stmt()      {}
+func (*LetVarDef) stmt()    {}
+func (*Import) stmt()       {}
+func (*Package) stmt()      {}
+func (*ExprStmt) stmt()     {}
+func (*RecordDef) stmt()    {}
+func (*UnionDef) stmt()     {}
+func (*MultipleDefs) stmt() {}
+func (*PackageInfo) stmt()  {}
 
 type Import struct {
 	PackageName string
@@ -782,6 +783,25 @@ func (rd *RecordDef) ToGo() string {
 
 func (rd *RecordDef) ToFType() *FRecord {
 	return &FRecord{rd.Name, rd.Fields}
+}
+
+/*
+For 'and' type def, there are multiple type definition in one statement.
+defs is either RecordDef or UnionDef.
+*/
+type MultipleDefs struct {
+	defs []Stmt
+}
+
+func (md *MultipleDefs) ToGo() string {
+	var buf bytes.Buffer
+	for i, def := range md.defs {
+		if i != 0 {
+			buf.WriteString("\n")
+		}
+		buf.WriteString(def.ToGo())
+	}
+	return buf.String()
 }
 
 /*
@@ -1029,10 +1049,14 @@ func Walk(n Node, f func(Node) bool) {
 		Walk(n.FinalExpr, f)
 	case *LetVarDef:
 		Walk(n.Rhs, f)
+	case *MultipleDefs:
+		for _, stmt := range n.defs {
+			Walk(stmt, f)
+		}
 	case *Import, *Package, *RecordDef, *UnionDef, *PackageInfo:
 		// no-op
 	// ここからexpr
-	case *GoEval, *StringLiteral, *Var, *IntImm, *BoolLiteral:
+	case *GoEval, *StringLiteral, *Var, *IntImm, *BoolLiteral, *FieldAccess:
 		// no-op
 	case *FunCall:
 		Walk(n.Func, f)
