@@ -225,8 +225,10 @@ func (tkz *Tokenizer) analyzeCurAsSpace() {
 	cur := tkz.currentToken
 	cur.ttype = SPACE
 	i := 0
-	for tkz.isCharAt(tkz.pos+i, ' ') || tkz.isStringAt(tkz.pos+i, "/*") {
+	for tkz.isCharAt(tkz.pos+i, ' ') || tkz.isStringAt(tkz.pos+i, "/*") || tkz.isCharAt(tkz.pos+i, '\t') {
 		for ; tkz.isCharAt(tkz.pos+i, ' '); i++ {
+		}
+		for ; tkz.isCharAt(tkz.pos+i, '\t'); i++ {
 		}
 		if tkz.isStringAt(tkz.pos+i, "/*") {
 			end := tkz.searchForward(tkz.pos+i+2, "*/")
@@ -253,7 +255,7 @@ func (tkz *Tokenizer) analyzeCur() {
 	cur := tkz.currentToken
 
 	switch {
-	case b == ' ':
+	case b == ' ' || b == '\t':
 		tkz.analyzeCurAsSpace()
 	case b == '/':
 		if tkz.isCharAt(tkz.pos+1, '*') {
