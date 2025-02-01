@@ -159,6 +159,15 @@ func (fr *FRecord) StructName() string {
 	return fr.name
 }
 
+func (fr *FRecord) GetField(fieldName string) *NameTypePair {
+	for _, fp := range fr.fields {
+		if fp.Name == fieldName {
+			return &fp
+		}
+	}
+	panic("Field not found")
+}
+
 func (fr *FRecord) Match(fieldNames []string) bool {
 	if len(fieldNames) != len(fr.fields) {
 		return false

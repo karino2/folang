@@ -21,6 +21,7 @@ func (*IntImm) expr()        {}
 func (*UnitVal) expr()       {}
 func (*BoolLiteral) expr()   {}
 func (*FunCall) expr()       {}
+func (*FieldAccess) expr()   {}
 func (*Var) expr()           {}
 func (*RecordGen) expr()     {}
 func (*Block) expr()         {}
@@ -88,6 +89,15 @@ type Var struct {
 func (v *Var) FType() FType       { return v.Type }
 func (v *Var) ToGo() string       { return v.Name }
 func (v *Var) IsUnresolved() bool { return IsUnresolved(v.Type) }
+
+type FieldAccess struct {
+	targetName string
+	targetType *FRecord
+	fieldName  string
+}
+
+func (fa *FieldAccess) FType() FType { return fa.targetType.GetField(fa.fieldName).Type }
+func (fa *FieldAccess) ToGo() string { return fmt.Sprintf("%s.%s", fa.targetName, fa.fieldName) }
 
 type ResolvedTypeParam struct {
 	Name         string

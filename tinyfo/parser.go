@@ -651,11 +651,55 @@ func (p *Parser) parseRecordGen() Expr {
 	return rg
 }
 
+func (p *Parser) referenceVar(vname string) *Var {
+	v := p.scope.LookupVar(vname)
+	if v == nil {
+		panic("Undefined var: " + vname)
+	}
+	return v
+}
+
+/*
+VARIABLE_REF = IDENTIFIER | IDENTIFER '.' IDENTIFIER
+
+For first case, IDENTIFIER must be in scope.
+For later case, there are 2 types:
+
+  - external pkg access: slice.Take
+  - record field access: rec.Person
+*/
+func (p *Parser) parseVariableRefereince() Expr {
+	firstId := p.identName()
+	if !p.nextIs(DOT) {
+		p.gotoNext()
+		return p.referenceVar(firstId)
+	}
+
+	// Next is dot. Check whether rec field access or pkg access.
+	v := p.scope.LookupVar(firstId)
+	if v != nil {
+		// symbol found, record field access.
+		p.gotoNext()
+		p.consume(DOT)
+
+		fname := p.identName()
+		p.gotoNext()
+
+		// v must be record.
+		rtype := v.FType().(*FRecord)
+		return &FieldAccess{firstId, rtype, fname}
+	} else {
+		// external pkg access.
+		fullName := p.parseFullName()
+		return p.referenceVar(fullName)
+	}
+}
+
 /*
 Grammar says Application Expression is expr expr.
 So create ATOM parser that does not handle application expressions.
 
-ATOM = LITERAL | VARIABLE | REC_GEN | '(' ')' | '(' EXPR ')'
+ATOM = LITERAL | VARIABLE_REF | REC_GEN | '(' ')' | '(' EXPR ')'
 */
 func (p *Parser) parseAtom() Expr {
 	tk := p.Current()
@@ -668,12 +712,7 @@ func (p *Parser) parseAtom() Expr {
 		p.gotoNext()
 		return &IntImm{tk.intVal}
 	case tk.ttype == IDENTIFIER:
-		fullName := p.parseFullName()
-		v := p.scope.LookupVar(fullName)
-		if v == nil {
-			panic("Undefined var: " + fullName)
-		}
-		return v
+		return p.parseVariableRefereince()
 	case tk.ttype == LBRACE:
 		return p.parseRecordGen()
 	case tk.ttype == LPAREN:

@@ -642,21 +642,47 @@ func TestPkfInfoTypeFun(t *testing.T) {
 
 }
 
-func TestPipe(t *testing.T) {
-	src := `package_info slice =
+/*
+Check whether multiple string want contains.
+*/
+func TestParserContainMultiple(t *testing.T) {
+	var tests = []struct {
+		input string
+		wants []string
+	}{
+		{
+			`package_info slice =
   let Take<T> : int->[]T->[]T
 
 let ika () =
   let s = GoEval<[]int> "[]int{1, 2, 3}"
   s |> slice.Take 2
-`
+`,
+			[]string{"func (_r0 []int) []int", "frt.Pipe[[]int, []int]"},
+		},
+		{
+			`package main
 
-	got := transpile(src)
-	for _, want := range []string{"func (_r0 []int) []int", "frt.Pipe[[]int, []int]"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("want to contain '%s', but got '%s'", want, got)
+type Hoge = {X: string; Y: string}
+
+let hoge () =
+  let rec = {X="hoge"; Y="ika"}
+  rec.Y
+`,
+			[]string{"hoge() string", "return rec.Y"},
+		},
+	}
+
+	for _, test := range tests {
+		got := transpile(test.input)
+
+		for _, want := range test.wants {
+			if !strings.Contains(got, want) {
+				t.Errorf("want to contain '%s', but got '%s'", want, got)
+			}
 		}
 	}
+
 }
 
 func TestBlockComment(t *testing.T) {
@@ -679,12 +705,11 @@ let ika () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-/*
-  This is comment, never found.
-*/
+type Hoge = {X: string; Y: string}
 
-let ika () =
-  123
+let hoge () =
+  let rec = {X="hoge"; Y="ika"}
+  rec.Y
 `
 
 	got := transpile(src)
