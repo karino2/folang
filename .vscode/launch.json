@@ -10,7 +10,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${fileDirname}",
-      "args": ["../fc/ftype.fo"]
+      "args": ["../pkg/pkg_all.foi", "../fc/ftype.fo"]
     }
   ]
 }

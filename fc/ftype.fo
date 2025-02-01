@@ -1,5 +1,10 @@
 package main
 
+import frt
+/* import buf */
+import slice
+
+
 type FType =
 | FInt
 | FString
@@ -8,17 +13,72 @@ type FType =
 | FFunc of FuncType
 | FRecord of RecordType
 | FUnion of UnionType
+| FExtType of string
+| FSlice of SliceType
+and SliceType = {elemType: FType}
+and FuncType = {targets: []FType}
+and NameTypePair = {name: string; ftype: FType}
+and RecordType = {name: string; fiedls: []NameTypePair}
+and UnionType = {name: string; cases: []NameTypePair}
 
+/*
+F# valid def.
 
-type NameTypePair = {Name: string; Type: FType}
+type FType =
+| FInt
+| FString
+| FUnit
+| FUnresolved
+| FFunc of FuncType
+| FRecord of RecordType
+| FUnion of UnionType
+| FCustom of string
+| FSlice of SliceType
+and NameTypePair = {name: string; ftype: FType}
+and RecordType = {name: string; fiedls: NameTypePair[]}
+and UnionType = {name: string; cases: NameTypePair[]}
+and FuncType = {targets: FType[]}
+and SliceType = {elemType: FType}
 
-type RecordType = {name: string; fiedls: []NameTypePair}
-type UnionType = {name: string; cases: []NameTypePair}
+*/
 
-type FuncType = {targets: []FType}
 
 let IsUnresolved (ft:FType) =
   match ft with
   | FUnresolved -> true
   | _ -> false
 
+
+let fargs (ft:FuncType) =
+  let l = slice.Length ft.targets
+  ft.targets |> slice.Take (l-1)
+
+/*
+let FFuncToGo (ft:FuncType) =
+  let last = slice.Last ft.targets
+  let args = fargs ft
+  let bw = buf.New ()
+  buf.Write bw "func ("
+  args |> slice.map FTypeToGo |> string.concat "," |> buf.Write bw
+  buf.Write bw ")"
+  let ret = match last with
+            | FUnit -> ""
+            | _ -> " " + (FTypeToGo last)
+  buf.Write bw ret
+  buf.String bw
+
+
+
+let FTypeToGo (ft:FType) =
+  match ft with
+  | FInt -> "int"
+  | FString -> "string"    
+  | FUnit -> "" // When use as return type in Go, "" is suitable.
+  | FUnresolved -> "" // This case is error. Just return "" for a while.
+  | FFunc ft -> FFuncToGo ft
+  | FRecord fr -> ""
+  | FUnion fu -> ""
+  | FCustom fc -> fc // for custom type (user defined type with type name fc), use that type name as is.
+  | FSlice fs -> ""
+
+*/
