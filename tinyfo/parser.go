@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 )
 
 type TokenType int
@@ -498,14 +499,28 @@ func (p *Parser) parsePackage() *Package {
 	return &Package{ident.stringVal}
 }
 
+/*
+IMPORT_STMT = 'import' (STRING_LITERAL | IDENTIFIER)
+
+For identifier case, add prefix of folang pkg path.
+ex:
+import frt
+=>
+import "github.com/karino2/folang/pkg/frt"
+*/
 func (p *Parser) parseImport() *Import {
 	p.consume(IMPORT)
 	tk := p.Current()
-	if tk.ttype != STRING {
+	var impath string
+	if tk.ttype == STRING {
+		impath = tk.stringVal
+	} else if tk.ttype == IDENTIFIER {
+		impath = fmt.Sprintf("github.com/karino2/folang/pkg/%s", tk.stringVal)
+	} else {
 		panic(tk)
 	}
 	p.gotoNextSL()
-	return &Import{tk.stringVal}
+	return &Import{impath}
 }
 
 /*

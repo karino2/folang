@@ -566,6 +566,11 @@ let ika () =
 `,
 			"ika() []string",
 		},
+		{
+			`import slice
+`,
+			`import "github.com/karino2/folang/pkg/slice"`,
+		},
 	}
 
 	for _, test := range tests {

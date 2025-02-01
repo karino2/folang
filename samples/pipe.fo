@@ -1,8 +1,8 @@
 package main
 
 import "fmt"
-import "github.com/karino2/folang/pkg/frt"
-import "github.com/karino2/folang/pkg/slice"
+import frt
+import slice
 
 let main() =
   let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
