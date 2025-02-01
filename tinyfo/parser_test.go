@@ -410,6 +410,82 @@ func TestParserMatchExpression(t *testing.T) {
 	}
 }
 
+func TestPkgInfoTypeDef(t *testing.T) {
+	src := `package_info slice =
+  type Buffer
+
+`
+	parser := NewParser()
+	got := parser.Parse("", []byte(src))
+
+	pi, ok := got[0].(*PackageInfo)
+	if !ok {
+		t.Errorf("Not pkg info: %v", got)
+	}
+
+	ctp, ok2 := pi.typeInfo["Buffer"]
+	if !ok2 {
+		t.Error("Buffer type does not exist")
+	}
+
+	if ctp.name != "slice.Buffer" {
+		t.Errorf("want slice.Buffer, got %s", ctp.name)
+	}
+}
+
+func TestPkfInfoTypeFun(t *testing.T) {
+	src := `package_info slice =
+  type Buffer
+  let WriteString: Buffer->()
+`
+	parser := NewParser()
+	got := parser.Parse("", []byte(src))
+
+	pi, ok := got[0].(*PackageInfo)
+	if !ok {
+		t.Errorf("Not pkg info: %v", got)
+	}
+
+	if len(pi.typeInfo) != 1 {
+		t.Errorf("want 1 type, but %v", pi.typeInfo)
+	}
+
+	ft, ok2 := pi.funcInfo["WriteString"]
+	if !ok2 {
+		t.Error("WriteString does not exist")
+	}
+
+	if len(ft.Targets) != 2 {
+		t.Errorf("WriteString Targets is not 2. %v", ft.Targets)
+	}
+
+	if ft.Targets[1] != FUnit {
+		t.Errorf("Return value must be FUnit, but not. %v", ft.Targets[1])
+	}
+
+	if ft.Targets[0] != pi.typeInfo["Buffer"] {
+		t.Errorf("Want argument be Buffer type, but not. arg: %v, Buffer type %v", ft.Targets[0], pi.typeInfo["Buffer"])
+	}
+
+}
+
+func TestBlockComment(t *testing.T) {
+	src := `package main
+
+/*
+  This is comment, never found.
+*/
+
+let ika () =
+  123
+`
+
+	got := transpile(src)
+	if strings.Contains(got, "never found") {
+		t.Errorf("comment is not skipped: '%s'", got)
+	}
+}
+
 /*
 The results of this category are too complex to assert whole.
 Check only part of it.
@@ -601,65 +677,6 @@ let hoge () =
 	}
 }
 
-func TestPkgInfoTypeDef(t *testing.T) {
-	src := `package_info slice =
-  type Buffer
-
-`
-	parser := NewParser()
-	got := parser.Parse("", []byte(src))
-
-	pi, ok := got[0].(*PackageInfo)
-	if !ok {
-		t.Errorf("Not pkg info: %v", got)
-	}
-
-	ctp, ok2 := pi.typeInfo["Buffer"]
-	if !ok2 {
-		t.Error("Buffer type does not exist")
-	}
-
-	if ctp.name != "slice.Buffer" {
-		t.Errorf("want slice.Buffer, got %s", ctp.name)
-	}
-}
-
-func TestPkfInfoTypeFun(t *testing.T) {
-	src := `package_info slice =
-  type Buffer
-  let WriteString: Buffer->()
-`
-	parser := NewParser()
-	got := parser.Parse("", []byte(src))
-
-	pi, ok := got[0].(*PackageInfo)
-	if !ok {
-		t.Errorf("Not pkg info: %v", got)
-	}
-
-	if len(pi.typeInfo) != 1 {
-		t.Errorf("want 1 type, but %v", pi.typeInfo)
-	}
-
-	ft, ok2 := pi.funcInfo["WriteString"]
-	if !ok2 {
-		t.Error("WriteString does not exist")
-	}
-
-	if len(ft.Targets) != 2 {
-		t.Errorf("WriteString Targets is not 2. %v", ft.Targets)
-	}
-
-	if ft.Targets[1] != FUnit {
-		t.Errorf("Return value must be FUnit, but not. %v", ft.Targets[1])
-	}
-
-	if ft.Targets[0] != pi.typeInfo["Buffer"] {
-		t.Errorf("Want argument be Buffer type, but not. arg: %v, Buffer type %v", ft.Targets[0], pi.typeInfo["Buffer"])
-	}
-
-}
-
 /*
 Check whether multiple string want contains.
 */
@@ -732,24 +749,6 @@ let hoge () =
 				t.Errorf("want to contain '%s', but got '%s'", want, got)
 			}
 		}
-	}
-
-}
-
-func TestBlockComment(t *testing.T) {
-	src := `package main
-
-/*
-  This is comment, never found.
-*/
-
-let ika () =
-  123
-`
-
-	got := transpile(src)
-	if strings.Contains(got, "never found") {
-		t.Errorf("comment is not skipped: '%s'", got)
 	}
 }
 
