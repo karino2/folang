@@ -46,3 +46,10 @@ func TestPipeTake(t *testing.T) {
 		t.Errorf("got %v", got)
 	}
 }
+
+func TestOpPlus(t *testing.T) {
+	got := OpPlus[string]("abc", "def")
+	if got != "abcdef" {
+		t.Errorf("got %v", got)
+	}
+}

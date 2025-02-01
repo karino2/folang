@@ -44,6 +44,8 @@ const (
 	PACKAGE_INFO
 	DOT
 	AND
+	PLUS
+	MINUS
 )
 
 var keywordMap = map[string]TokenType{
@@ -59,6 +61,18 @@ var keywordMap = map[string]TokenType{
 	"false":        FALSE,
 	"package_info": PACKAGE_INFO,
 	"and":          AND,
+}
+
+type binOpInfo struct {
+	precedence int
+	goFuncName string
+}
+
+// int is preedance
+var binOpMap = map[TokenType]binOpInfo{
+	PIPE:  {1, "frt.Pipe"},
+	PLUS:  {2, "frt.OpPlus"},
+	MINUS: {2, "frt.OpMinus"},
 }
 
 type Token struct {
@@ -314,6 +328,8 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(LT, b)
 	case b == '>':
 		cur.setOneChar(GT, b)
+	case b == '+':
+		cur.setOneChar(PLUS, b)
 	case b == '-':
 		if tkz.isCharAt(tkz.pos+1, '>') {
 			cur.ttype = RARROW
@@ -321,7 +337,7 @@ func (tkz *Tokenizer) analyzeCur() {
 			cur.len = 2
 			return
 		}
-		panic("NYI")
+		cur.setOneChar(MINUS, b)
 	default:
 		panic(b)
 	}
@@ -921,22 +937,34 @@ func (p *Parser) peekNextNonEOLToken() *Token {
 
 func (p *Parser) nextNonEOLIsBinOp() bool {
 	tk := p.peekNextNonEOLToken()
-	return tk.ttype == PIPE
+	_, ok := binOpMap[tk.ttype]
+	return ok
 }
 
 /*
 EXPR = TERM (BINOP EXPR)*
 */
-func (p *Parser) parseExpr() Expr {
+func (p *Parser) parseExprWithPrecedence(minPrec int) Expr {
 	expr := p.parseTerm()
 	for p.nextNonEOLIsBinOp() {
 		p.skipEOL()
-		p.consume(PIPE) // currently, only pipe.
-		// left associative. So parseTerm instead of parseExpr.
-		rhs := p.parseTerm()
-		expr = NewPipeCall(expr, rhs)
+		binOpType := p.Current().ttype
+		binInfo := binOpMap[binOpType]
+
+		if binInfo.precedence < minPrec {
+			return expr
+		}
+
+		p.consume(binOpType)
+		rhs := p.parseExprWithPrecedence(binInfo.precedence + 1)
+
+		expr = NewBinOpCall(binOpType, binInfo, expr, rhs)
 	}
 	return expr
+}
+
+func (p *Parser) parseExpr() Expr {
+	return p.parseExprWithPrecedence(1)
 }
 
 func (p *Parser) isEndOfBlock() bool {

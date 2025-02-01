@@ -571,6 +571,24 @@ let ika () =
 `,
 			`import "github.com/karino2/folang/pkg/slice"`,
 		},
+		// left assoc
+		{
+			`package main
+			
+			let hoge () =
+				5-7+1+2
+			`,
+			"frt.OpPlus[int](frt.OpPlus[int](frt.OpMinus[int](5, 7), 1), 2)",
+		},
+		// left assoc + ()
+		{
+			`package main
+
+let hoge () =
+  5-7+(1+2+3)
+`,
+			"frt.OpPlus[int](frt.OpMinus[int](5, 7), frt.OpPlus[int](frt.OpPlus[int](1, 2), 3))",
+		},
 	}
 
 	for _, test := range tests {
@@ -738,16 +756,8 @@ let ika () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type FType =
-| FInt
-| FSlice of SliceType
-and SliceType = {elemType: FType}
-
 let hoge () =
-  let rec = FSlice {elemType=FInt}
-  match rec with
-	| FSlice s-> s.elemType
-	| _ -> FInt
+  5-7+1+2
 `
 
 	got := transpile(src)

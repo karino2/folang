@@ -427,6 +427,28 @@ func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
 	}
 }
 
+func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) *FunCall {
+	if btype == PIPE {
+		// PIPE needs different inference pattern.
+		return NewPipeCall(lhs, rhs)
+	}
+
+	// normal arithmetic.
+	// all func like OpPlus has one type argument.
+	// And type is T->T->T
+	// currently I just assume both side type is already resolved.
+	// And return type is also the same. So use it as type parameter result.
+
+	t1name := UniqueTmpTypeParamName()
+	rt := lhs.FType()
+	var typeparams []ResolvedTypeParam
+	typeparams = append(typeparams, ResolvedTypeParam{t1name, rt})
+
+	pvar := &Var{binfo.goFuncName, &FFunc{[]FType{rt, rt, rt}, []string{t1name}}}
+	return &FunCall{pvar, []Expr{lhs, rhs}, typeparams}
+
+}
+
 // frt.Pipe<T1, T2> : T1->(T1->T2)->T2
 //
 // lhs |> rhs
