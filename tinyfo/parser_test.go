@@ -659,19 +659,33 @@ let ika () =
 	}
 }
 
-func TestParserAddhook(t *testing.T) {
-	src := `package_info slice =
-  let Take<T> : int->[]T->[]T
+func TestBlockComment(t *testing.T) {
+	src := `package main
+
+/*
+  This is comment, never found.
+*/
 
 let ika () =
-  let s = GoEval<[]int> "[]int{1, 2, 3}"
-  s |> slice.Take 2
+  123
 `
 
-	/*
-	   let take2 = slice.Take 2
-	   take2 s
-	*/
+	got := transpile(src)
+	if strings.Contains(got, "never found") {
+		t.Errorf("comment is not skipped: '%s'", got)
+	}
+}
+
+func TestParserAddhook(t *testing.T) {
+	src := `package main
+
+/*
+  This is comment, never found.
+*/
+
+let ika () =
+  123
+`
 
 	got := transpile(src)
 	// t.Error(got)

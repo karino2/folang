@@ -136,6 +136,18 @@ func (tkz *Tokenizer) isCharAt(at int, ch byte) bool {
 	return tkz.buf[at] == ch
 }
 
+func (tkz *Tokenizer) isStringAt(at int, s string) bool {
+	if at+len(s) > len(tkz.buf) {
+		return false
+	}
+	for i := range s {
+		if s[i] != tkz.buf[at+i] {
+			return false
+		}
+	}
+	return true
+}
+
 func (tkz *Tokenizer) analyzeCurAsStringLiteral() {
 	cur := tkz.currentToken
 	cur.ttype = STRING
@@ -195,6 +207,39 @@ func (tk *Token) setOneChar(tid TokenType, one byte) {
 }
 
 /*
+	  search s pos from start, then return that position.
+		If reach EOF, return -1.
+*/
+func (tkz *Tokenizer) searchForward(start int, s string) int {
+	pos := start
+
+	for ; pos < len(tkz.buf); pos++ {
+		if tkz.isStringAt(pos, s) {
+			return pos
+		}
+	}
+	return -1
+}
+
+func (tkz *Tokenizer) analyzeCurAsSpace() {
+	cur := tkz.currentToken
+	cur.ttype = SPACE
+	i := 0
+	for tkz.isCharAt(tkz.pos+i, ' ') || tkz.isStringAt(tkz.pos+i, "/*") {
+		for ; tkz.isCharAt(tkz.pos+i, ' '); i++ {
+		}
+		if tkz.isStringAt(tkz.pos+i, "/*") {
+			end := tkz.searchForward(tkz.pos+i+2, "*/")
+			if end == -1 {
+				panic("No comment end found.")
+			}
+			i = end - tkz.pos + 2
+		}
+	}
+	cur.len = i
+}
+
+/*
 Identify token of current pos.
 */
 func (tkz *Tokenizer) analyzeCur() {
@@ -209,11 +254,13 @@ func (tkz *Tokenizer) analyzeCur() {
 
 	switch {
 	case b == ' ':
-		cur.ttype = SPACE
-		i := 1
-		for ; tkz.pos+i < len(tkz.buf) && tkz.buf[tkz.pos+i] == ' '; i++ {
+		tkz.analyzeCurAsSpace()
+	case b == '/':
+		if tkz.isCharAt(tkz.pos+1, '*') {
+			tkz.analyzeCurAsSpace()
+		} else {
+			panic("slash, NYI")
 		}
-		cur.len = i
 	case 'a' <= b && b <= 'z' ||
 		'A' <= b && b <= 'Z' ||
 		b == '_':
