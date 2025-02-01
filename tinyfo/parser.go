@@ -1345,6 +1345,7 @@ func (p *Parser) parseTypeDef() Stmt {
 		p.consume(AND)
 		stmt = p.parseTypeDefBody()
 		stmts = append(stmts, stmt)
+		p.skipEOLOne()
 	}
 
 	md := &MultipleDefs{stmts}
