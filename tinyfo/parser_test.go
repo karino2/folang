@@ -671,6 +671,23 @@ let hoge () =
 `,
 			[]string{"hoge() string", "return rec.Y"},
 		},
+		{
+			`package main
+
+type RecordType = {name: string; ival: int}
+
+type IorRec =
+| Int of int
+| Rec of RecordType
+
+let hoge () =
+  let rec = Rec {name="hoge"; ival=123}
+  match rec with
+	| Int i -> i
+	| Rec r-> r.ival
+`,
+			[]string{"hoge() int", "r.ival"},
+		},
 	}
 
 	for _, test := range tests {

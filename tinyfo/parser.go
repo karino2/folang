@@ -747,7 +747,7 @@ ex:
 
 	| Record r -> hoge r
 */
-func (p *Parser) parseMatchRule() *MatchRule {
+func (p *Parser) parseMatchRule(target Expr) *MatchRule {
 	p.consume(BAR)
 
 	if p.Current().ttype == UNDER_SCORE {
@@ -776,7 +776,17 @@ func (p *Parser) parseMatchRule() *MatchRule {
 	p.consume(RARROW)
 	p.skipEOLOne()
 	p.skipSpace()
-	block := p.parseBlock()
+
+	// add varName to scope
+	p.pushScope()
+	if varName != "" && varName != "_" {
+		// currently, match expect Union type.
+		fu := target.FType().(*FUnion)
+		uc := fu.lookupCase(caseName)
+		p.scope.DefineVar(varName, &Var{varName, uc.Type})
+	}
+
+	block := p.parseBlockAfterPushScope()
 	return &MatchRule{&MatchPattern{caseName, varName}, block}
 }
 
@@ -792,7 +802,7 @@ func (p *Parser) parseMatchExpr() Expr {
 
 	var rules []*MatchRule
 	for p.Current().ttype == BAR {
-		one := p.parseMatchRule()
+		one := p.parseMatchRule(target)
 		rules = append(rules, one)
 	}
 	return &MatchExpr{target, rules}
@@ -871,9 +881,11 @@ func (p *Parser) isEndOfBlock() bool {
 BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
 
 STMT_LIKE = LET_STMT | EXPR
+
+In some case, we wanto add local variables in block scope,
+in that case, it's handy to pushScope before calling this function.
 */
-func (p *Parser) parseBlock() *Block {
-	p.pushScope()
+func (p *Parser) parseBlockAfterPushScope() *Block {
 	var stmts []Stmt
 	var last Expr
 
@@ -897,6 +909,11 @@ func (p *Parser) parseBlock() *Block {
 			}
 		}
 	}
+}
+
+func (p *Parser) parseBlock() *Block {
+	p.pushScope()
+	return p.parseBlockAfterPushScope()
 }
 
 /*
