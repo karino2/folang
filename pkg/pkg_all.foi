@@ -1,7 +1,5 @@
 package_info frt =
   let Println: string->()
-  let OpPlus<T>: T->T->T
-  let OpMinus<T>: T->T->T
 
 package_info buf =
   type Buffer
@@ -12,8 +10,10 @@ package_info buf =
 package_info slice =
   let Length<T>: []T -> int
   let Last<T>: []T -> T
+  let Head<T>: []T -> T
   let Take<T> : int->[]T->[]T
   let Map<T, U> : (T->U)->[]T->[]U
+  let Filter<T> : (T->bool)->[]T->[]T
 
 package_info strings =
   let Concat: string->[]string->string

@@ -443,16 +443,25 @@ func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) *FunCall
 
 	// normal arithmetic.
 	// all func like OpPlus has one type argument.
-	// And type is T->T->T
+	// And type is T->T->(T|bool)
 	// currently I just assume both side type is already resolved.
 	// And return type is also the same. So use it as type parameter result.
 
 	t1name := UniqueTmpTypeParamName()
-	rt := lhs.FType()
+	resolvedType := lhs.FType()
 	var typeparams []ResolvedTypeParam
-	typeparams = append(typeparams, ResolvedTypeParam{t1name, rt})
+	typeparams = append(typeparams, ResolvedTypeParam{t1name, resolvedType})
+	retType := resolvedType
 
-	pvar := &Var{binfo.goFuncName, &FFunc{[]FType{rt, rt, rt}, []string{t1name}}}
+	// It's better those login in binOpInfo, but just handle here for a while.
+	switch btype {
+	case EQ:
+		retType = FBool
+	case BRACKET:
+		retType = FBool
+	}
+
+	pvar := &Var{binfo.goFuncName, &FFunc{[]FType{resolvedType, resolvedType, retType}, []string{t1name}}}
 	return &FunCall{pvar, []Expr{lhs, rhs}, typeparams}
 
 }

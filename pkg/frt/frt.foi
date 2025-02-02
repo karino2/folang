@@ -1,5 +1,3 @@
 package_info frt =
   let Println: string->()
-  let OpPlus<T>: T->T->T
-  let OpMinus<T>: T->T->T
 

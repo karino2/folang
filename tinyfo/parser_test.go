@@ -699,6 +699,13 @@ this is test
 `,
 			"AorB", // whatever.
 		},
+		{
+			`let ika (s1:string) (s2:string) =
+  s1 <> s2
+
+`,
+			"frt.OpNotEqual[string](s1, s2)",
+		},
 	}
 
 	for _, test := range tests {
@@ -788,6 +795,13 @@ let hoge () =
 `,
 			[]string{"frt.PipeUnit[string]", "{ buf.Write" /* no return */},
 		},
+		{
+			`let ika (s1:string) (s2:string) =
+  s1 = s2
+
+`,
+			[]string{"frt.OpEqual[string](s1, s2)", "s2 string) bool"},
+		},
 	}
 
 	for _, test := range tests {
@@ -804,18 +818,9 @@ let hoge () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type AorB =
- | A
- | B
+let ika (s1:string) (s2:string) =
+  s1 = s2
 
-let ika (ab:AorB) =
-  match ab with
-  | A -> "a match"
-  | B -> "b match"
-
-/*
-this is test
-*/
 `
 
 	got := transpile(src)

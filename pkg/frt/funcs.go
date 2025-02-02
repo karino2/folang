@@ -30,3 +30,11 @@ type Numeric interface {
 func OpMinus[T Numeric](e1 T, e2 T) T {
 	return e1 - e2
 }
+
+func OpEqual[T comparable](e1 T, e2 T) bool {
+	return e1 == e2
+}
+
+func OpNotEqual[T comparable](e1 T, e2 T) bool {
+	return e1 != e2
+}

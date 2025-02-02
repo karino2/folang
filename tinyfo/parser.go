@@ -27,6 +27,7 @@ const (
 	RSBRACKET
 	LT
 	GT
+	BRACKET // <>
 	PIPE
 	STRING
 	COLON
@@ -70,9 +71,11 @@ type binOpInfo struct {
 
 // int is preedance
 var binOpMap = map[TokenType]binOpInfo{
-	PIPE:  {1, "frt.Pipe"},
-	PLUS:  {2, "frt.OpPlus"},
-	MINUS: {2, "frt.OpMinus"},
+	PIPE:    {1, "frt.Pipe"},
+	EQ:      {2, "frt.OpEqual"}, // as a comparison operator
+	BRACKET: {2, "frt.OpNotEqual"},
+	PLUS:    {3, "frt.OpPlus"},
+	MINUS:   {3, "frt.OpMinus"},
 }
 
 type Token struct {
@@ -329,6 +332,12 @@ func (tkz *Tokenizer) analyzeCur() {
 		}
 		cur.setOneChar(BAR, b)
 	case b == '<':
+		if tkz.isCharAt(tkz.pos+1, '>') {
+			cur.ttype = BRACKET
+			cur.stringVal = "<>"
+			cur.len = 2
+			return
+		}
 		cur.setOneChar(LT, b)
 	case b == '>':
 		cur.setOneChar(GT, b)
@@ -1073,6 +1082,9 @@ func (p *Parser) parseAtomType() FType {
 	case "int":
 		p.gotoNext()
 		return FInt
+	case "bool":
+		p.gotoNext()
+		return FBool
 	default:
 		fullName := p.parseFullName()
 		resT := p.scope.LookupType(fullName)
