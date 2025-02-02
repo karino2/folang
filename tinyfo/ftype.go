@@ -26,11 +26,6 @@ func IsUnresolved(ft FType) bool {
 	return ok
 }
 
-func IsCustom(ft FType) bool {
-	_, ok := ft.(*FExtType)
-	return ok
-}
-
 type FPrimitive struct {
 	Name string // "int", "string" etc.
 }
