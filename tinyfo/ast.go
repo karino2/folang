@@ -26,6 +26,7 @@ func (*Var) expr()           {}
 func (*RecordGen) expr()     {}
 func (*Block) expr()         {}
 func (*MatchExpr) expr()     {}
+func (*SliceExpr) expr()     {}
 
 /*
 Some expr is OK for just return in some situation (like body of function).
@@ -757,6 +758,34 @@ func (me *MatchExpr) ToGoReturn() string {
 
 func (me *MatchExpr) ToGo() string {
 	return wrapFunCall(me.FType(), me.ToGoReturn())
+}
+
+type SliceExpr struct {
+	exprs []Expr
+}
+
+func (se *SliceExpr) FType() FType {
+	if len(se.exprs) == 0 {
+		panic("empty slice, can't resolve type, illegal.")
+	}
+	return &FSlice{se.exprs[0].FType()}
+}
+
+func (se *SliceExpr) ToGo() string {
+	var buf bytes.Buffer
+
+	buf.WriteString("(")
+	buf.WriteString(se.FType().ToGo())
+	buf.WriteString("{")
+	for i, e := range se.exprs {
+		if i != 0 {
+			buf.WriteString(",")
+		}
+		buf.WriteString(e.ToGo())
+	}
+	buf.WriteString("}")
+	buf.WriteString(")")
+	return buf.String()
 }
 
 /*

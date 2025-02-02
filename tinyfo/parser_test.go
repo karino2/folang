@@ -884,6 +884,15 @@ let ika (s1:string) (s2:string) =
 `,
 			[]string{"return 123", "123}),"}, // no call.
 		},
+		{
+			`package main
+
+let ika () =
+  [1; 2; 3]
+
+`,
+			[]string{"return ([]int{1,2,3})", "ika() []int"},
+		},
 	}
 
 	for _, test := range tests {
@@ -900,15 +909,8 @@ let ika (s1:string) (s2:string) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type AorB =
- | A
- | B
-
-let ika (ab:AorB) =
-  match ab with
-  | A -> "a match"
-  // comment here.
-  | B -> "b match"
+let ika () =
+  [1; 2; 3]
 
 `
 

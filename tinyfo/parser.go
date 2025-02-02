@@ -723,6 +723,7 @@ func (p *Parser) isEndOfTerm() bool {
 		ttype == SEMICOLON ||
 		ttype == RBRACE ||
 		ttype == RPAREN ||
+		ttype == RSBRACKET ||
 		ttype == WITH ||
 		ttype == THEN ||
 		ttype == ELSE ||
@@ -971,7 +972,26 @@ func (p *Parser) parseIfExpr() Expr {
 }
 
 /*
-TERM = GOEVAL | MATCH_EXPR | IF_EXPR | ATOM ATOM*
+SLICE_EXPR = '[' expr (; expr)* ']'
+*/
+func (p *Parser) parseSliceExpr() Expr {
+	var exprs []Expr
+	p.consume(LSBRACKET)
+	expr := p.parseExpr()
+	exprs = append(exprs, expr)
+
+	for p.currentIs(SEMICOLON) {
+		p.consume(SEMICOLON)
+		expr = p.parseExpr()
+		exprs = append(exprs, expr)
+	}
+
+	p.consume(RSBRACKET)
+	return &SliceExpr{exprs}
+}
+
+/*
+TERM = GOEVAL | MATCH_EXPR | IF_EXPR | SLICE_EXPR | ATOM ATOM*
 */
 func (p *Parser) parseTerm() Expr {
 	tk := p.Current()
@@ -982,6 +1002,10 @@ func (p *Parser) parseTerm() Expr {
 
 	if tk.ttype == MATCH {
 		return p.parseMatchExpr()
+	}
+
+	if tk.ttype == LSBRACKET {
+		return p.parseSliceExpr()
 	}
 
 	if tk.ttype == IF {
