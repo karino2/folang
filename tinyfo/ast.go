@@ -135,7 +135,7 @@ func (fc *FunCall) FType() FType {
 	newtypes := ftype.Targets[len(fc.Args):]
 	// For partial apply, Type parameters might be resolved.
 	// But I don't know how to handle this here, so I ignore until I need it.
-	return &FFunc{newtypes, nil}
+	return NewFFunc(newtypes...)
 }
 
 func (fc *FunCall) toGoPartialApply() string {
@@ -792,7 +792,7 @@ func (fd *FuncDef) FuncFType() FType {
 	fts := varsToFTypes(fd.Params)
 	fts = append(fts, retType)
 	// type parameter NYI.
-	return &FFunc{fts, nil}
+	return NewFFunc(fts...)
 }
 
 func (fd *FuncDef) ToGo() string {
@@ -1022,7 +1022,7 @@ func (ud *UnionDef) registerConstructor(scope *Scope) {
 			scope.DefineVar(cs.Name, &Var{ud.caseStructConstructorName(i), utype})
 		} else {
 			tps := []FType{cs.Type, utype}
-			ftype := &FFunc{tps, nil}
+			ftype := NewFFunc(tps...)
 			scope.DefineVar(cs.Name, &Var{ud.caseStructConstructorName(i), ftype})
 		}
 	}

@@ -109,6 +109,10 @@ type FFunc struct {
 	TypeParams []string // might not exists.
 }
 
+func NewFFunc(targets ...FType) *FFunc {
+	return &FFunc{targets, []string{}}
+}
+
 func (p *FFunc) Args() []FType {
 	return p.Targets[0 : len(p.Targets)-1]
 }

@@ -1116,7 +1116,7 @@ func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
 		p.consume(RARROW)
 		types = append(types, p.parseAtomType())
 	}
-	return &FFunc{types, []string{}}
+	return NewFFunc(types...)
 }
 
 /*
@@ -1152,7 +1152,7 @@ func (p *Parser) parseFuncType() *FFunc {
 		p.consume(RARROW)
 		types = append(types, p.parseFuncElemType())
 	}
-	return &FFunc{types, []string{}}
+	return NewFFunc(types...)
 }
 
 /*
@@ -1178,7 +1178,7 @@ func (p *Parser) parseType() FType {
 			p.consume(RARROW)
 			types = append(types, p.parseFuncElemType())
 		}
-		return &FFunc{types, []string{}}
+		return NewFFunc(types...)
 	} else {
 		return one
 	}
@@ -1255,7 +1255,8 @@ func (p *Parser) parseFuncDefLet() Stmt {
 		fts := varsToFTypes(params)
 		fts = append(fts, rt)
 
-		v.Type = &FFunc{fts, nil /* NYI for type parameters */}
+		// NYI for type parameters
+		v.Type = NewFFunc(fts...)
 	}
 
 	p.consumeSL(EQ)

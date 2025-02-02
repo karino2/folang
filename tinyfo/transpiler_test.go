@@ -30,7 +30,7 @@ fmt.Println("Hello World")
 				&FuncDef{"main", nil,
 					&Block{nil,
 						&FunCall{
-							&Var{"hello", &FFunc{[]FType{FString, FUnit}, []string{}}},
+							&Var{"hello", NewFFunc(FString, FUnit)},
 							[]Expr{&StringLiteral{"Hoge"}},
 							nil,
 						},
