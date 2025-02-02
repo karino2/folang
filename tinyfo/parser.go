@@ -241,7 +241,7 @@ func (tkz *Tokenizer) analyzeCurAsSpace() {
 	cur := tkz.currentToken
 	cur.ttype = SPACE
 	i := 0
-	for tkz.isCharAt(tkz.pos+i, ' ') || tkz.isStringAt(tkz.pos+i, "/*") || tkz.isCharAt(tkz.pos+i, '\t') {
+	for tkz.isCharAt(tkz.pos+i, ' ') || tkz.isStringAt(tkz.pos+i, "/*") || tkz.isStringAt(tkz.pos+i, "//") || tkz.isCharAt(tkz.pos+i, '\t') {
 		for ; tkz.isCharAt(tkz.pos+i, ' '); i++ {
 		}
 		for ; tkz.isCharAt(tkz.pos+i, '\t'); i++ {
@@ -252,6 +252,10 @@ func (tkz *Tokenizer) analyzeCurAsSpace() {
 				panic("No comment end found.")
 			}
 			i = end - tkz.pos + 2
+		}
+		if tkz.isStringAt(tkz.pos+i, "//") {
+			for ; !tkz.isCharAt(tkz.pos+i, '\n'); i++ {
+			}
 		}
 	}
 	cur.len = i
@@ -274,7 +278,7 @@ func (tkz *Tokenizer) analyzeCur() {
 	case b == ' ' || b == '\t':
 		tkz.analyzeCurAsSpace()
 	case b == '/':
-		if tkz.isCharAt(tkz.pos+1, '*') {
+		if tkz.isCharAt(tkz.pos+1, '*') || tkz.isCharAt(tkz.pos+1, '/') {
 			tkz.analyzeCurAsSpace()
 		} else {
 			panic("slash, NYI")

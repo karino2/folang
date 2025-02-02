@@ -486,6 +486,19 @@ let ika () =
 	}
 }
 
+func TestLineComment(t *testing.T) {
+	src := `package main
+
+let ika () =
+  123 // this is line comment, never found.
+`
+
+	got := transpile(src)
+	if strings.Contains(got, "never found") {
+		t.Errorf("comment is not skipped: '%s'", got)
+	}
+}
+
 /*
 The results of this category are too complex to assert whole.
 Check only part of it.
