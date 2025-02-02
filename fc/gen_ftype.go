@@ -14,6 +14,7 @@ type FType interface {
 
 func (FType_FInt) FType_Union()        {}
 func (FType_FString) FType_Union()     {}
+func (FType_FBool) FType_Union()       {}
 func (FType_FUnit) FType_Union()       {}
 func (FType_FUnresolved) FType_Union() {}
 func (FType_FFunc) FType_Union()       {}
@@ -31,6 +32,11 @@ type FType_FString struct {
 }
 
 var New_FType_FString FType = FType_FString{}
+
+type FType_FBool struct {
+}
+
+var New_FType_FBool FType = FType_FBool{}
 
 type FType_FUnit struct {
 }
@@ -124,10 +130,24 @@ func FFuncToGo(ft FuncType, toGo func(FType) string) string {
 	return buf.String(bw)
 }
 
+func FRecordToGo(frec RecordType) string {
+	return frec.name
+}
+
+func FUnionToGo(fu UnionType) string {
+	return fu.name
+}
+
+func FSliceToGo(fs SliceType, toGo func(FType) string) string {
+	return frt.OpPlus[string]("[]", toGo(fs.elemType))
+}
+
 func FTypeToGo(ft FType) string {
-	switch _v13 := (ft).(type) {
+	switch _v14 := (ft).(type) {
 	case FType_FInt:
 		return "int"
+	case FType_FBool:
+		return "bool"
 	case FType_FString:
 		return "string"
 	case FType_FUnit:
@@ -135,17 +155,20 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnresolved:
 		return ""
 	case FType_FFunc:
-		ft := _v13.Value
+		ft := _v14.Value
 		return FFuncToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		return ""
+		fr := _v14.Value
+		return FRecordToGo(fr)
 	case FType_FUnion:
-		return ""
+		fu := _v14.Value
+		return FUnionToGo(fu)
 	case FType_FExtType:
-		fe := _v13.Value
+		fe := _v14.Value
 		return fe
 	case FType_FSlice:
-		return ""
+		fs := _v14.Value
+		return FSliceToGo(fs, FTypeToGo)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

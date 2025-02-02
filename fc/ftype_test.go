@@ -37,11 +37,19 @@ func TestFFuncToGo(t *testing.T) {
 	}
 }
 
-func TestToGo(t *testing.T) {
+func TestToGoFunc(t *testing.T) {
 	target := FuncType{[]FType{New_FType_FInt, New_FType_FInt, New_FType_FString, New_FType_FString}}
 	got := FTypeToGo(New_FType_FFunc(target))
 
 	if got != "func (int,int,string) string" {
+		t.Errorf("got %s", got)
+	}
+}
+
+func TestToGoSlice(t *testing.T) {
+	target := SliceType{New_FType_FString}
+	got := FTypeToGo(New_FType_FSlice(target))
+	if got != "[]string" {
 		t.Errorf("got %s", got)
 	}
 }

@@ -8,6 +8,7 @@ import strings
 type FType =
 | FInt
 | FString
+| FBool
 | FUnit
 | FUnresolved
 | FFunc of FuncType
@@ -21,33 +22,10 @@ and NameTypePair = {name: string; ftype: FType}
 and RecordType = {name: string; fiedls: []NameTypePair}
 and UnionType = {name: string; cases: []NameTypePair}
 
-/*
-F# valid def.
-
-type FType =
-| FInt
-| FString
-| FUnit
-| FUnresolved
-| FFunc of FuncType
-| FRecord of RecordType
-| FUnion of UnionType
-| FCustom of string
-| FSlice of SliceType
-and NameTypePair = {name: string; ftype: FType}
-and RecordType = {name: string; fiedls: NameTypePair[]}
-and UnionType = {name: string; cases: NameTypePair[]}
-and FuncType = {targets: FType[]}
-and SliceType = {elemType: FType}
-
-*/
-
-
 let IsUnresolved (ft:FType) =
   match ft with
   | FUnresolved -> true
   | _ -> false
-
 
 let fargs (ft:FuncType) =
   let l = slice.Length ft.targets
@@ -66,15 +44,25 @@ let FFuncToGo (ft:FuncType) (toGo:FType->string) =
   buf.Write bw ret
   buf.String bw
 
+let FRecordToGo (frec: RecordType) =
+  frec.name
+
+let FUnionToGo (fu: UnionType) =
+  fu.name
+
+let FSliceToGo (fs: SliceType) (toGo:FType->string) =
+  "[]" + (toGo fs.elemType)
+
 let FTypeToGo (ft:FType) : string =
   match ft with
   | FInt -> "int"
+  | FBool -> "bool"
   | FString -> "string"    
   | FUnit -> "" // When use as return type in Go, "" is suitable.
   | FUnresolved -> "" // This case is error. Just return "" for a while.
   | FFunc ft -> FFuncToGo ft FTypeToGo
-  | FRecord _ -> ""
-  | FUnion _ -> ""
+  | FRecord fr -> FRecordToGo fr
+  | FUnion fu -> FUnionToGo fu
   | FExtType fe -> fe // for external type with typename fe, use that type name as is.
-  | FSlice _ -> ""
+  | FSlice fs -> FSliceToGo fs FTypeToGo
 
