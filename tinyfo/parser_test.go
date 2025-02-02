@@ -665,21 +665,6 @@ let hoge () =
 `,
 			"frt.OpPlus[int](frt.OpMinus[int](5, 7), frt.OpPlus[int](frt.OpPlus[int](1, 2), 3))",
 		},
-		// pipe to unit func test.
-		{
-			`package main
-
-package_info buf =
-  type Buffer
-  let New: ()->Buffer
-  let Write: Buffer->string->()
-
-let hoge () =
-  let bw = buf.New ()
-	"abc" |> buf.Write bw
-`,
-			"frt.PipeUnit[string]",
-		},
 	}
 
 	for _, test := range tests {
@@ -753,6 +738,21 @@ let hoge () =
 	| _ -> FInt
 `,
 			[]string{"Value SliceType", "elemType FType", "hoge() FType", "s.elemType"},
+		},
+		// pipe to unit func test.
+		{
+			`package main
+
+package_info buf =
+  type Buffer
+  let New: ()->Buffer
+  let Write: Buffer->string->()
+
+let hoge () =
+  let bw = buf.New ()
+	"abc" |> buf.Write bw
+`,
+			[]string{"frt.PipeUnit[string]", "{ buf.Write" /* no return */},
 		},
 	}
 

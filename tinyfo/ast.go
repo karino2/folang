@@ -152,8 +152,13 @@ func (fc *FunCall) toGoPartialApply() string {
 
 	}
 	buf.WriteString(") ")
-	buf.WriteString(fc.FuncType().ReturnType().ToGo())
-	buf.WriteString(" { return ")
+	rttype := fc.FuncType().ReturnType()
+	if rttype == FUnit {
+		buf.WriteString("{ ")
+	} else {
+		buf.WriteString(rttype.ToGo())
+		buf.WriteString(" { return ")
+	}
 	buf.WriteString(fc.Func.Name)
 	buf.WriteString("(")
 
