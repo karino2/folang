@@ -1386,6 +1386,7 @@ CASE_DEF = '|' IDENIFIER OF TYPE
 func (p *Parser) parseUnionDef(uname string) Stmt {
 	var cases []NameTypePair
 
+	lastSavedPos := p.Current()
 	for p.Current().ttype == BAR {
 		p.gotoNext()
 		cname := p.identName()
@@ -1402,7 +1403,12 @@ func (p *Parser) parseUnionDef(uname string) Stmt {
 			cases = append(cases, NameTypePair{cname, FUnit})
 			p.consume(EOL)
 		}
+		lastSavedPos = p.Current()
+		p.skipEOL() // try skip empty line, eg. comment only line.
 	}
+	// revert last skip EOL.
+	p.revertTo(lastSavedPos)
+
 	ret := &UnionDef{uname, cases}
 	p.registerUnionType(ret)
 	return ret

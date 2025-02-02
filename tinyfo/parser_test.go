@@ -745,6 +745,24 @@ let ika (fields: []string) =
 `,
 			"[]string, []string",
 		},
+		// comment inside union case. just pass parse is enough.
+		{
+			`package main
+
+type AorB =
+ | A
+ // comment here.
+ // comment here2.
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
+`,
+			"a match", // whatever.
+		},
 	}
 
 	for _, test := range tests {
@@ -865,12 +883,15 @@ let ika (s1:string) (s2:string) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-package_info slice =
-  let Sort<T>: []T -> []T
+type AorB =
+ | A
+ // comment here.
+ | B
 
-
-let ika (fields: []string) =
-  fields |> slice.Sort
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
 
 `
 
