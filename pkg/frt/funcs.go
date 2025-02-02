@@ -11,6 +11,10 @@ func Pipe[T any, U any](elem T, f func(T) U) U {
 	return f(elem)
 }
 
+func PipeUnit[T any](elem T, f func(T)) {
+	f(elem)
+}
+
 func Println(str string) {
 	fmt.Println(str)
 }

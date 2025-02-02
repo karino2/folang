@@ -464,17 +464,23 @@ func NewPipeCall(lhs Expr, rhs Expr) *FunCall {
 	rt2 := rhs2.FType().(*FFunc).ReturnType()
 
 	var typeparams []ResolvedTypeParam
+	if rt2 == FUnit {
+		typeparams = append(typeparams, ResolvedTypeParam{t1name, rt1})
 
-	typeparams = append(typeparams, ResolvedTypeParam{t1name, rt1})
-	if _, ok := rt2.(*FParametrized); ok {
-		typeparams = append(typeparams, ResolvedTypeParam{t2name, nil})
+		pvar := &Var{"frt.PipeUnit", &FFunc{[]FType{rt1, &FFunc{[]FType{rt1, FUnit}, []string{t1name}}, FUnit}, []string{t1name}}}
+		return &FunCall{pvar, []Expr{lhs, rhs2}, typeparams}
 	} else {
-		typeparams = append(typeparams, ResolvedTypeParam{t2name, rt2})
+		typeparams = append(typeparams, ResolvedTypeParam{t1name, rt1})
+		if _, ok := rt2.(*FParametrized); ok {
+			typeparams = append(typeparams, ResolvedTypeParam{t2name, nil})
+		} else {
+			typeparams = append(typeparams, ResolvedTypeParam{t2name, rt2})
+		}
+
+		pvar := &Var{"frt.Pipe", &FFunc{[]FType{rt1, &FFunc{[]FType{rt1, rt2}, []string{t1name, t2name}}, rt2}, []string{t1name, t2name}}}
+		return &FunCall{pvar, []Expr{lhs, rhs2}, typeparams}
+
 	}
-
-	pvar := &Var{"frt.Pipe", &FFunc{[]FType{rt1, &FFunc{[]FType{rt1, rt2}, []string{t1name, t2name}}, rt2}, []string{t1name, t2name}}}
-	return &FunCall{pvar, []Expr{lhs, rhs2}, typeparams}
-
 }
 
 type RecordGen struct {
