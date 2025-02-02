@@ -134,10 +134,92 @@ type Stmt interface {
 	Stmt_Union()
 }
 
-func (Stmt_Import) Stmt_Union() {}
+func (Stmt_Import) Stmt_Union()       {}
+func (Stmt_Package) Stmt_Union()      {}
+func (Stmt_LetFuncDef) Stmt_Union()   {}
+func (Stmt_LetVarDef) Stmt_Union()    {}
+func (Stmt_ExprStmt) Stmt_Union()     {}
+func (Stmt_DefStmt) Stmt_Union()      {}
+func (Stmt_MultipleDefs) Stmt_Union() {}
 
 type Stmt_Import struct {
 	Value string
 }
 
 func New_Stmt_Import(v string) Stmt { return Stmt_Import{v} }
+
+type Stmt_Package struct {
+	Value string
+}
+
+func New_Stmt_Package(v string) Stmt { return Stmt_Package{v} }
+
+type Stmt_LetFuncDef struct {
+	Value LetFuncDef
+}
+
+func New_Stmt_LetFuncDef(v LetFuncDef) Stmt { return Stmt_LetFuncDef{v} }
+
+type Stmt_LetVarDef struct {
+	Value LetVarDef
+}
+
+func New_Stmt_LetVarDef(v LetVarDef) Stmt { return Stmt_LetVarDef{v} }
+
+type Stmt_ExprStmt struct {
+	Value Expr
+}
+
+func New_Stmt_ExprStmt(v Expr) Stmt { return Stmt_ExprStmt{v} }
+
+type Stmt_DefStmt struct {
+	Value DefStmt
+}
+
+func New_Stmt_DefStmt(v DefStmt) Stmt { return Stmt_DefStmt{v} }
+
+type Stmt_MultipleDefs struct {
+	Value MultipeDefs
+}
+
+func New_Stmt_MultipleDefs(v MultipeDefs) Stmt { return Stmt_MultipleDefs{v} }
+
+type LetFuncDef struct {
+	name   string
+	params []Var
+	body   Block
+}
+type LetVarDef struct {
+	name string
+	rhs  Expr
+}
+type RecordDef struct {
+	name   string
+	fields []NameTypePair
+}
+type UnionDef struct {
+	name  string
+	cases []NameTypePair
+}
+type DefStmt interface {
+	DefStmt_Union()
+}
+
+func (DefStmt_RecordDef) DefStmt_Union() {}
+func (DefStmt_UnionDef) DefStmt_Union()  {}
+
+type DefStmt_RecordDef struct {
+	Value RecordDef
+}
+
+func New_DefStmt_RecordDef(v RecordDef) DefStmt { return DefStmt_RecordDef{v} }
+
+type DefStmt_UnionDef struct {
+	Value UnionDef
+}
+
+func New_DefStmt_UnionDef(v UnionDef) DefStmt { return DefStmt_UnionDef{v} }
+
+type MultipeDefs struct {
+	defs []DefStmt
+}

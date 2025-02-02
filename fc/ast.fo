@@ -35,3 +35,25 @@ and MatchRule = {pattern: MatchPattern; body: Block}
 and MatchExpr = {target: Expr; rules: []MatchRule}
 and Stmt =
 | Import of string
+| Package of string
+| LetFuncDef of LetFuncDef
+| LetVarDef of LetVarDef
+| ExprStmt of Expr
+| DefStmt of DefStmt
+| MultipleDefs of MultipeDefs
+and LetFuncDef = {name: string; params: []Var; body:Block}
+and LetVarDef = {name: string; rhs: Expr}
+and RecordDef = {name: string; fields: []NameTypePair}
+and UnionDef = {name: string; cases: []NameTypePair}
+and DefStmt =
+| RecordDef of RecordDef
+| UnionDef of UnionDef
+and MultipeDefs = {defs: []DefStmt}
+
+/*
+map, NYI
+and PackageInfo = {name: string; funcInfo: map<string, FuncType>; typeInfo: map<string, FExtType>}
+
+| PackageInfo of PackageInfo
+*/
+
