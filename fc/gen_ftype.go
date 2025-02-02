@@ -167,6 +167,20 @@ func frGetField(frec RecordType, fieldName string) NameTypePair {
 	return slice.Head[NameTypePair](res)
 }
 
+func npName(pair NameTypePair) string {
+	return pair.name
+}
+
+func frMatch(frec RecordType, fieldNames []string) bool {
+	return frt.IfElse(frt.OpNotEqual[int](slice.Length[string](fieldNames), slice.Length[NameTypePair](frec.fields)), (func() bool {
+		return false
+	}), (func() bool {
+		sortedInput := frt.Pipe[[]string, []string](fieldNames, slice.Sort)
+		sortedFName := frt.Pipe[[]string, []string](slice.Map[NameTypePair, string](npName, frec.fields), slice.Sort)
+		return frt.OpEqual[[]string](sortedInput, sortedFName)
+	}))
+}
+
 func FUnionToGo(fu UnionType) string {
 	return fu.name
 }
@@ -176,7 +190,7 @@ func FSliceToGo(fs SliceType, toGo func(FType) string) string {
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v17 := (ft).(type) {
+	switch _v23 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -188,25 +202,25 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnresolved:
 		return ""
 	case FType_FFunc:
-		ft := _v17.Value
+		ft := _v23.Value
 		return FFuncToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v17.Value
+		fr := _v23.Value
 		return FRecordToGo(fr)
 	case FType_FUnion:
-		fu := _v17.Value
+		fu := _v23.Value
 		return FUnionToGo(fu)
 	case FType_FExtType:
-		fe := _v17.Value
+		fe := _v23.Value
 		return fe
 	case FType_FSlice:
-		fs := _v17.Value
+		fs := _v23.Value
 		return FSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
-		fp := _v17.Value
+		fp := _v23.Value
 		return fp
 	case FType_FParametrized:
-		fp := _v17.Value
+		fp := _v23.Value
 		return fp
 	default:
 		panic("Union pattern fail. Never reached here.")

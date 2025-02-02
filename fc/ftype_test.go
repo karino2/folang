@@ -66,3 +66,33 @@ func TestRecordGetField(t *testing.T) {
 		t.Errorf("wrong ika field: %v", hpair)
 	}
 }
+
+func TestRecordMatch(t *testing.T) {
+	rec := RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}
+	var tests = []struct {
+		input []string
+		want  bool
+	}{
+		{
+			[]string{"hoge"},
+			false,
+		},
+		{
+			[]string{"hoge", "ika"},
+			true,
+		},
+		// different order.
+		{
+			[]string{"ika", "hoge"},
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		got := frMatch(rec, test.input)
+		if got != test.want {
+			t.Errorf("got %t, want %t with inputs %v", got, test.want, test.input)
+		}
+	}
+
+}

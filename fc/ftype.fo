@@ -63,6 +63,20 @@ let frGetField (frec: RecordType) (fieldName: string) =
   let res = frec.fields |> slice.Filter (namePairMatch fieldName)
   slice.Head res
 
+let npName (pair:NameTypePair) =
+  pair.name
+
+let frMatch (frec: RecordType) (fieldNames: []string)=
+  if (slice.Length fieldNames) <> (slice.Length frec.fields) then
+    false
+  else
+    // let sortedInput = slice.Sort fieldNames
+    let sortedInput = fieldNames |> slice.Sort
+    let sortedFName = slice.Map npName frec.fields
+                      |> slice.Sort
+    sortedInput = sortedFName
+
+
 let FUnionToGo (fu: UnionType) =
   fu.name
 
