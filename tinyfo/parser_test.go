@@ -717,6 +717,19 @@ let ika (s1:string) (s2:string) =
 `,
 			"frt.OpEqual",
 		},
+		// comment handling of block.
+		{
+			`package main
+
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then
+    123
+  else
+    // this line is comment
+    456
+`,
+			"frt.OpEqual",
+		},
 	}
 
 	for _, test := range tests {
@@ -838,7 +851,11 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 let ika (s1:string) (s2:string) =
-  if s1 = s2 then 123 else 456
+  if s1 = s2 then
+	  123
+	else
+	  // test comment.
+	  456
 
 `
 

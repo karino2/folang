@@ -1069,6 +1069,7 @@ func (p *Parser) parseBlockAfterPushScope() *Block {
 	var last Expr
 
 	p.skipSpace()
+	p.skipEOL() // skip comment only line by this skipEOL
 
 	// limited implementation of offside rule.
 	p.pushOffside()
