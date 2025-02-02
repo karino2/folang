@@ -411,10 +411,10 @@ func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
 		}
 		fargType := patType.Targets[0]
 
-		if fpt, ok := fargType.(*FParametrized); ok {
+		if matchPname, matchType, ok := matchTypeParam(fargType, argType); ok {
 			// can resolve.
 			tinfo := make(map[string]FType)
-			tinfo[fpt.name] = argType
+			tinfo[matchPname] = matchType
 
 			var newTypes []FType
 			for _, old := range patType.Targets {

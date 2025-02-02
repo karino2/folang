@@ -730,6 +730,21 @@ let ika (s1:string) (s2:string) =
 `,
 			"frt.OpEqual",
 		},
+		// type resolve for non-funcall function
+		{
+			`
+package main
+
+package_info slice =
+  let Sort<T>: []T -> []T
+
+
+let ika (fields: []string) =
+  fields |> slice.Sort
+
+`,
+			"[]string, []string",
+		},
 	}
 
 	for _, test := range tests {
@@ -850,12 +865,12 @@ let ika (s1:string) (s2:string) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika (s1:string) (s2:string) =
-  if s1 = s2 then
-	  123
-	else
-	  // test comment.
-	  456
+package_info slice =
+  let Sort<T>: []T -> []T
+
+
+let ika (fields: []string) =
+  fields |> slice.Sort
 
 `
 
