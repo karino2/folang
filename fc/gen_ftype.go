@@ -123,3 +123,30 @@ func FFuncToGo(ft FuncType, toGo func(FType) string) string {
 	buf.Write(bw, ret)
 	return buf.String(bw)
 }
+
+func FTypeToGo(ft FType) string {
+	switch _v13 := (ft).(type) {
+	case FType_FInt:
+		return "int"
+	case FType_FString:
+		return "string"
+	case FType_FUnit:
+		return ""
+	case FType_FUnresolved:
+		return ""
+	case FType_FFunc:
+		ft := _v13.Value
+		return FFuncToGo(ft, FTypeToGo)
+	case FType_FRecord:
+		return ""
+	case FType_FUnion:
+		return ""
+	case FType_FExtType:
+		fe := _v13.Value
+		return fe
+	case FType_FSlice:
+		return ""
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}

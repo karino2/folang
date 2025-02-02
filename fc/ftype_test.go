@@ -36,3 +36,12 @@ func TestFFuncToGo(t *testing.T) {
 		t.Errorf("got %s", got)
 	}
 }
+
+func TestToGo(t *testing.T) {
+	target := FuncType{[]FType{New_FType_FInt, New_FType_FInt, New_FType_FString, New_FType_FString}}
+	got := FTypeToGo(New_FType_FFunc(target))
+
+	if got != "func (int,int,string) string" {
+		t.Errorf("got %s", got)
+	}
+}
