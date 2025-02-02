@@ -924,7 +924,7 @@ This is occur like 'if c then XX else YY' onliner.
 func (p *Parser) parseInlineBlock() *Block {
 	p.pushScope()
 	expr := p.parseExpr()
-	return &Block{[]Stmt{}, expr, p.popScope()}
+	return &Block{[]Stmt{}, expr, p.popScope(), true}
 }
 
 /*
@@ -1089,7 +1089,7 @@ func (p *Parser) parseBlockAfterPushScope() *Block {
 			if p.isEndOfBlock() {
 				p.popOffside()
 				p.revertTo(savePos)
-				return &Block{stmts, last, p.popScope()}
+				return &Block{stmts, last, p.popScope(), false}
 			} else {
 				stmts = append(stmts, &ExprStmt{last})
 			}

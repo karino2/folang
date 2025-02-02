@@ -435,17 +435,20 @@ func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
 	}
 }
 
-func NewIfOnlyCall(cond Expr, tbody Expr) *FunCall {
-	if tbody.FType() != FUnit {
+func NewIfOnlyCall(cond Expr, tbody *Block) *FunCall {
+	tbody.asFunc = true
+	if tbody.ReturnType() != FUnit {
 		panic("if only but not unit. compile error")
 	}
 	pvar := &Var{"frt.IfOnly", NewFFunc(FBool, NewFFunc(FUnit, FUnit), FUnit)}
 	return &FunCall{pvar, []Expr{cond, tbody}, []ResolvedTypeParam{}}
 }
 
-func NewIfElseCall(cond Expr, tbody Expr, fbody Expr) *FunCall {
+func NewIfElseCall(cond Expr, tbody *Block, fbody *Block) *FunCall {
 	var funcName string
-	retType := tbody.FType()
+	tbody.asFunc = true
+	fbody.asFunc = true
+	retType := tbody.ReturnType()
 	if retType == FUnit {
 		funcName = "frt.IfElseUnit"
 	} else {
@@ -564,26 +567,48 @@ type Block struct {
 	Stmts     []Stmt
 	FinalExpr Expr
 	scope     *Scope // block has own scope.
+	asFunc    bool   // ToGo contains last () or not.
 }
 
 func NewBlock(retExpr Expr, stmts ...Stmt) *Block {
-	return &Block{stmts, retExpr, nil}
+	return &Block{stmts, retExpr, nil, false}
 }
 
-func (b *Block) FType() FType { return b.FinalExpr.FType() }
+func (b *Block) ReturnType() FType {
+	return b.FinalExpr.FType()
+}
 
-func wrapFunCall(returnType FType, goReturnBody string) string {
+func (b *Block) FType() FType {
+	if b.asFunc {
+		return NewFFunc(FUnit, b.ReturnType())
+	} else {
+		return b.ReturnType()
+	}
+}
+
+func wrapFunc(returnType FType, goReturnBody string) string {
 	var buf bytes.Buffer
 	buf.WriteString("(func () ")
 	buf.WriteString(returnType.ToGo())
 	buf.WriteString(" {\n")
 	buf.WriteString(goReturnBody)
-	buf.WriteString("})()")
+	buf.WriteString("})")
+	return buf.String()
+}
+
+func wrapFunCall(returnType FType, goReturnBody string) string {
+	var buf bytes.Buffer
+	buf.WriteString(wrapFunc(returnType, goReturnBody))
+	buf.WriteString("()")
 	return buf.String()
 }
 
 func (b *Block) ToGo() string {
-	return wrapFunCall(b.FType(), b.ToGoReturn())
+	if b.asFunc {
+		return wrapFunc(b.ReturnType(), b.ToGoReturn())
+	} else {
+		return wrapFunCall(b.FType(), b.ToGoReturn())
+	}
 }
 
 func (b *Block) ToGoReturn() string {

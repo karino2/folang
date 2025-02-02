@@ -717,14 +717,6 @@ let ika (s1:string) (s2:string) =
 `,
 			"frt.OpEqual",
 		},
-		{
-			`package main
-
-let ika (s1:string) (s2:string) =
-  if s1 = s2 then 123 else 456
-`,
-			"return 123",
-		},
 	}
 
 	for _, test := range tests {
@@ -820,6 +812,14 @@ let hoge () =
 
 `,
 			[]string{"frt.OpEqual[string](s1, s2)", "s2 string) bool"},
+		},
+		{
+			`package main
+
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then 123 else 456
+`,
+			[]string{"return 123", "123}),"}, // no call.
 		},
 	}
 
