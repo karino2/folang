@@ -67,3 +67,14 @@ func TestOpEaualSlice(t *testing.T) {
 		t.Error("wrongly equal the same slice.")
 	}
 }
+
+func TestSprintf1(t *testing.T) {
+	got := Sprintf1("a=%d", 123)
+	if got != "a=123" {
+		t.Errorf("got %s", got)
+	}
+	got = Sprintf1("b=%s", "hoge")
+	if got != "b=hoge" {
+		t.Errorf("got %s", got)
+	}
+}

@@ -20,6 +20,11 @@ func Println(str string) {
 	fmt.Println(str)
 }
 
+// 1 arg sprintf. This is often used and enough for self host.
+func Sprintf1[T any](fmtstr string, arg T) string {
+	return fmt.Sprintf(fmtstr, arg)
+}
+
 func OpPlus[T cmp.Ordered](e1 T, e2 T) T {
 	return e1 + e2
 }

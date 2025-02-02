@@ -1,3 +1,4 @@
 package_info frt =
   let Println: string->()
+  let Sprintf1<T>: string->T->string
 
