@@ -160,11 +160,15 @@ func namePairMatch(targetName string, pair NameTypePair) bool {
 	return frt.OpEqual[string](targetName, pair.name)
 }
 
-func frGetField(frec RecordType, fieldName string) NameTypePair {
-	res := frt.Pipe[[]NameTypePair, []NameTypePair](frec.fields, (func(_r0 []NameTypePair) []NameTypePair {
-		return slice.Filter((func(_r0 NameTypePair) bool { return namePairMatch(fieldName, _r0) }), _r0)
+func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
+	res := frt.Pipe[[]NameTypePair, []NameTypePair](pairs, (func(_r0 []NameTypePair) []NameTypePair {
+		return slice.Filter((func(_r0 NameTypePair) bool { return namePairMatch(targetName, _r0) }), _r0)
 	}))
 	return slice.Head[NameTypePair](res)
+}
+
+func frGetField(frec RecordType, fieldName string) NameTypePair {
+	return lookupPairByName(fieldName, frec.fields)
 }
 
 func npName(pair NameTypePair) string {
@@ -185,12 +189,20 @@ func FUnionToGo(fu UnionType) string {
 	return fu.name
 }
 
+func lookupCase(fu UnionType, caseName string) NameTypePair {
+	return lookupPairByName(caseName, fu.cases)
+}
+
+func unionCaseStructName(unionName string, caseName string) string {
+	return frt.OpPlus[string](frt.OpPlus[string](unionName, "_"), caseName)
+}
+
 func FSliceToGo(fs SliceType, toGo func(FType) string) string {
 	return frt.OpPlus[string]("[]", toGo(fs.elemType))
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v23 := (ft).(type) {
+	switch _v25 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -202,25 +214,25 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnresolved:
 		return ""
 	case FType_FFunc:
-		ft := _v23.Value
+		ft := _v25.Value
 		return FFuncToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v23.Value
+		fr := _v25.Value
 		return FRecordToGo(fr)
 	case FType_FUnion:
-		fu := _v23.Value
+		fu := _v25.Value
 		return FUnionToGo(fu)
 	case FType_FExtType:
-		fe := _v23.Value
+		fe := _v25.Value
 		return fe
 	case FType_FSlice:
-		fs := _v23.Value
+		fs := _v25.Value
 		return FSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
-		fp := _v23.Value
+		fp := _v25.Value
 		return fp
 	case FType_FParametrized:
-		fp := _v23.Value
+		fp := _v25.Value
 		return fp
 	default:
 		panic("Union pattern fail. Never reached here.")

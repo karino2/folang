@@ -96,3 +96,10 @@ func TestRecordMatch(t *testing.T) {
 	}
 
 }
+
+func TestUnionCaseStructName(t *testing.T) {
+	got := unionCaseStructName("IntOrString", "I")
+	if got != "IntOrString_I" {
+		t.Errorf("got %s", got)
+	}
+}

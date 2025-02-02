@@ -58,10 +58,13 @@ let frStructName (frec: RecordType) =
 let namePairMatch (targetName :string) (pair: NameTypePair) =
   targetName = pair.name
 
-let frGetField (frec: RecordType) (fieldName: string) =
-  // let res = frec.fields |> slice.Filter (fun x-> x.Name == fieldName)
-  let res = frec.fields |> slice.Filter (namePairMatch fieldName)
+let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
+  // let res = pairs |> slice.Filter (fun x-> x.Name == fieldName)
+  let res = pairs |> slice.Filter (namePairMatch targetName)
   slice.Head res
+
+let frGetField (frec: RecordType) (fieldName: string) =
+  lookupPairByName fieldName frec.fields
 
 let npName (pair:NameTypePair) =
   pair.name
@@ -79,6 +82,13 @@ let frMatch (frec: RecordType) (fieldNames: []string)=
 
 let FUnionToGo (fu: UnionType) =
   fu.name
+
+let lookupCase (fu: UnionType) (caseName: string) =
+  lookupPairByName caseName fu.cases
+
+// Return IntOrString_I
+let unionCaseStructName (unionName: string) (caseName: string) =
+  unionName + "_" + caseName
 
 let FSliceToGo (fs: SliceType) (toGo:FType->string) =
   "[]" + (toGo fs.elemType)
