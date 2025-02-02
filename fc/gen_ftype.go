@@ -12,16 +12,18 @@ type FType interface {
 	FType_Union()
 }
 
-func (FType_FInt) FType_Union()        {}
-func (FType_FString) FType_Union()     {}
-func (FType_FBool) FType_Union()       {}
-func (FType_FUnit) FType_Union()       {}
-func (FType_FUnresolved) FType_Union() {}
-func (FType_FFunc) FType_Union()       {}
-func (FType_FRecord) FType_Union()     {}
-func (FType_FUnion) FType_Union()      {}
-func (FType_FExtType) FType_Union()    {}
-func (FType_FSlice) FType_Union()      {}
+func (FType_FInt) FType_Union()          {}
+func (FType_FString) FType_Union()       {}
+func (FType_FBool) FType_Union()         {}
+func (FType_FUnit) FType_Union()         {}
+func (FType_FUnresolved) FType_Union()   {}
+func (FType_FFunc) FType_Union()         {}
+func (FType_FRecord) FType_Union()       {}
+func (FType_FUnion) FType_Union()        {}
+func (FType_FExtType) FType_Union()      {}
+func (FType_FSlice) FType_Union()        {}
+func (FType_FPreUsed) FType_Union()      {}
+func (FType_FParametrized) FType_Union() {}
 
 type FType_FInt struct {
 }
@@ -77,6 +79,18 @@ type FType_FSlice struct {
 }
 
 func New_FType_FSlice(v SliceType) FType { return FType_FSlice{v} }
+
+type FType_FPreUsed struct {
+	Value string
+}
+
+func New_FType_FPreUsed(v string) FType { return FType_FPreUsed{v} }
+
+type FType_FParametrized struct {
+	Value string
+}
+
+func New_FType_FParametrized(v string) FType { return FType_FParametrized{v} }
 
 type SliceType struct {
 	elemType FType
@@ -169,6 +183,12 @@ func FTypeToGo(ft FType) string {
 	case FType_FSlice:
 		fs := _v14.Value
 		return FSliceToGo(fs, FTypeToGo)
+	case FType_FPreUsed:
+		fp := _v14.Value
+		return fp
+	case FType_FParametrized:
+		fp := _v14.Value
+		return fp
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

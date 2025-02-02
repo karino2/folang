@@ -16,6 +16,8 @@ type FType =
 | FUnion of UnionType
 | FExtType of string
 | FSlice of SliceType
+| FPreUsed of string
+| FParametrized of string
 and SliceType = {elemType: FType}
 and FuncType = {targets: []FType}
 and NameTypePair = {name: string; ftype: FType}
@@ -65,4 +67,5 @@ let FTypeToGo (ft:FType) : string =
   | FUnion fu -> FUnionToGo fu
   | FExtType fe -> fe // for external type with typename fe, use that type name as is.
   | FSlice fs -> FSliceToGo fs FTypeToGo
-
+  | FPreUsed fp -> fp
+  | FParametrized fp -> fp
