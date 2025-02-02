@@ -12,7 +12,7 @@ func TestCompile(t *testing.T) {
 		{
 			[]Stmt{
 				&Import{"fmt"},
-				&FuncDef{"main", nil, &Block{nil, NewGoEval("fmt.Println(\"Hello World\")"), nil}},
+				&FuncDef{"main", nil, NewBlock(NewGoEval("fmt.Println(\"Hello World\")"))},
 			},
 			`import "fmt"
 
@@ -26,16 +26,15 @@ fmt.Println("Hello World")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, &Block{nil, NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)"), nil}},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, NewBlock(NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)"))},
 				&FuncDef{"main", nil,
-					&Block{nil,
+					NewBlock(
 						&FunCall{
 							&Var{"hello", NewFFunc(FString, FUnit)},
 							[]Expr{&StringLiteral{"Hoge"}},
 							nil,
 						},
-						nil,
-					},
+					),
 				},
 			},
 			`package main
@@ -123,22 +122,18 @@ func TestPatternMatchUnion(t *testing.T) {
 					"I",
 					"ival",
 				},
-				&Block{
-					nil,
+				NewBlock(
 					&StringLiteral{"I match."},
-					nil,
-				},
+				),
 			},
 			{
 				&MatchPattern{
 					"S",
 					"sval",
 				},
-				&Block{
-					nil,
+				NewBlock(
 					&StringLiteral{"s match."},
-					nil,
-				},
+				),
 			},
 		},
 	}
@@ -188,22 +183,18 @@ func TestPatternMatchUnionUnusedVar(t *testing.T) {
 					"I",
 					"_",
 				},
-				&Block{
-					nil,
+				NewBlock(
 					&StringLiteral{"I match."},
-					nil,
-				},
+				),
 			},
 			{
 				&MatchPattern{
 					"S",
 					"_",
 				},
-				&Block{
-					nil,
+				NewBlock(
 					&StringLiteral{"s match."},
-					nil,
-				},
+				),
 			},
 		},
 	}

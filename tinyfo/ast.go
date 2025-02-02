@@ -566,6 +566,10 @@ type Block struct {
 	scope     *Scope // block has own scope.
 }
 
+func NewBlock(retExpr Expr, stmts ...Stmt) *Block {
+	return &Block{stmts, retExpr, nil}
+}
+
 func (b *Block) FType() FType { return b.FinalExpr.FType() }
 
 func wrapFunCall(returnType FType, goReturnBody string) string {
