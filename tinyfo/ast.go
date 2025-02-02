@@ -237,7 +237,10 @@ func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
 		}
 	case *FFunc:
 		// only check one level of T->U
-		eft := exprType.(*FFunc)
+		eft, ok := exprType.(*FFunc)
+		if !ok {
+			panic("can't infer from argtype to expr, NYI.")
+		}
 		for i, tt := range gt.Targets {
 			if ptt, ok := tt.(*FParametrized); ok {
 				paramInfo[ptt.name] = eft.Targets[i]
@@ -763,16 +766,21 @@ func (fd *FuncDef) ToGoParams(buf *bytes.Buffer) {
 	}
 }
 
+func varsToFTypes(vars []*Var) []FType {
+	var fts []FType
+	for _, arg := range vars {
+		fts = append(fts, arg.Type)
+	}
+	return fts
+}
+
 func (fd *FuncDef) FuncFType() FType {
 	retType := fd.Body.FType()
 	if IsUnresolved(retType) {
 		return retType
 	}
 
-	var fts []FType
-	for _, arg := range fd.Params {
-		fts = append(fts, arg.Type)
-	}
+	fts := varsToFTypes(fd.Params)
 	fts = append(fts, retType)
 	// type parameter NYI.
 	return &FFunc{fts, nil}

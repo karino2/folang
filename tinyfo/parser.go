@@ -1206,7 +1206,7 @@ func (p *Parser) parseParams() []*Var {
 }
 
 /*
-FUNC_DEF_LET = 'let' IDENTIFIER PARAMS '=' EOL BLOCK
+FUNC_DEF_LET = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL BLOCK
 */
 func (p *Parser) parseFuncDefLet() Stmt {
 	p.consume(LET)
@@ -1222,6 +1222,19 @@ func (p *Parser) parseFuncDefLet() Stmt {
 
 	p.gotoNext()
 	params := p.parseParams()
+
+	if p.currentIs(COLON) {
+		// return type annotation.
+		// In this case, we might register current func type before starting parse func body.
+		// Good for recursive call.
+		p.consume(COLON)
+
+		rt := p.parseType()
+		fts := varsToFTypes(params)
+		fts = append(fts, rt)
+
+		v.Type = &FFunc{fts, nil /* NYI for type parameters */}
+	}
 
 	p.consumeSL(EQ)
 
