@@ -573,6 +573,10 @@ func (p *Parser) peekNextNext() *Token {
 	return p.Current()
 }
 
+func (p *Parser) revertTo(tk *Token) {
+	p.tokenizer.RevertTo(tk)
+}
+
 func (p *Parser) gotoNext() {
 	p.tokenizer.GotoNext()
 	p.skipSpace()
@@ -884,11 +888,10 @@ func (p *Parser) parseMatchExpr() Expr {
 	p.consume(MATCH)
 	target := p.parseExpr()
 	p.consume(WITH)
-	p.skipEOLOne()
-	p.skipSpace()
 
 	var rules []*MatchRule
-	for p.Current().ttype == BAR {
+	for p.currentIs(EOL) && p.peekNext().ttype == BAR {
+		p.skipEOLOne()
 		one := p.parseMatchRule(target)
 		rules = append(rules, one)
 	}
@@ -999,9 +1002,16 @@ func (p *Parser) parseBlockAfterPushScope() *Block {
 			p.skipEOLOne()
 		} else {
 			last = p.parseExpr()
+
+			// Check next line is end of offside line.
+			// If so, go back to current pos and end block.
+			// If not, go to next stmt parse.
+			savePos := p.Current()
+
 			p.skipEOLOne()
 			if p.isEndOfBlock() {
 				p.popOffside()
+				p.revertTo(savePos)
 				return &Block{stmts, last, p.popScope()}
 			} else {
 				stmts = append(stmts, &ExprStmt{last})

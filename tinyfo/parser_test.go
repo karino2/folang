@@ -406,7 +406,7 @@ func TestParserMatchExpression(t *testing.T) {
 		t.Errorf("wrong target: %v", v)
 	}
 	if len(me.rules) != 2 {
-		t.Errorf("want 2 rules, but %v", me.rules)
+		t.Errorf("want 2 rules, but %d", len(me.rules))
 	}
 }
 
@@ -678,6 +678,27 @@ let hoge () =
 `,
 			"frt.OpPlus[int](frt.OpMinus[int](5, 7), frt.OpPlus[int](frt.OpPlus[int](1, 2), 3))",
 		},
+		{
+			// once match parse wrongly move one token after end.
+			// So this parse is failed.
+			// check whether this is not failed. result string is not important.
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
+/*
+this is test
+*/
+`,
+			"AorB", // whatever.
+		},
 	}
 
 	for _, test := range tests {
@@ -783,14 +804,18 @@ let hoge () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-package_info buf =
-  type Buffer
-  let New: ()->Buffer
-  let Write: Buffer->string->()
+type AorB =
+ | A
+ | B
 
-let hoge () =
-  let bw = buf.New ()
-	"abc" |> buf.Write bw
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
+/*
+this is test
+*/
 `
 
 	got := transpile(src)
