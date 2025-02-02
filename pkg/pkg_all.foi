@@ -11,6 +11,11 @@ package_info buf =
 
 package_info slice =
   let Length<T>: []T -> int
+  let Last<T>: []T -> T
   let Take<T> : int->[]T->[]T
   let Map<T, U> : (T->U)->[]T->[]U
+
+package_info strings =
+  let Concat: string->[]string->string
+  let Length: string->int
 

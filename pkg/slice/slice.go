@@ -4,6 +4,10 @@ func Length[T any](s []T) int {
 	return len(s)
 }
 
+func Last[T any](s []T) T {
+	return s[len(s)-1]
+}
+
 func Take[T any](num int, s []T) []T {
 	var res []T
 
