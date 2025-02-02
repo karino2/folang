@@ -1,4 +1,37 @@
 package main
 
 type GoEval = {goStmt: string; typeArg: FType}
+type Var = {name: string; ftype: FType}
 
+// stands for record field access of form: targetName.fieldName
+type FieldAccess = {targetName: string; targetType: RecordType; fieldName: string}
+
+type ResolvedTypeParam = {name: string; resolvedType: FType}
+
+/*
+Union case matching.
+Only support variable match for a while:
+| I i -> ...
+| Record r -> ...
+*/
+type MatchPattern = {caseId: string; varName: string}
+
+type Expr =
+| GoEval of GoEval
+| StringLiteral of string
+| IntImm of int
+| Unit
+| BoolLiteral of bool
+| FunCall of FunCall
+| FieldAccess of FieldAccess
+| Var of Var
+| RecordGen of RecordGen
+| Block of Block
+| MatchExpr of MatchExpr
+and FunCall = {targetFunc: Var; args: []Expr; typeParams: []ResolvedTypeParam}
+and RecordGen = {fieldNames: []string; fieldValues: []Expr; recordType: FType}
+and Block = {stms: []Stmt; finalExpr: Expr; asFunc: bool}
+and MatchRule = {pattern: MatchPattern; body: Block}
+and MatchExpr = {target: Expr; rules: []MatchRule}
+and Stmt =
+| Import of string
