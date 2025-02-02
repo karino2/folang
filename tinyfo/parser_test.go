@@ -763,6 +763,23 @@ let ika (ab:AorB) =
 `,
 			"a match", // whatever.
 		},
+		// comment inside match case. just parse is enough for test.
+		{
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  // comment here.
+  | B -> "b match"
+
+`,
+			"b match",
+		},
 	}
 
 	for _, test := range tests {
@@ -885,12 +902,12 @@ func TestParserAddhook(t *testing.T) {
 
 type AorB =
  | A
- // comment here.
  | B
 
 let ika (ab:AorB) =
   match ab with
   | A -> "a match"
+  // comment here.
   | B -> "b match"
 
 `

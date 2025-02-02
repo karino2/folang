@@ -885,7 +885,6 @@ func (p *Parser) parseMatchRule(target Expr) *MatchRule {
 	}
 	p.consume(RARROW)
 	p.skipEOLOne()
-	p.skipSpace()
 
 	// add varName to scope
 	p.pushScope()
@@ -909,8 +908,8 @@ func (p *Parser) parseMatchExpr() Expr {
 	p.consume(WITH)
 
 	var rules []*MatchRule
-	for p.currentIs(EOL) && p.peekNext().ttype == BAR {
-		p.skipEOLOne()
+	for p.currentIs(EOL) && p.peekNextNonEOLToken().ttype == BAR {
+		p.skipEOL()
 		one := p.parseMatchRule(target)
 		rules = append(rules, one)
 	}
@@ -1086,7 +1085,7 @@ func (p *Parser) parseBlockAfterPushScope() *Block {
 			// If not, go to next stmt parse.
 			savePos := p.Current()
 
-			p.skipEOLOne()
+			p.skipEOL()
 			if p.isEndOfBlock() {
 				p.popOffside()
 				p.revertTo(savePos)
