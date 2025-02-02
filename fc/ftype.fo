@@ -1,9 +1,9 @@
 package main
 
 import frt
-/* import buf */
+import buf
 import slice
-
+import strings
 
 type FType =
 | FInt
@@ -53,13 +53,28 @@ let fargs (ft:FuncType) =
   let l = slice.Length ft.targets
   ft.targets |> slice.Take (l-1)
 
+let FFuncToGo (ft:FuncType) (toGo:FType->string) =
+  let last = slice.Last ft.targets
+  let args = fargs ft
+  let bw = buf.New ()
+  buf.Write bw "func ("
+  args |> slice.Map toGo |> strings.Concat "," |> buf.Write bw
+  buf.Write bw ")"
+  let ret = match last with
+            | FUnit -> ""
+            | _ -> " " + (toGo last)
+  buf.Write bw ret
+  buf.String bw
+
 /*
+
+
 let FFuncToGo (ft:FuncType) =
   let last = slice.Last ft.targets
   let args = fargs ft
   let bw = buf.New ()
   buf.Write bw "func ("
-  args |> slice.map FTypeToGo |> string.concat "," |> buf.Write bw
+  args |> slice.Map FTypeToGo |> strings.Concat "," |> buf.Write bw
   buf.Write bw ")"
   let ret = match last with
             | FUnit -> ""
@@ -75,7 +90,7 @@ let FTypeToGo (ft:FType) =
   | FString -> "string"    
   | FUnit -> "" // When use as return type in Go, "" is suitable.
   | FUnresolved -> "" // This case is error. Just return "" for a while.
-  | FFunc ft -> FFuncToGo ft
+  | FFunc ft -> FFuncToGo ft FTypeToGo
   | FRecord fr -> ""
   | FUnion fu -> ""
   | FCustom fc -> fc // for custom type (user defined type with type name fc), use that type name as is.

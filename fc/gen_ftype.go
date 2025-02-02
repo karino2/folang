@@ -2,7 +2,11 @@ package main
 
 import "github.com/karino2/folang/pkg/frt"
 
+import "github.com/karino2/folang/pkg/buf"
+
 import "github.com/karino2/folang/pkg/slice"
+
+import "github.com/karino2/folang/pkg/strings"
 
 type FType interface {
 	FType_Union()
@@ -99,4 +103,23 @@ func IsUnresolved(ft FType) bool {
 func fargs(ft FuncType) []FType {
 	l := slice.Length[FType](ft.targets)
 	return frt.Pipe[[]FType, []FType](ft.targets, (func(_r0 []FType) []FType { return slice.Take(frt.OpMinus[int](l, 1), _r0) }))
+}
+
+func FFuncToGo(ft FuncType, toGo func(FType) string) string {
+	last := slice.Last[FType](ft.targets)
+	args := fargs(ft)
+	bw := buf.New()
+	buf.Write(bw, "func (")
+	frt.PipeUnit[string](frt.Pipe[[]string, string](frt.Pipe[[]FType, []string](args, (func(_r0 []FType) []string { return slice.Map(toGo, _r0) })), (func(_r0 []string) string { return strings.Concat(",", _r0) })), (func(_r0 string) { buf.Write(bw, _r0) }))
+	buf.Write(bw, ")")
+	ret := (func() string {
+		switch (last).(type) {
+		case FType_FUnit:
+			return ""
+		default:
+			return frt.OpPlus[string](" ", toGo(last))
+		}
+	})()
+	buf.Write(bw, ret)
+	return buf.String(bw)
 }

@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestIsUnresolve(t *testing.T) {
 	got := IsUnresolved(New_FType_FUnresolved)
@@ -20,5 +23,16 @@ func TestFArgs(t *testing.T) {
 	}
 	if New_FType_FString != got[2] {
 		t.Errorf("want FString in 2, but got %v", got)
+	}
+}
+
+func toGoSimple(ftype FType) string { return fmt.Sprintf("%v", ftype) }
+
+func TestFFuncToGo(t *testing.T) {
+	target := FuncType{[]FType{New_FType_FInt, New_FType_FInt, New_FType_FString, New_FType_FString}}
+	got := FFuncToGo(target, toGoSimple)
+
+	if got != "func ({},{},{}) {}" {
+		t.Errorf("got %s", got)
 	}
 }
