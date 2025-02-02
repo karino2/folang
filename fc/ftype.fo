@@ -21,7 +21,7 @@ type FType =
 and SliceType = {elemType: FType}
 and FuncType = {targets: []FType}
 and NameTypePair = {name: string; ftype: FType}
-and RecordType = {name: string; fiedls: []NameTypePair}
+and RecordType = {name: string; fields: []NameTypePair}
 and UnionType = {name: string; cases: []NameTypePair}
 
 let IsUnresolved (ft:FType) =
@@ -32,6 +32,9 @@ let IsUnresolved (ft:FType) =
 let fargs (ft:FuncType) =
   let l = slice.Length ft.targets
   ft.targets |> slice.Take (l-1)
+
+let freturn (ft:FuncType) =
+  slice.Last ft.targets
 
 let FFuncToGo (ft:FuncType) (toGo:FType->string) =
   let last = slice.Last ft.targets
@@ -48,6 +51,17 @@ let FFuncToGo (ft:FuncType) (toGo:FType->string) =
 
 let FRecordToGo (frec: RecordType) =
   frec.name
+
+let frStructName (frec: RecordType) =
+  frec.name
+
+let namePairMatch (targetName :string) (pair: NameTypePair) =
+  targetName = pair.name
+
+let frGetField (frec: RecordType) (fieldName: string) =
+  // let res = frec.fields |> slice.Filter (fun x-> x.Name == fieldName)
+  let res = frec.fields |> slice.Filter (namePairMatch fieldName)
+  slice.Head res
 
 let FUnionToGo (fu: UnionType) =
   fu.name

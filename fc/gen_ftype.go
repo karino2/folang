@@ -104,7 +104,7 @@ type NameTypePair struct {
 }
 type RecordType struct {
 	name   string
-	fiedls []NameTypePair
+	fields []NameTypePair
 }
 type UnionType struct {
 	name  string
@@ -123,6 +123,10 @@ func IsUnresolved(ft FType) bool {
 func fargs(ft FuncType) []FType {
 	l := slice.Length[FType](ft.targets)
 	return frt.Pipe[[]FType, []FType](ft.targets, (func(_r0 []FType) []FType { return slice.Take(frt.OpMinus[int](l, 1), _r0) }))
+}
+
+func freturn(ft FuncType) FType {
+	return slice.Last[FType](ft.targets)
 }
 
 func FFuncToGo(ft FuncType, toGo func(FType) string) string {
@@ -148,6 +152,21 @@ func FRecordToGo(frec RecordType) string {
 	return frec.name
 }
 
+func frStructName(frec RecordType) string {
+	return frec.name
+}
+
+func namePairMatch(targetName string, pair NameTypePair) bool {
+	return frt.OpEqual[string](targetName, pair.name)
+}
+
+func frGetField(frec RecordType, fieldName string) NameTypePair {
+	res := frt.Pipe[[]NameTypePair, []NameTypePair](frec.fields, (func(_r0 []NameTypePair) []NameTypePair {
+		return slice.Filter((func(_r0 NameTypePair) bool { return namePairMatch(fieldName, _r0) }), _r0)
+	}))
+	return slice.Head[NameTypePair](res)
+}
+
 func FUnionToGo(fu UnionType) string {
 	return fu.name
 }
@@ -157,7 +176,7 @@ func FSliceToGo(fs SliceType, toGo func(FType) string) string {
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v14 := (ft).(type) {
+	switch _v17 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -169,25 +188,25 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnresolved:
 		return ""
 	case FType_FFunc:
-		ft := _v14.Value
+		ft := _v17.Value
 		return FFuncToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v14.Value
+		fr := _v17.Value
 		return FRecordToGo(fr)
 	case FType_FUnion:
-		fu := _v14.Value
+		fu := _v17.Value
 		return FUnionToGo(fu)
 	case FType_FExtType:
-		fe := _v14.Value
+		fe := _v17.Value
 		return fe
 	case FType_FSlice:
-		fs := _v14.Value
+		fs := _v17.Value
 		return FSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
-		fp := _v14.Value
+		fp := _v17.Value
 		return fp
 	case FType_FParametrized:
-		fp := _v14.Value
+		fp := _v17.Value
 		return fp
 	default:
 		panic("Union pattern fail. Never reached here.")
