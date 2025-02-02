@@ -1,5 +1,7 @@
 package main
 
+import frt
+
 type GoEval = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
 
@@ -26,13 +28,20 @@ type Expr =
 | FieldAccess of FieldAccess
 | Var of Var
 | RecordGen of RecordGen
-| Block of Block
-| MatchExpr of MatchExpr
+/*
+  For some expr, normally we need to wrap with func() to become expr in go stmt
+  But in some case like final expr of block, just return is enough and do not need to wrap func().
+  We use type ReturnableExpr for expr of which we can emit directlry return go code.
+*/
+| ReturnableExpr of ReturnableExpr
 and FunCall = {targetFunc: Var; args: []Expr; typeParams: []ResolvedTypeParam}
 and RecordGen = {fieldNames: []string; fieldValues: []Expr; recordType: FType}
 and Block = {stms: []Stmt; finalExpr: Expr; asFunc: bool}
 and MatchRule = {pattern: MatchPattern; body: Block}
 and MatchExpr = {target: Expr; rules: []MatchRule}
+and ReturnableExpr =
+| Block of Block
+| MatchExpr of MatchExpr
 and Stmt =
 | Import of string
 | Package of string
@@ -50,10 +59,51 @@ and DefStmt =
 | UnionDef of UnionDef
 and MultipeDefs = {defs: []DefStmt}
 
+
 /*
 map, NYI
 and PackageInfo = {name: string; funcInfo: map<string, FuncType>; typeInfo: map<string, FExtType>}
 
 | PackageInfo of PackageInfo
 */
+
+let faToType (fa:FieldAccess) =
+  let rt = fa.targetType
+  let field = frGetField rt fa.fieldName
+  field.ftype
+
+let blockReturnType (toT: Expr->FType) (block:Block) =
+  toT block.finalExpr
+
+let blockToType (toT: Expr->FType)  (b:Block)=
+  let rtype = blockReturnType toT b
+  if b.asFunc then
+    FFunc {targets=[FUnit; rtype]}
+  else
+    rtype
+
+let meToType (toT: Expr->FType) (me:MatchExpr) =
+  let frule = me.rules |> slice.Head
+  toT frule.body
+
+let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
+  match rexpr with
+  | Block b -> blockToType toT b
+  | MatchExpr me -> meToType toT me
+
+
+
+let ExprToType (expr:Expr) : FType =
+  match expr with
+  | GoEval ge -> ge.typeArg
+  | StringLiteral _ -> FString
+  | IntImm _ -> FInt
+  | Unit -> FUnit
+  | BoolLiteral _ -> FBool
+  | FieldAccess fa -> faToType fa
+  | Var v -> v.ftype
+  | RecordGen rg -> rg.recordType
+  | ReturnableExpr re -> returnableToType ExprToType re
+  // TODO: below here.
+  | FunCall _ -> FUnit
 

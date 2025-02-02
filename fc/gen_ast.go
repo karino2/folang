@@ -1,5 +1,7 @@
 package main
 
+import "github.com/karino2/folang/pkg/frt"
+
 type GoEval struct {
 	goStmt  string
 	typeArg FType
@@ -30,17 +32,16 @@ type Expr interface {
 	Expr_Union()
 }
 
-func (Expr_GoEval) Expr_Union()        {}
-func (Expr_StringLiteral) Expr_Union() {}
-func (Expr_IntImm) Expr_Union()        {}
-func (Expr_Unit) Expr_Union()          {}
-func (Expr_BoolLiteral) Expr_Union()   {}
-func (Expr_FunCall) Expr_Union()       {}
-func (Expr_FieldAccess) Expr_Union()   {}
-func (Expr_Var) Expr_Union()           {}
-func (Expr_RecordGen) Expr_Union()     {}
-func (Expr_Block) Expr_Union()         {}
-func (Expr_MatchExpr) Expr_Union()     {}
+func (Expr_GoEval) Expr_Union()         {}
+func (Expr_StringLiteral) Expr_Union()  {}
+func (Expr_IntImm) Expr_Union()         {}
+func (Expr_Unit) Expr_Union()           {}
+func (Expr_BoolLiteral) Expr_Union()    {}
+func (Expr_FunCall) Expr_Union()        {}
+func (Expr_FieldAccess) Expr_Union()    {}
+func (Expr_Var) Expr_Union()            {}
+func (Expr_RecordGen) Expr_Union()      {}
+func (Expr_ReturnableExpr) Expr_Union() {}
 
 type Expr_GoEval struct {
 	Value GoEval
@@ -95,17 +96,11 @@ type Expr_RecordGen struct {
 
 func New_Expr_RecordGen(v RecordGen) Expr { return Expr_RecordGen{v} }
 
-type Expr_Block struct {
-	Value Block
+type Expr_ReturnableExpr struct {
+	Value ReturnableExpr
 }
 
-func New_Expr_Block(v Block) Expr { return Expr_Block{v} }
-
-type Expr_MatchExpr struct {
-	Value MatchExpr
-}
-
-func New_Expr_MatchExpr(v MatchExpr) Expr { return Expr_MatchExpr{v} }
+func New_Expr_ReturnableExpr(v ReturnableExpr) Expr { return Expr_ReturnableExpr{v} }
 
 type FunCall struct {
 	targetFunc Var
@@ -130,6 +125,25 @@ type MatchExpr struct {
 	target Expr
 	rules  []MatchRule
 }
+type ReturnableExpr interface {
+	ReturnableExpr_Union()
+}
+
+func (ReturnableExpr_Block) ReturnableExpr_Union()     {}
+func (ReturnableExpr_MatchExpr) ReturnableExpr_Union() {}
+
+type ReturnableExpr_Block struct {
+	Value Block
+}
+
+func New_ReturnableExpr_Block(v Block) ReturnableExpr { return ReturnableExpr_Block{v} }
+
+type ReturnableExpr_MatchExpr struct {
+	Value MatchExpr
+}
+
+func New_ReturnableExpr_MatchExpr(v MatchExpr) ReturnableExpr { return ReturnableExpr_MatchExpr{v} }
+
 type Stmt interface {
 	Stmt_Union()
 }
@@ -222,4 +236,73 @@ func New_DefStmt_UnionDef(v UnionDef) DefStmt { return DefStmt_UnionDef{v} }
 
 type MultipeDefs struct {
 	defs []DefStmt
+}
+
+func faToType(fa FieldAccess) FType {
+	rt := fa.targetType
+	field := frGetField(rt, fa.fieldName)
+	return field.ftype
+}
+
+func blockReturnType(toT func(Expr) FType, block Block) FType {
+	return toT(block.finalExpr)
+}
+
+func blockToType(toT func(Expr) FType, b Block) FType {
+	rtype := blockReturnType(toT, b)
+	return frt.IfElse(b.asFunc, (func() FType {
+		return New_FType_FFunc(FuncType{targets: ([]FType{New_FType_FUnit, rtype})})
+	}), (func() FType {
+		return rtype
+	}))
+}
+
+func meToType(toT func(Expr) FType, me MatchExpr) FType {
+	frule := frt.Pipe[[]MatchRule, MatchRule](me.rules, slice.Head)
+	return toT(frule.body)
+}
+
+func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
+	switch _v28 := (rexpr).(type) {
+	case ReturnableExpr_Block:
+		b := _v28.Value
+		return blockToType(toT, b)
+	case ReturnableExpr_MatchExpr:
+		me := _v28.Value
+		return meToType(toT, me)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func ExprToType(expr Expr) FType {
+	switch _v29 := (expr).(type) {
+	case Expr_GoEval:
+		ge := _v29.Value
+		return ge.typeArg
+	case Expr_StringLiteral:
+		return New_FType_FString
+	case Expr_IntImm:
+		return New_FType_FInt
+	case Expr_Unit:
+		return New_FType_FUnit
+	case Expr_BoolLiteral:
+		return New_FType_FBool
+	case Expr_FieldAccess:
+		fa := _v29.Value
+		return faToType(fa)
+	case Expr_Var:
+		v := _v29.Value
+		return v.ftype
+	case Expr_RecordGen:
+		rg := _v29.Value
+		return rg.recordType
+	case Expr_ReturnableExpr:
+		re := _v29.Value
+		return returnableToType(ExprToType, re)
+	case Expr_FunCall:
+		return New_FType_FUnit
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
 }
