@@ -53,3 +53,17 @@ func TestOpPlus(t *testing.T) {
 		t.Errorf("got %v", got)
 	}
 }
+
+func TestOpEaualSlice(t *testing.T) {
+	s1 := []string{"1", "2"}
+	s2 := []string{"1", "2"}
+	s3 := []string{"2", "1"}
+	got := OpEqual(s1, s2)
+	if !got {
+		t.Error("not equal slice.")
+	}
+	got = OpEqual(s1, s3)
+	if got {
+		t.Error("wrongly equal the same slice.")
+	}
+}

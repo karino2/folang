@@ -435,6 +435,26 @@ func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
 	}
 }
 
+func NewIfOnlyCall(cond Expr, tbody Expr) *FunCall {
+	if tbody.FType() != FUnit {
+		panic("if only but not unit. compile error")
+	}
+	pvar := &Var{"frt.IfOnly", NewFFunc(FBool, NewFFunc(FUnit, FUnit), FUnit)}
+	return &FunCall{pvar, []Expr{cond, tbody}, []ResolvedTypeParam{}}
+}
+
+func NewIfElseCall(cond Expr, tbody Expr, fbody Expr) *FunCall {
+	var funcName string
+	retType := tbody.FType()
+	if retType == FUnit {
+		funcName = "frt.IfElseUnit"
+	} else {
+		funcName = "frt.IfElse"
+	}
+	pvar := &Var{funcName, NewFFunc(FBool, NewFFunc(FUnit, retType), NewFFunc(FUnit, retType), retType)}
+	return &FunCall{pvar, []Expr{cond, tbody, fbody}, []ResolvedTypeParam{}}
+}
+
 func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) *FunCall {
 	if btype == PIPE {
 		// PIPE needs different inference pattern.

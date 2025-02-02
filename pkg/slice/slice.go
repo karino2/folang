@@ -1,5 +1,15 @@
 package slice
 
+import (
+	"cmp"
+	"slices"
+)
+
+/*
+Try to make similar to F# list.
+[List (FSharp.Core) - FSharp.Core](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-listmodule.html)
+*/
+
 func Length[T any](s []T) int {
 	return len(s)
 }
@@ -41,5 +51,18 @@ func Filter[T any](pred func(T) bool, s []T) []T {
 		}
 	}
 	return res
+}
 
+func Sort[T cmp.Ordered](s []T) []T {
+	// non destructive sort. copy arg first.
+	res := append(s[:0:0], s...)
+	slices.SortFunc(res, cmp.Compare)
+	return res
+}
+
+func SortBy[T any, U cmp.Ordered](proj func(T) U, s []T) []T {
+	// non destructive sort. copy arg first.
+	res := append(s[:0:0], s...)
+	slices.SortFunc(res, func(s1, s2 T) int { return cmp.Compare(proj(s1), proj(s2)) })
+	return res
 }

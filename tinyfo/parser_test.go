@@ -706,6 +706,25 @@ this is test
 `,
 			"frt.OpNotEqual[string](s1, s2)",
 		},
+		{
+			`package main
+
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then
+    123
+  else
+    456
+`,
+			"frt.OpEqual",
+		},
+		{
+			`package main
+
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then 123 else 456
+`,
+			"return 123",
+		},
 	}
 
 	for _, test := range tests {
@@ -819,7 +838,7 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 let ika (s1:string) (s2:string) =
-  s1 = s2
+  if s1 = s2 then 123 else 456
 
 `
 

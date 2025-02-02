@@ -47,6 +47,10 @@ const (
 	AND
 	PLUS
 	MINUS
+	IF
+	THEN
+	ELSE
+	ELIF
 )
 
 var keywordMap = map[string]TokenType{
@@ -62,6 +66,10 @@ var keywordMap = map[string]TokenType{
 	"false":        FALSE,
 	"package_info": PACKAGE_INFO,
 	"and":          AND,
+	"if":           IF,
+	"then":         THEN,
+	"else":         ELSE,
+	"ELIF":         ELIF,
 }
 
 type binOpInfo struct {
@@ -716,6 +724,8 @@ func (p *Parser) isEndOfTerm() bool {
 		ttype == RBRACE ||
 		ttype == RPAREN ||
 		ttype == WITH ||
+		ttype == THEN ||
+		ttype == ELSE ||
 		p.nextNonEOLIsBinOp()
 }
 
@@ -908,7 +918,61 @@ func (p *Parser) parseMatchExpr() Expr {
 }
 
 /*
-TERM = GOEVAL | MATCH_EXPR | ATOM ATOM*
+parse single expr and return as block.
+This is occur like 'if c then XX else YY' onliner.
+*/
+func (p *Parser) parseInlineBlock() *Block {
+	p.pushScope()
+	expr := p.parseExpr()
+	return &Block{[]Stmt{}, expr, p.popScope()}
+}
+
+/*
+IF_EXPR = 'if' expr 'then' block ('else' block)?
+
+- expr must bo bool type.
+- both block must be the same return type.
+- if there is EOL after 'then', it assumue offside block
+- if there is no else block, block return type must be unit.
+*/
+func (p *Parser) parseIfExpr() Expr {
+	p.consume(IF)
+	cond := p.parseExpr()
+	if cond.FType() != FBool {
+		panic("cond is not bool")
+	}
+
+	p.consume(THEN)
+	if p.currentIs(EOL) {
+		// offside
+		p.skipEOLOne()
+		tbody := p.parseBlock()
+		savePos := p.Current()
+
+		p.skipEOLOne()
+		if !p.currentIs(ELSE) {
+			// no else block.
+			p.revertTo(savePos)
+			return NewIfOnlyCall(cond, tbody)
+		}
+		p.consume(ELSE)
+		p.skipEOLOne()
+		fbody := p.parseBlock()
+		return NewIfElseCall(cond, tbody, fbody)
+	} else {
+		// one line case: if COND then TBODY else FBODY
+		tbody := p.parseInlineBlock()
+		if !p.currentIs(ELSE) {
+			return NewIfOnlyCall(cond, tbody)
+		}
+		p.consume(ELSE)
+		fbody := p.parseInlineBlock()
+		return NewIfElseCall(cond, tbody, fbody)
+	}
+}
+
+/*
+TERM = GOEVAL | MATCH_EXPR | IF_EXPR | ATOM ATOM*
 */
 func (p *Parser) parseTerm() Expr {
 	tk := p.Current()
@@ -919,6 +983,10 @@ func (p *Parser) parseTerm() Expr {
 
 	if tk.ttype == MATCH {
 		return p.parseMatchExpr()
+	}
+
+	if tk.ttype == IF {
+		return p.parseIfExpr()
 	}
 
 	var exprs []Expr

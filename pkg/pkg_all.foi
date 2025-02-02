@@ -14,6 +14,8 @@ package_info slice =
   let Take<T> : int->[]T->[]T
   let Map<T, U> : (T->U)->[]T->[]U
   let Filter<T> : (T->bool)->[]T->[]T
+  let Sort<T>: []T -> []T
+  let SortBy<T, U>: (T->U)->[]T->[]T
 
 package_info strings =
   let Concat: string->[]string->string
