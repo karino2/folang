@@ -781,7 +781,7 @@ For later case, there are 2 types:
   - external pkg access: slice.Take
   - record field access: rec.Person
 */
-func (p *Parser) parseVariableRefereince() Expr {
+func (p *Parser) parseVariableReference() Expr {
 	firstId := p.identName()
 	if !p.nextIs(DOT) {
 		p.gotoNext()
@@ -825,7 +825,7 @@ func (p *Parser) parseAtom() Expr {
 		p.gotoNext()
 		return &IntImm{tk.intVal}
 	case tk.ttype == IDENTIFIER:
-		return p.parseVariableRefereince()
+		return p.parseVariableReference()
 	case tk.ttype == LBRACE:
 		return p.parseRecordGen()
 	case tk.ttype == LPAREN:
