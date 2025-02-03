@@ -7,4 +7,5 @@ package_info slice =
   let Filter<T> : (T->bool)->[]T->[]T
   let Sort<T>: []T -> []T
   let SortBy<T, U>: (T->U)->[]T->[]T
+  let Skip<T>: int->[]T->[]T
 

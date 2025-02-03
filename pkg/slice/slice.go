@@ -35,6 +35,16 @@ func Take[T any](num int, s []T) []T {
 	return res
 }
 
+func Skip[T any](count int, s []T) []T {
+	var res []T
+
+	for i := count; i < len(s); i++ {
+		res = append(res, s[i])
+	}
+
+	return res
+}
+
 func Map[T any, U any](f func(T) U, s []T) []U {
 	var res []U
 	for _, e := range s {
