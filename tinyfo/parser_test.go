@@ -29,7 +29,7 @@ func TestTokenizerAnalyzeCur(t *testing.T) {
 		{"(", &Token{ttype: LPAREN, begin: 0, len: 1, stringVal: "("}},
 		{")", &Token{ttype: RPAREN, begin: 0, len: 1, stringVal: ")"}},
 		{`"hoge"`, &Token{ttype: STRING, begin: 0, len: 6, stringVal: "hoge"}},
-		{`"hoge(\"ika\")"`, &Token{ttype: STRING, begin: 0, len: 15, stringVal: `hoge("ika")`}},
+		{`"hoge(\"ika\")"`, &Token{ttype: STRING, begin: 0, len: 15, stringVal: `hoge(\"ika\")`}},
 	}
 
 	for _, test := range tests {
@@ -793,6 +793,14 @@ let ika () =
 `,
 			"frt.Tuple2[int, string]",
 		},
+		{
+			`package main
+
+let ika () =
+  "\n"
+`,
+			`return "\n"`,
+		},
 	}
 
 	for _, test := range tests {
@@ -955,14 +963,8 @@ let hoge () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-package_info slice =
-  let Zip<T, U>: []T->[]U->[]T*U
-
 let ika () =
-  let s1 = [1; 2; 3]
-	let s2 = ["a"; "b"; "c"]
-  slice.Zip s1 s2
-
+  "\n"
 
 `
 

@@ -26,7 +26,7 @@ fmt.Println("Hello World")
 			[]Stmt{
 				&Package{"main"},
 				&Import{"fmt"},
-				&FuncDef{"hello", []*Var{{"msg", FString}}, NewBlock(NewGoEval("fmt.Printf(\"Hello %s\\n\", msg)"))},
+				&FuncDef{"hello", []*Var{{"msg", FString}}, NewBlock(NewGoEval("fmt.Printf(\"Hello %s\\\\n\", msg)"))},
 				&FuncDef{"main", nil,
 					NewBlock(
 						&FunCall{

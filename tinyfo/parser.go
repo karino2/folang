@@ -194,17 +194,13 @@ func (tkz *Tokenizer) analyzeCurAsStringLiteral() {
 			cur.stringVal = buf.String()
 			return
 		} else if c == '\\' {
+			buf.WriteByte(c)
 			i++
 			if tkz.pos+i == len(tkz.buf) {
 				panic("escape just before EOF, wrong")
 			}
 			c2 := tkz.buf[tkz.pos+i]
-			switch c2 {
-			case 'n':
-				buf.WriteByte('\n')
-			default:
-				buf.WriteByte(c2)
-			}
+			buf.WriteByte(c2)
 		} else {
 			buf.WriteByte(c)
 		}

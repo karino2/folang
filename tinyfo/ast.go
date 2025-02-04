@@ -78,8 +78,38 @@ type GoEval struct {
 	TypeArg FType
 }
 
-func (e *GoEval) FType() FType     { return e.TypeArg }
-func (e *GoEval) ToGo() string     { return e.GoStmt }
+func (e *GoEval) FType() FType { return e.TypeArg }
+
+// almost just e.GoStmt.
+// But re-interpret escape.
+func (e *GoEval) ToGo() string {
+	var b bytes.Buffer
+	buf := e.GoStmt
+	eof := len(buf)
+	i := 0
+	for {
+		if i == eof {
+			break
+		}
+		c := buf[i]
+		if c == '\\' {
+			i++
+			if i == eof {
+				panic("escape just before EOF, wrong")
+			}
+			c2 := buf[i]
+			if c2 == 'n' {
+				b.WriteByte('\n')
+			} else {
+				b.WriteByte(c2)
+			}
+		} else {
+			b.WriteByte(c)
+		}
+		i++
+	}
+	return b.String()
+}
 func NewGoEval(src string) *GoEval { return &GoEval{src, FUnit} }
 
 // 変数。仮引数などの場合と変数自身の参照の場合の両方をこれで賄う。
