@@ -16,7 +16,6 @@ func (FType_FInt) FType_Union()          {}
 func (FType_FString) FType_Union()       {}
 func (FType_FBool) FType_Union()         {}
 func (FType_FUnit) FType_Union()         {}
-func (FType_FUnresolved) FType_Union()   {}
 func (FType_FFunc) FType_Union()         {}
 func (FType_FRecord) FType_Union()       {}
 func (FType_FUnion) FType_Union()        {}
@@ -44,11 +43,6 @@ type FType_FUnit struct {
 }
 
 var New_FType_FUnit FType = FType_FUnit{}
-
-type FType_FUnresolved struct {
-}
-
-var New_FType_FUnresolved FType = FType_FUnresolved{}
 
 type FType_FFunc struct {
 	Value FuncType
@@ -111,37 +105,28 @@ type UnionType struct {
 	cases []NameTypePair
 }
 
-func IsUnresolved(ft FType) bool {
-	switch (ft).(type) {
-	case FType_FUnresolved:
-		return true
-	default:
-		return false
-	}
-}
-
 func fargs(ft FuncType) []FType {
-	l := slice.Length[FType](ft.targets)
-	return frt.Pipe[[]FType, []FType](ft.targets, (func(_r0 []FType) []FType { return slice.Take(frt.OpMinus[int](l, 1), _r0) }))
+	l := slice.Length(ft.targets)
+	return frt.Pipe(ft.targets, (func(_r0 []FType) []FType { return slice.Take(frt.OpMinus(l, 1), _r0) }))
 }
 
 func freturn(ft FuncType) FType {
-	return slice.Last[FType](ft.targets)
+	return slice.Last(ft.targets)
 }
 
 func FFuncToGo(ft FuncType, toGo func(FType) string) string {
-	last := slice.Last[FType](ft.targets)
+	last := slice.Last(ft.targets)
 	args := fargs(ft)
 	bw := buf.New()
 	buf.Write(bw, "func (")
-	frt.PipeUnit[string](frt.Pipe[[]string, string](frt.Pipe[[]FType, []string](args, (func(_r0 []FType) []string { return slice.Map(toGo, _r0) })), (func(_r0 []string) string { return strings.Concat(",", _r0) })), (func(_r0 string) { buf.Write(bw, _r0) }))
+	frt.PipeUnit(frt.Pipe(frt.Pipe(args, (func(_r0 []FType) []string { return slice.Map(toGo, _r0) })), (func(_r0 []string) string { return strings.Concat(",", _r0) })), (func(_r0 string) { buf.Write(bw, _r0) }))
 	buf.Write(bw, ")")
 	ret := (func() string {
 		switch (last).(type) {
 		case FType_FUnit:
 			return ""
 		default:
-			return frt.OpPlus[string](" ", toGo(last))
+			return frt.OpPlus(" ", toGo(last))
 		}
 	})()
 	buf.Write(bw, ret)
@@ -157,14 +142,14 @@ func frStructName(frec RecordType) string {
 }
 
 func namePairMatch(targetName string, pair NameTypePair) bool {
-	return frt.OpEqual[string](targetName, pair.name)
+	return frt.OpEqual(targetName, pair.name)
 }
 
 func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
-	res := frt.Pipe[[]NameTypePair, []NameTypePair](pairs, (func(_r0 []NameTypePair) []NameTypePair {
+	res := frt.Pipe(pairs, (func(_r0 []NameTypePair) []NameTypePair {
 		return slice.Filter((func(_r0 NameTypePair) bool { return namePairMatch(targetName, _r0) }), _r0)
 	}))
-	return slice.Head[NameTypePair](res)
+	return slice.Head(res)
 }
 
 func frGetField(frec RecordType, fieldName string) NameTypePair {
@@ -176,12 +161,12 @@ func npName(pair NameTypePair) string {
 }
 
 func frMatch(frec RecordType, fieldNames []string) bool {
-	return frt.IfElse(frt.OpNotEqual[int](slice.Length[string](fieldNames), slice.Length[NameTypePair](frec.fields)), (func() bool {
+	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(frec.fields)), (func() bool {
 		return false
 	}), (func() bool {
-		sortedInput := frt.Pipe[[]string, []string](fieldNames, slice.Sort)
-		sortedFName := frt.Pipe[[]string, []string](slice.Map[NameTypePair, string](npName, frec.fields), slice.Sort)
-		return frt.OpEqual[[]string](sortedInput, sortedFName)
+		sortedInput := frt.Pipe(fieldNames, slice.Sort)
+		sortedFName := frt.Pipe(slice.Map(npName, frec.fields), slice.Sort)
+		return frt.OpEqual(sortedInput, sortedFName)
 	}))
 }
 
@@ -194,15 +179,15 @@ func lookupCase(fu UnionType, caseName string) NameTypePair {
 }
 
 func unionCaseStructName(unionName string, caseName string) string {
-	return frt.OpPlus[string](frt.OpPlus[string](unionName, "_"), caseName)
+	return frt.OpPlus(frt.OpPlus(unionName, "_"), caseName)
 }
 
 func FSliceToGo(fs SliceType, toGo func(FType) string) string {
-	return frt.OpPlus[string]("[]", toGo(fs.elemType))
+	return frt.OpPlus("[]", toGo(fs.elemType))
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v25 := (ft).(type) {
+	switch _v24 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -211,28 +196,26 @@ func FTypeToGo(ft FType) string {
 		return "string"
 	case FType_FUnit:
 		return ""
-	case FType_FUnresolved:
-		return ""
 	case FType_FFunc:
-		ft := _v25.Value
+		ft := _v24.Value
 		return FFuncToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v25.Value
+		fr := _v24.Value
 		return FRecordToGo(fr)
 	case FType_FUnion:
-		fu := _v25.Value
+		fu := _v24.Value
 		return FUnionToGo(fu)
 	case FType_FExtType:
-		fe := _v25.Value
+		fe := _v24.Value
 		return fe
 	case FType_FSlice:
-		fs := _v25.Value
+		fs := _v24.Value
 		return FSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
-		fp := _v25.Value
+		fp := _v24.Value
 		return fp
 	case FType_FParametrized:
-		fp := _v25.Value
+		fp := _v24.Value
 		return fp
 	default:
 		panic("Union pattern fail. Never reached here.")

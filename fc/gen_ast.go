@@ -2,6 +2,12 @@ package main
 
 import "github.com/karino2/folang/pkg/frt"
 
+import "github.com/karino2/folang/pkg/slice"
+
+import "github.com/karino2/folang/pkg/buf"
+
+import "github.com/karino2/folang/pkg/strings"
+
 type GoEval struct {
 	goStmt  string
 	typeArg FType
@@ -16,11 +22,6 @@ type FieldAccess struct {
 	targetName string
 	targetType RecordType
 	fieldName  string
-}
-
-type ResolvedTypeParam struct {
-	name         string
-	resolvedType FType
 }
 
 type MatchPattern struct {
@@ -105,12 +106,11 @@ func New_Expr_ReturnableExpr(v ReturnableExpr) Expr { return Expr_ReturnableExpr
 type FunCall struct {
 	targetFunc Var
 	args       []Expr
-	typeParams []ResolvedTypeParam
 }
 type RecordGen struct {
 	fieldNames  []string
 	fieldValues []Expr
-	recordType  FType
+	recordType  RecordType
 }
 type Block struct {
 	stms      []Stmt
@@ -257,28 +257,63 @@ func blockToType(toT func(Expr) FType, b Block) FType {
 	}))
 }
 
+func blockToExpr(block Block) Expr {
+	return New_Expr_ReturnableExpr(New_ReturnableExpr_Block(block))
+}
+
 func meToType(toT func(Expr) FType, me MatchExpr) FType {
-	frule := frt.Pipe[[]MatchRule, MatchRule](me.rules, slice.Head)
-	return toT(frule.body)
+	frule := frt.Pipe(me.rules, slice.Head)
+	return frt.Pipe(frt.Pipe(frule.body, blockToExpr), toT)
 }
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
-	switch _v28 := (rexpr).(type) {
+	switch _v46 := (rexpr).(type) {
 	case ReturnableExpr_Block:
-		b := _v28.Value
+		b := _v46.Value
 		return blockToType(toT, b)
 	case ReturnableExpr_MatchExpr:
-		me := _v28.Value
+		me := _v46.Value
 		return meToType(toT, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
 }
 
+func fcToFuncType(fc FunCall) FuncType {
+	tfv := fc.targetFunc
+	ft := tfv.ftype
+	switch _v47 := (ft).(type) {
+	case FType_FFunc:
+		ft := _v47.Value
+		return ft
+	default:
+		return FuncType{}
+	}
+}
+
+func fcArgTypes(fc FunCall) []FType {
+	return frt.Pipe(fcToFuncType(fc), fargs)
+}
+
+func fcToType(fc FunCall) FType {
+	ft := fcToFuncType(fc)
+	tlen := frt.Pipe(fargs(ft), slice.Length)
+	alen := slice.Length(fc.args)
+	return frt.IfElse(frt.OpEqual(alen, tlen), (func() FType {
+		return freturn(ft)
+	}), (func() FType {
+		if alen > tlen {
+			panic("too many arugments")
+		}
+		newts := slice.Skip(alen, ft.targets)
+		return New_FType_FFunc(FuncType{targets: newts})
+	}))
+}
+
 func ExprToType(expr Expr) FType {
-	switch _v29 := (expr).(type) {
+	switch _v48 := (expr).(type) {
 	case Expr_GoEval:
-		ge := _v29.Value
+		ge := _v48.Value
 		return ge.typeArg
 	case Expr_StringLiteral:
 		return New_FType_FString
@@ -289,19 +324,74 @@ func ExprToType(expr Expr) FType {
 	case Expr_BoolLiteral:
 		return New_FType_FBool
 	case Expr_FieldAccess:
-		fa := _v29.Value
+		fa := _v48.Value
 		return faToType(fa)
 	case Expr_Var:
-		v := _v29.Value
+		v := _v48.Value
 		return v.ftype
 	case Expr_RecordGen:
-		rg := _v29.Value
-		return rg.recordType
+		rg := _v48.Value
+		return New_FType_FRecord(rg.recordType)
 	case Expr_ReturnableExpr:
-		re := _v29.Value
+		re := _v48.Value
 		return returnableToType(ExprToType, re)
 	case Expr_FunCall:
-		return New_FType_FUnit
+		fc := _v48.Value
+		return fcToType(fc)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func rgFVToGo(toGo func(Expr) string, fvPair frt.Tuple2[string, Expr]) string {
+	fn := frt.Fst(fvPair)
+	fv := frt.Snd(fvPair)
+	fvGo := toGo(fv)
+	return frt.OpPlus(frt.OpPlus(fn, ": "), fvGo)
+}
+
+func rgToGo(toGo func(Expr) string, rg RecordGen) string {
+	rtype := rg.recordType
+	b := buf.New()
+	frt.PipeUnit(frStructName(rtype), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "{")
+	fvGo := frt.Pipe(frt.Pipe(slice.Zip(rg.fieldNames, rg.fieldValues), (func(_r0 []frt.Tuple2[string, Expr]) []string {
+		return slice.Map((func(_r0 frt.Tuple2[string, Expr]) string { return rgFVToGo(toGo, _r0) }), _r0)
+	})), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
+	buf.Write(b, fvGo)
+	buf.Write(b, "}")
+	return buf.String(b)
+}
+
+func ExprToGo(expr Expr) string {
+	switch _v49 := (expr).(type) {
+	case Expr_BoolLiteral:
+		b := _v49.Value
+		return frt.Sprintf1("%t", b)
+	case Expr_GoEval:
+		ge := _v49.Value
+		return ge.goStmt
+	case Expr_StringLiteral:
+		s := _v49.Value
+		return frt.Sprintf1("\"%s\"", s)
+	case Expr_IntImm:
+		i := _v49.Value
+		return frt.Sprintf1("%d", i)
+	case Expr_Unit:
+		return ""
+	case Expr_FieldAccess:
+		fa := _v49.Value
+		return frt.OpPlus(frt.OpPlus(fa.targetName, "."), fa.fieldName)
+	case Expr_Var:
+		v := _v49.Value
+		return v.name
+	case Expr_RecordGen:
+		rg := _v49.Value
+		return rgToGo(ExprToGo, rg)
+	case Expr_ReturnableExpr:
+		return "NYI"
+	case Expr_FunCall:
+		return "NYI"
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

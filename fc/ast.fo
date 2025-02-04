@@ -1,14 +1,15 @@
 package main
 
 import frt
+import slice
+import buf
+import strings
 
 type GoEval = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
 
 // stands for record field access of form: targetName.fieldName
 type FieldAccess = {targetName: string; targetType: RecordType; fieldName: string}
-
-type ResolvedTypeParam = {name: string; resolvedType: FType}
 
 /*
 Union case matching.
@@ -34,8 +35,8 @@ type Expr =
   We use type ReturnableExpr for expr of which we can emit directlry return go code.
 */
 | ReturnableExpr of ReturnableExpr
-and FunCall = {targetFunc: Var; args: []Expr; typeParams: []ResolvedTypeParam}
-and RecordGen = {fieldNames: []string; fieldValues: []Expr; recordType: FType}
+and FunCall = {targetFunc: Var; args: []Expr}
+and RecordGen = {fieldNames: []string; fieldValues: []Expr; recordType: RecordType}
 and Block = {stms: []Stmt; finalExpr: Expr; asFunc: bool}
 and MatchRule = {pattern: MatchPattern; body: Block}
 and MatchExpr = {target: Expr; rules: []MatchRule}
@@ -82,16 +83,40 @@ let blockToType (toT: Expr->FType)  (b:Block)=
   else
     rtype
 
+let blockToExpr (block:Block) =
+  ReturnableExpr (Block block)
+
 let meToType (toT: Expr->FType) (me:MatchExpr) =
   let frule = me.rules |> slice.Head
-  toT frule.body
+  frule.body |> blockToExpr |> toT
 
 let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
   match rexpr with
   | Block b -> blockToType toT b
   | MatchExpr me -> meToType toT me
 
+let fcToFuncType (fc:FunCall) =
+  // double field access like fc.targetFunc.ftype is NYI.
+  let tfv = fc.targetFunc
+  let ft = tfv.ftype
+  match ft with
+  | FFunc ft -> ft
+  | _ -> GoEval<FuncType> "FuncType{}" // never happens.
 
+let fcArgTypes (fc:FunCall) =
+  fcToFuncType fc |> fargs
+
+let fcToType (fc:FunCall) =
+  let ft = fcToFuncType fc
+  let tlen = fargs ft |> slice.Length
+  let alen = slice.Length fc.args
+  if alen = tlen then
+    freturn ft
+  else
+    // prtial apply.
+    GoEval "if alen > tlen { panic(\"too many arugments\")}"
+    let newts = slice.Skip alen ft.targets
+    FFunc {targets=newts}
 
 let ExprToType (expr:Expr) : FType =
   match expr with
@@ -102,8 +127,39 @@ let ExprToType (expr:Expr) : FType =
   | BoolLiteral _ -> FBool
   | FieldAccess fa -> faToType fa
   | Var v -> v.ftype
-  | RecordGen rg -> rg.recordType
+  | RecordGen rg -> FRecord rg.recordType
   | ReturnableExpr re -> returnableToType ExprToType re
-  // TODO: below here.
-  | FunCall _ -> FUnit
+  | FunCall fc -> fcToType fc
+
+let rgFVToGo  (toGo: Expr->string) (fvPair: string*Expr) =
+  let fn = frt.Fst fvPair
+  let fv = frt.Snd fvPair
+  let fvGo = toGo fv
+  fn + ": " + fvGo
+
+let rgToGo (toGo: Expr->string) (rg:RecordGen) =
+  let rtype = rg.recordType
+  let b = buf.New ()
+  frStructName rtype |> buf.Write b
+  buf.Write b "{"
+  let fvGo = slice.Zip rg.fieldNames rg.fieldValues
+             |> slice.Map (rgFVToGo toGo)
+             |> strings.Concat ", "
+  buf.Write b fvGo
+  buf.Write b "}"
+  buf.String b
+
+
+let ExprToGo (expr:Expr) : string =
+  match expr with
+  | BoolLiteral b -> frt.Sprintf1 "%t" b
+  | GoEval ge -> ge.goStmt
+  | StringLiteral s -> frt.Sprintf1 "\\\"%s\\\"" s
+  | IntImm i -> frt.Sprintf1 "%d" i
+  | Unit -> ""
+  | FieldAccess fa -> fa.targetName + "." + fa.fieldName
+  | Var v -> v.name
+  | RecordGen rg -> rgToGo ExprToGo rg
+  | ReturnableExpr _ -> "NYI"
+  | FunCall _ -> "NYI"
 

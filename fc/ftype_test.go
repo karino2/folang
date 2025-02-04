@@ -5,13 +5,6 @@ import (
 	"testing"
 )
 
-func TestIsUnresolve(t *testing.T) {
-	got := IsUnresolved(New_FType_FUnresolved)
-	if got != true {
-		t.Errorf("want true, got %v", got)
-	}
-}
-
 func TestFArgs(t *testing.T) {
 	target := FuncType{[]FType{New_FType_FInt, New_FType_FInt, New_FType_FString, New_FType_FString}}
 	got := fargs(target)
