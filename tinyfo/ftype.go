@@ -19,6 +19,7 @@ func (*FUnion) ftype()        {}
 func (*FExtType) ftype()      {}
 func (*FPreUsed) ftype()      {}
 func (*FSlice) ftype()        {}
+func (*FTuple) ftype()        {}
 func (*FParametrized) ftype() {}
 
 func IsUnresolved(ft FType) bool {
@@ -92,6 +93,19 @@ type FSlice struct {
 
 func (s *FSlice) ToGo() string {
 	return "[]" + s.elemType.ToGo()
+}
+
+type FTuple struct {
+	Elems []FType
+}
+
+// Support only 2 element for a while.
+func NewFTuple(e1 FType, e2 FType) *FTuple {
+	return &FTuple{[]FType{e1, e2}}
+}
+
+func (s *FTuple) ToGo() string {
+	return fmt.Sprintf("frt.Tuple2[%s, %s]", s.Elems[0].ToGo(), s.Elems[1].ToGo())
 }
 
 // parametrized type(generics)

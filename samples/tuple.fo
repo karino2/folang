@@ -1,0 +1,10 @@
+package main
+
+import frt
+
+let ika () =
+   frt.Snd (123, "abc")
+
+let main () =
+  let s = ika ()
+  frt.Println s

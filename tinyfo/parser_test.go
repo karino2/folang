@@ -893,6 +893,39 @@ let ika () =
 `,
 			[]string{"return ([]int{1,2,3})", "ika() []int"},
 		},
+		{
+			`package main
+
+let ika () =
+  (1, 2)
+
+`,
+			[]string{") frt.Tuple2[int, int]", "frt.Tuple2[int, int]{1,2}"},
+		},
+		{
+			`package main
+
+package_info pair =
+  let Fst<T, U> : T*U->T
+
+let ika () =
+  pair.Fst (1, "s")
+`,
+			[]string{"ika() int{", "pair.Fst"},
+		},
+		// unit arg parse.
+		{
+			`package main
+
+let ika () =
+  "123"
+
+let hoge () =
+   let s = ika ()
+	 s
+`,
+			[]string{"ika() string", "= ika()"},
+		},
 	}
 
 	for _, test := range tests {
@@ -910,7 +943,11 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 let ika () =
-  [1; 2; 3]
+  "123"
+
+let hoge () =
+   let s = ika ()
+	 s
 
 `
 

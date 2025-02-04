@@ -47,6 +47,7 @@ const (
 	AND
 	PLUS
 	MINUS
+	ASTER
 	IF
 	THEN
 	ELSE
@@ -351,6 +352,8 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(GT, b)
 	case b == '+':
 		cur.setOneChar(PLUS, b)
+	case b == '*':
+		cur.setOneChar(ASTER, b)
 	case b == '-':
 		if tkz.isCharAt(tkz.pos+1, '>') {
 			cur.ttype = RARROW
@@ -727,6 +730,7 @@ func (p *Parser) isEndOfTerm() bool {
 		ttype == WITH ||
 		ttype == THEN ||
 		ttype == ELSE ||
+		ttype == COMMA ||
 		p.nextNonEOLIsBinOp()
 }
 
@@ -812,7 +816,10 @@ func (p *Parser) parseVariableReference() Expr {
 Grammar says Application Expression is expr expr.
 So create ATOM parser that does not handle application expressions.
 
-ATOM = LITERAL | VARIABLE_REF | REC_GEN | '(' ')' | '(' EXPR ')'
+ATOM = LITERAL | VARIABLE_REF | REC_GEN | '(' ')' | '(' PAREN_EXPR ')'
+
+PAREN_EXPR = EXPR (',' EXPR)*
+that is, EXPR or TUPLE_EXPR.
 */
 func (p *Parser) parseAtom() Expr {
 	tk := p.Current()
@@ -835,6 +842,16 @@ func (p *Parser) parseAtom() Expr {
 			return gUnitVal
 		} else {
 			ret := p.parseExpr()
+			first := true
+			for p.currentIs(COMMA) {
+				if !first {
+					panic("only pair is suppoted for tuple")
+				}
+				first = false
+				p.consume(COMMA)
+				ne := p.parseExpr()
+				ret = &TupleExpr{[]Expr{ret, ne}}
+			}
 			p.consume(RPAREN)
 			return ret
 		}
@@ -1198,21 +1215,40 @@ func (p *Parser) parseAtomType() FType {
 }
 
 /*
-NONE_COMPOUND_FUNC_TYPE = ATOM_TYPE '->' ATOM_TYPE ('->' ATOM_TYPE)*
+TERM_TYPE = ATOM_TYPE | TUPLE_TYPE
 
-Pass first ATOM_TYPE as argument.
+TUPLE_TYPE = ATOME_TYPE '*' ATOM_TYPE ('*' ATOME_TYPE)*
+
+TUPLE of func type is NYI.
+*/
+func (p *Parser) parseTermType() FType {
+	one := p.parseAtomType()
+
+	if !p.currentIs(ASTER) {
+		return one
+	}
+	// only support pair for a while.
+	p.consume(ASTER)
+	two := p.parseAtomType()
+	return NewFTuple(one, two)
+}
+
+/*
+NONE_COMPOUND_FUNC_TYPE = TERM_TYPE '->' TERM_TYPE ('->' TERM_TYPE)*
+
+Pass first TERM_TYPE as argument.
 */
 func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
 	types := []FType{first}
 	for p.Current().ttype == RARROW {
 		p.consume(RARROW)
-		types = append(types, p.parseAtomType())
+		types = append(types, p.parseTermType())
 	}
 	return NewFFunc(types...)
 }
 
 /*
-FUNC_ELEM = ATOM_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
+FUNC_ELEM = TERM_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
 
 Only One nesting is supported like (a->b)->c->d resolved as func (arg1:func(a)b, arg2: c) d
 */
@@ -1225,12 +1261,12 @@ func (p *Parser) parseFuncElemType() FType {
 			return FUnit
 		}
 		p.consume(LPAREN)
-		first := p.parseAtomType()
+		first := p.parseTermType()
 		ft := p.parseNoneCompoundFuncType(first)
 		p.consume(RPAREN)
 		return ft
 	}
-	return p.parseAtomType()
+	return p.parseTermType()
 }
 
 /*
@@ -1248,7 +1284,7 @@ func (p *Parser) parseFuncType() *FFunc {
 }
 
 /*
-TYPE =  ATOM_TYPE | FUNC_TYPE
+TYPE =  TERM_TYPE | FUNC_TYPE
 */
 func (p *Parser) parseType() FType {
 	if p.Current().ttype == LPAREN {
@@ -1260,7 +1296,7 @@ func (p *Parser) parseType() FType {
 		}
 		return p.parseFuncType()
 	}
-	one := p.parseAtomType()
+	one := p.parseTermType()
 
 	if p.Current().ttype == RARROW {
 		// func type

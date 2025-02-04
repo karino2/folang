@@ -27,6 +27,7 @@ func (*RecordGen) expr()     {}
 func (*Block) expr()         {}
 func (*MatchExpr) expr()     {}
 func (*SliceExpr) expr()     {}
+func (*TupleExpr) expr()     {}
 
 /*
 Some expr is OK for just return in some situation (like body of function).
@@ -236,6 +237,14 @@ func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
 			est := exprType.(*FSlice)
 			paramInfo[pet.name] = est.elemType
 		}
+	case *FTuple:
+		etup := exprType.(*FTuple)
+		// only check one level of T*U
+		for i, tt := range gt.Elems {
+			if ptt, ok := tt.(*FParametrized); ok {
+				paramInfo[ptt.name] = etup.Elems[i]
+			}
+		}
 	case *FFunc:
 		// only check one level of T->U
 		eft, ok := exprType.(*FFunc)
@@ -281,6 +290,22 @@ func updateType(old FType, tinfo map[string]FType) FType {
 		} else {
 			return old
 		}
+	case *FTuple:
+		// only check one level of T*U
+		var newEts []FType
+		for _, et := range grt.Elems {
+			if pet, ok := et.(*FParametrized); ok {
+				if nt, ok := tinfo[pet.name]; ok {
+					newEts = append(newEts, nt)
+				} else {
+					newEts = append(newEts, et)
+				}
+			} else {
+				newEts = append(newEts, et)
+			}
+		}
+		return &FTuple{newEts}
+
 		// TODO: *FFunc support.
 	default:
 		return old
@@ -331,6 +356,7 @@ func (fc *FunCall) ResolveTypeParamByArgs() {
 /*
 T, int -> paramName=T, matchType=int, ok=true
 []T, []int -> paramName=T, matchType=int, ok=true
+int*T, int*string -> paramName=T matchType=string ok=true, currently, there is no way to inform two match, so only either of one param is matched. NYI for both.
 */
 func matchTypeParam(target FType, realType FType) (paramName string, matchType FType, matched bool) {
 	switch tt := target.(type) {
@@ -346,6 +372,17 @@ func matchTypeParam(target FType, realType FType) (paramName string, matchType F
 			matchType = realSlice.elemType
 			matched = true
 			return
+		}
+	case *FTuple:
+		// NYI: support both match case.
+		for i, targetElemType := range tt.Elems {
+			if elemPt, ok := targetElemType.(*FParametrized); ok {
+				realTupleType := realType.(*FTuple)
+				paramName = elemPt.name
+				matchType = realTupleType.Elems[i]
+				matched = true
+				return
+			}
 		}
 	}
 	matched = false
@@ -785,6 +822,33 @@ func (se *SliceExpr) ToGo() string {
 	}
 	buf.WriteString("}")
 	buf.WriteString(")")
+	return buf.String()
+}
+
+type TupleExpr struct {
+	Elems []Expr
+}
+
+// Support only two element for a while.
+func (te *TupleExpr) FType() FType {
+	if len(te.Elems) != 2 {
+		panic("Only two element tuple support for a while.")
+	}
+	return NewFTuple(te.Elems[0].FType(), te.Elems[1].FType())
+}
+
+func (te *TupleExpr) ToGo() string {
+	var buf bytes.Buffer
+
+	buf.WriteString("frt.Tuple2[")
+	buf.WriteString(te.Elems[0].FType().ToGo())
+	buf.WriteString(", ")
+	buf.WriteString(te.Elems[1].FType().ToGo())
+	buf.WriteString("]{")
+	buf.WriteString(te.Elems[0].ToGo())
+	buf.WriteString(",")
+	buf.WriteString(te.Elems[1].ToGo())
+	buf.WriteString("}")
 	return buf.String()
 }
 

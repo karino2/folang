@@ -10,7 +10,8 @@
       "request": "launch",
       "mode": "auto",
       "program": "${fileDirname}",
-      "args": ["../pkg/pkg_all.foi", "../fc/ftype.fo", "../fc/ast.fo"]
+      "args": ["../pkg/pkg_all.foi", "../samples/tuple.fo"]
+      // "args": ["../pkg/pkg_all.foi", "../fc/ftype.fo", "../fc/ast.fo"]
     }
   ]
 }

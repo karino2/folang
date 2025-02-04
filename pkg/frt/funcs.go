@@ -67,3 +67,12 @@ func IfOnly(cond bool, tbody func()) {
 		tbody()
 	}
 }
+
+type Tuple2[T any, U any] struct {
+	E0 T
+	E1 U
+}
+
+// [Tuples - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/tuples)
+func Fst[T any, U any](tup Tuple2[T, U]) T { return tup.E0 }
+func Snd[T any, U any](tup Tuple2[T, U]) U { return tup.E1 }
