@@ -840,15 +840,11 @@ func (te *TupleExpr) FType() FType {
 func (te *TupleExpr) ToGo() string {
 	var buf bytes.Buffer
 
-	buf.WriteString("frt.Tuple2[")
-	buf.WriteString(te.Elems[0].FType().ToGo())
-	buf.WriteString(", ")
-	buf.WriteString(te.Elems[1].FType().ToGo())
-	buf.WriteString("]{")
+	buf.WriteString("frt.NewTuple2(")
 	buf.WriteString(te.Elems[0].ToGo())
 	buf.WriteString(",")
 	buf.WriteString(te.Elems[1].ToGo())
-	buf.WriteString("}")
+	buf.WriteString(")")
 	return buf.String()
 }
 

@@ -8,7 +8,7 @@ replace github.com/karino2/folang/pkg/buf => ../pkg/buf
 
 require (
 	github.com/karino2/folang/pkg/buf v0.0.0-00010101000000-000000000000
-	github.com/karino2/folang/pkg/frt v0.0.0-00010101000000-000000000000
+	github.com/karino2/folang/pkg/frt v0.0.0-20250202140944-2d44ccfef24a
 	github.com/karino2/folang/pkg/slice v0.0.0-00010101000000-000000000000
 )
 

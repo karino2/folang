@@ -73,6 +73,10 @@ type Tuple2[T any, U any] struct {
 	E1 U
 }
 
+func NewTuple2[T any, U any](e0 T, e1 U) Tuple2[T, U] {
+	return Tuple2[T, U]{E0: e0, E1: e1}
+}
+
 // [Tuples - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/tuples)
 func Fst[T any, U any](tup Tuple2[T, U]) T { return tup.E0 }
 func Snd[T any, U any](tup Tuple2[T, U]) U { return tup.E1 }
