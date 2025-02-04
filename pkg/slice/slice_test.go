@@ -1,6 +1,8 @@
 package slice
 
-import "testing"
+import (
+	"testing"
+)
 
 /*
 func Sort[T cmp.Ordered](s []T) []T {
@@ -19,5 +21,15 @@ func TestSort(t *testing.T) {
 	}
 	if got[0] != "abc" {
 		t.Errorf("result not sorted: %v", got)
+	}
+}
+
+func TestZip(t *testing.T) {
+	s1 := ([]int{1, 2, 3})
+	s2 := ([]string{"a", "b", "c"})
+	got := Zip[int, string](s1, s2)
+
+	if len(got) != 3 {
+		t.Errorf("got %v", got)
 	}
 }

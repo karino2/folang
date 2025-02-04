@@ -780,6 +780,19 @@ let ika (ab:AorB) =
 `,
 			"b match",
 		},
+		{
+			`package main
+
+package_info slice =
+  let Zip<T, U>: []T->[]U->[]T*U
+
+let ika () =
+  let s1 = [1; 2; 3]
+	let s2 = ["a"; "b"; "c"]
+  slice.Zip s1 s2
+`,
+			"frt.Tuple2[int, string]",
+		},
 	}
 
 	for _, test := range tests {
@@ -900,7 +913,7 @@ let ika () =
   (1, 2)
 
 `,
-			[]string{") frt.Tuple2[int, int]", "frt.Tuple2[int, int]{1,2}"},
+			[]string{") frt.Tuple2[int, int]", "frt.NewTuple2(1,2)"},
 		},
 		{
 			`package main
@@ -942,12 +955,14 @@ let hoge () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika () =
-  "123"
+package_info slice =
+  let Zip<T, U>: []T->[]U->[]T*U
 
-let hoge () =
-   let s = ika ()
-	 s
+let ika () =
+  let s1 = [1; 2; 3]
+	let s2 = ["a"; "b"; "c"]
+  slice.Zip s1 s2
+
 
 `
 

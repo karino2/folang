@@ -1173,7 +1173,7 @@ func (p *Parser) parseAtomType() FType {
 	if p.Current().ttype == LSBRACKET {
 		p.consume(LSBRACKET)
 		p.consume(RSBRACKET)
-		etype := p.parseAtomType()
+		etype := p.parseTermType()
 		return &FSlice{etype}
 	}
 

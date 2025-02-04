@@ -280,29 +280,13 @@ func updateType(old FType, tinfo map[string]FType) FType {
 			return old
 		}
 	case *FSlice:
-		// only check one level of []T
-		if pet, ok := grt.elemType.(*FParametrized); ok {
-			if nt, ok := tinfo[pet.name]; ok {
-				return &FSlice{nt}
-			} else {
-				return old
-			}
-		} else {
-			return old
-		}
+		newElemType := updateType(grt.elemType, tinfo)
+		return &FSlice{newElemType}
 	case *FTuple:
-		// only check one level of T*U
 		var newEts []FType
 		for _, et := range grt.Elems {
-			if pet, ok := et.(*FParametrized); ok {
-				if nt, ok := tinfo[pet.name]; ok {
-					newEts = append(newEts, nt)
-				} else {
-					newEts = append(newEts, et)
-				}
-			} else {
-				newEts = append(newEts, et)
-			}
+			nt := updateType(et, tinfo)
+			newEts = append(newEts, nt)
 		}
 		return &FTuple{newEts}
 

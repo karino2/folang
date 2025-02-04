@@ -8,4 +8,5 @@ package_info slice =
   let Sort<T>: []T -> []T
   let SortBy<T, U>: (T->U)->[]T->[]T
   let Skip<T>: int->[]T->[]T
+  let Zip<T, U>: []T->[]U->[]T*U
 

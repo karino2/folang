@@ -3,6 +3,8 @@ package slice
 import (
 	"cmp"
 	"slices"
+
+	"github.com/karino2/folang/pkg/frt"
 )
 
 /*
@@ -75,4 +77,15 @@ func SortBy[T any, U cmp.Ordered](proj func(T) U, s []T) []T {
 	res := append(s[:0:0], s...)
 	slices.SortFunc(res, func(s1, s2 T) int { return cmp.Compare(proj(s1), proj(s2)) })
 	return res
+}
+
+func Zip[T, U any](s1 []T, s2 []U) []frt.Tuple2[T, U] {
+	var ret []frt.Tuple2[T, U]
+	if len(s1) != len(s2) {
+		panic("zip with different length slices.")
+	}
+	for i, e1 := range s1 {
+		ret = append(ret, frt.NewTuple2(e1, s2[i]))
+	}
+	return ret
 }
