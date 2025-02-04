@@ -1076,7 +1076,7 @@ func (p *Parser) parseExpr() Expr {
 
 func (p *Parser) isEndOfBlock() bool {
 	p.skipSpace()
-	return p.currentCol() < p.currentOffside()
+	return p.currentCol() < p.currentOffside() || p.currentIs(EOF)
 }
 
 /*
