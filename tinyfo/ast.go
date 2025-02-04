@@ -177,26 +177,6 @@ func (fc *FunCall) toGoPartialApply() string {
 	return buf.String()
 }
 
-func (fc *FunCall) writeTypeParam(buf *bytes.Buffer) {
-	if len(fc.TypeParams) > 0 {
-		firstTypeParam := true
-		for _, tp := range fc.TypeParams {
-			if tp.ResolvedType != nil {
-				if firstTypeParam {
-					buf.WriteString("[")
-					firstTypeParam = false
-				} else {
-					buf.WriteString(", ")
-				}
-				buf.WriteString(tp.ResolvedType.ToGo())
-			}
-		}
-		if !firstTypeParam {
-			buf.WriteString("]")
-		}
-	}
-}
-
 func (fc *FunCall) ToGo() string {
 	if len(fc.Args) > len(fc.ArgTypes()) {
 		panic("too many argument")
@@ -207,7 +187,6 @@ func (fc *FunCall) ToGo() string {
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fc.Func.Name)
-	fc.writeTypeParam(&buf)
 	buf.WriteString("(")
 
 	oneUnitArg := len(fc.Args) == 1 && fc.Args[0] == gUnitVal

@@ -640,7 +640,7 @@ let ika () =
   let s = GoEval<[]int> "int[]{1, 2}"
   slice.Take 2 s
 `,
-			"return slice.Take[int](2, s)", // specify resolved type param.
+			"return slice.Take(2, s)",
 		},
 		{
 			`package_info slice =
@@ -667,7 +667,7 @@ let ika () =
 			let hoge () =
 				5-7+1+2
 			`,
-			"frt.OpPlus[int](frt.OpPlus[int](frt.OpMinus[int](5, 7), 1), 2)",
+			"frt.OpPlus(frt.OpPlus(frt.OpMinus(5, 7), 1), 2)",
 		},
 		// left assoc + ()
 		{
@@ -676,7 +676,7 @@ let ika () =
 let hoge () =
   5-7+(1+2+3)
 `,
-			"frt.OpPlus[int](frt.OpMinus[int](5, 7), frt.OpPlus[int](frt.OpPlus[int](1, 2), 3))",
+			"frt.OpPlus(frt.OpMinus(5, 7), frt.OpPlus(frt.OpPlus(1, 2), 3))",
 		},
 		{
 			// once match parse wrongly move one token after end.
@@ -704,7 +704,7 @@ this is test
   s1 <> s2
 
 `,
-			"frt.OpNotEqual[string](s1, s2)",
+			"frt.OpNotEqual(s1, s2)",
 		},
 		{
 			`package main
@@ -743,7 +743,7 @@ let ika (fields: []string) =
   fields |> slice.Sort
 
 `,
-			"[]string, []string",
+			"frt.Pipe",
 		},
 		// comment inside union case. just pass parse is enough.
 		{
@@ -821,7 +821,7 @@ let ika () =
   let s = GoEval<[]int> "[]int{1, 2, 3}"
   s |> slice.Take 2
 `,
-			[]string{"func (_r0 []int) []int", "frt.Pipe[[]int, []int]"},
+			[]string{"func (_r0 []int) []int", "frt.Pipe("},
 		},
 		{
 			`package main
@@ -880,14 +880,14 @@ let hoge () =
   let bw = buf.New ()
 	"abc" |> buf.Write bw
 `,
-			[]string{"frt.PipeUnit[string]", "{ buf.Write" /* no return */},
+			[]string{"frt.PipeUnit", "{ buf.Write" /* no return */},
 		},
 		{
 			`let ika (s1:string) (s2:string) =
   s1 = s2
 
 `,
-			[]string{"frt.OpEqual[string](s1, s2)", "s2 string) bool"},
+			[]string{"frt.OpEqual(s1, s2)", "s2 string) bool"},
 		},
 		{
 			`package main
