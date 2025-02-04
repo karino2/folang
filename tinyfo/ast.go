@@ -854,6 +854,10 @@ func (fd *FuncDef) ToGoParams(buf *bytes.Buffer) {
 }
 
 func varsToFTypes(vars []*Var) []FType {
+	if len(vars) == 0 {
+		return []FType{FUnit}
+	}
+
 	var fts []FType
 	for _, arg := range vars {
 		fts = append(fts, arg.Type)
