@@ -5,6 +5,20 @@ import slice
 import buf
 import strings
 
+// wrapper types.
+package_info _ =
+  type funcTypeDict
+  type extTypeDict
+  let newFTD: ()->funcTypeDict
+  let newETD: ()->extTypeDict
+  let ftdPut: funcTypeDict->string->FuncType->()
+  let etdPut: extTypeDict->string->string->()
+  let ftdKVs: funcTypeDict->[]string*FuncType
+  let etdKVs: extTypeDict->[]string*string
+  let uniqueTmpVarName: ()->string
+
+
+
 type GoEval = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
 
@@ -29,6 +43,7 @@ type Expr =
 | FieldAccess of FieldAccess
 | Var of Var
 | RecordGen of RecordGen
+| LazyBlock of LazyBlock
 /*
   For some expr, normally we need to wrap with func() to become expr in go stmt
   But in some case like final expr of block, just return is enough and do not need to wrap func().
@@ -37,7 +52,8 @@ type Expr =
 | ReturnableExpr of ReturnableExpr
 and FunCall = {targetFunc: Var; args: []Expr}
 and RecordGen = {fieldNames: []string; fieldValues: []Expr; recordType: RecordType}
-and Block = {stms: []Stmt; finalExpr: Expr; asFunc: bool}
+and Block = {stmts: []Stmt; finalExpr: Expr}
+and LazyBlock = {stmts: []Stmt; finalExpr: Expr}
 and MatchRule = {pattern: MatchPattern; body: Block}
 and MatchExpr = {target: Expr; rules: []MatchRule}
 and ReturnableExpr =
@@ -46,6 +62,7 @@ and ReturnableExpr =
 and Stmt =
 | Import of string
 | Package of string
+| PackageInfo of PackageInfo
 | LetFuncDef of LetFuncDef
 | LetVarDef of LetVarDef
 | ExprStmt of Expr
@@ -53,6 +70,7 @@ and Stmt =
 | MultipleDefs of MultipeDefs
 and LetFuncDef = {name: string; params: []Var; body:Block}
 and LetVarDef = {name: string; rhs: Expr}
+and PackageInfo = {name: string; funcInfo: funcTypeDict; typeInfo: extTypeDict}
 and RecordDef = {name: string; fields: []NameTypePair}
 and UnionDef = {name: string; cases: []NameTypePair}
 and DefStmt =
@@ -60,28 +78,24 @@ and DefStmt =
 | UnionDef of UnionDef
 and MultipeDefs = {defs: []DefStmt}
 
-
-/*
-map, NYI
-and PackageInfo = {name: string; funcInfo: map<string, FuncType>; typeInfo: map<string, FExtType>}
-
-| PackageInfo of PackageInfo
-*/
-
 let faToType (fa:FieldAccess) =
   let rt = fa.targetType
   let field = frGetField rt fa.fieldName
   field.ftype
 
+
+let lblockReturnType (toT: Expr->FType) (lb:LazyBlock) =
+  toT lb.finalExpr
+
+let lblockToType (toT: Expr->FType)  (lb:LazyBlock)=
+  let rtype = lblockReturnType toT lb
+  FFunc {targets=[FUnit; rtype]}
+
 let blockReturnType (toT: Expr->FType) (block:Block) =
   toT block.finalExpr
 
 let blockToType (toT: Expr->FType)  (b:Block)=
-  let rtype = blockReturnType toT b
-  if b.asFunc then
-    FFunc {targets=[FUnit; rtype]}
-  else
-    rtype
+  blockReturnType toT b
 
 let blockToExpr (block:Block) =
   ReturnableExpr (Block block)
@@ -128,6 +142,7 @@ let ExprToType (expr:Expr) : FType =
   | FieldAccess fa -> faToType fa
   | Var v -> v.ftype
   | RecordGen rg -> FRecord rg.recordType
+  | LazyBlock lb -> lblockToType ExprToType lb
   | ReturnableExpr re -> returnableToType ExprToType re
   | FunCall fc -> fcToType fc
 
@@ -149,8 +164,166 @@ let rgToGo (toGo: Expr->string) (rg:RecordGen) =
   buf.Write b "}"
   buf.String b
 
+/*
 
-let ExprToGo (expr:Expr) : string =
+  blockToGo implementation.
+
+*/
+
+/*
+  []Stmt+Expr -> []GoStmt+ return Expr.
+*/
+let buildReturn (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (stmts:[]Stmt) (lastExpr: Expr) =
+  let stmtGos = slice.Map sToGo stmts |> strings.Concat "\n"
+  let lastGo = match lastExpr with
+              | ReturnableExpr re -> reToGoRet re
+              | _ ->
+                let mayReturn = if ExprToType lastExpr = FUnit then "" else "return "
+                let lg = eToGo lastExpr
+                mayReturn + lg
+  stmtGos + "\n" + lastGo
+
+
+let wrapFunc (toGo: FType->string) (rtype:FType) (goReturnBody:string) =
+  let b = buf.New ()
+  buf.Write b "(func () "
+  toGo rtype |> buf.Write b
+  buf.Write b " {\n"
+  buf.Write b goReturnBody
+  buf.Write b"})"
+  buf.String b
+
+let wrapFunCall (toGo: FType->string) (rtype:FType) (goReturnBody:string) =
+  let wf = wrapFunc toGo rtype goReturnBody
+  wf + "()"
+
+let lbToGo (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (lb:LazyBlock) =
+  let returnBody = buildReturn sToGo eToGo reToGoRet lb.stmts lb.finalExpr
+  let rtype = ExprToType lb.finalExpr
+  wrapFunc FTypeToGo rtype returnBody
+
+let blockToGoReturn (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (block:Block) =
+  buildReturn sToGo eToGo reToGoRet block.stmts block.finalExpr
+
+let blockToGo (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (block:Block) =
+  let goRet = blockToGoReturn sToGo eToGo reToGoRet block
+  let rtype = ExprToType block.finalExpr
+  wrapFunCall FTypeToGo rtype goRet 
+
+/*
+
+  MatchExprToGo implementation
+
+*/
+
+/*
+Build following case header. (If unit or _ variable, generate code appropriately.)
+
+  case IntOrBool_I:
+    [varName] := tmpV
+*/
+let mpToCaseHeader (uname: string) (mp: MatchPattern) (tmpVarName: string) =
+  let b = buf.New ()
+  buf.Write b "case "
+  unionCaseStructName uname mp.caseId |> buf.Write b
+  buf.Write b ":\n"
+  if mp.varName <> "_" && mp.varName <> "" then
+    buf.Write b mp.varName
+    buf.Write b " := "
+    buf.Write b tmpVarName
+    buf.Write b ".Value"
+    buf.Write b "\n"
+  buf.String b
+
+/*
+ btogRet is bounded blockToGoReturn.
+
+ Generate following codes.)
+
+case IntOrBool_I:
+	[varName] := tmpV
+	body...
+
+or
+
+default:
+   body...
+
+*/
+let mrToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (mr: MatchRule)  =
+  let b = buf.New ()
+  let mp = mr.pattern
+  let cheader = if mp.caseId = "_" then
+                  "default:\n"
+                else
+                  mpToCaseHeader uname mp tmpVarName
+  buf.Write b cheader
+  btogRet mr.body |> buf.Write b
+  buf.Write b "\n"
+  buf.String b  
+
+let mrHasCaseVar (mr: MatchRule) =
+  let pat = mr.pattern
+  pat.caseId <> "_" && pat.varName <> "" && pat.varName <> "_"
+
+/*
+  If atlease one value or not (if not, tmp var is not necessary).
+*/
+let meHasCaseVar (me:MatchExpr) =
+  slice.Forall mrHasCaseVar me.rules
+
+let mrIsDefault (mr:MatchRule) =
+  let pat = mr.pattern
+  pat.caseId = "_"
+
+
+let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
+  let ttype = ExprToType me.target
+  let uttype = GoEval<UnionType> "ttype.(FType_FUnion).Value" // for non UnionType, NYI.
+  let hasCaseVar = meHasCaseVar me
+  let hasDefault = slice.Forany mrIsDefault me.rules
+  let tmpVarName = if hasCaseVar then uniqueTmpVarName () else ""
+  let mrtocase = mrToCase btogRet uttype.name tmpVarName
+  let b = buf.New ()
+  buf.Write b "switch "
+  if hasCaseVar then
+    buf.Write b tmpVarName
+    buf.Write b " := "
+  buf.Write b "("
+  toGo me.target |> buf.Write b 
+  buf.Write b ").(type){\n"
+  slice.Map mrtocase me.rules
+   |> strings.Concat ""
+   |> buf.Write b
+  if not hasDefault then
+     buf.Write b "default:\npanic(\"Union pattern fail. Never reached here.\")\n"
+  buf.Write b "}"
+  buf.String b
+
+let meToExpr (me:MatchExpr) =
+  MatchExpr me |> ReturnableExpr
+
+let meToGo (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
+  let goret = meToGoReturn toGo btogRet me
+  let rtype = ExprToType (meToExpr me)
+  wrapFunCall FTypeToGo rtype goret
+
+let reToGoReturn (sToGo: Stmt->string) (eToGo: Expr->string) (rexpr:ReturnableExpr) : string=
+  let rtgr = reToGoReturn sToGo eToGo
+  let btogoRet = blockToGoReturn sToGo eToGo rtgr
+  match rexpr with
+  | Block b -> blockToGoReturn sToGo eToGo rtgr b
+  | MatchExpr me -> meToGoReturn eToGo btogoRet me
+
+let reToGo (sToGo: Stmt->string) (eToGo: Expr->string) (rexpr:ReturnableExpr) : string=
+  let rtgr = reToGoReturn sToGo eToGo
+  let btogRet = blockToGoReturn sToGo eToGo rtgr
+  match rexpr with
+  | Block b -> blockToGo sToGo eToGo rtgr b
+  | MatchExpr me -> meToGo eToGo btogRet me
+
+let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
+  let eToGo = ExprToGo sToGo
   match expr with
   | BoolLiteral b -> frt.Sprintf1 "%t" b
   | GoEval ge -> ge.goStmt
@@ -159,7 +332,7 @@ let ExprToGo (expr:Expr) : string =
   | Unit -> ""
   | FieldAccess fa -> fa.targetName + "." + fa.fieldName
   | Var v -> v.name
-  | RecordGen rg -> rgToGo ExprToGo rg
-  | ReturnableExpr _ -> "NYI"
+  | RecordGen rg -> rgToGo eToGo rg
+  | ReturnableExpr re -> reToGo sToGo eToGo re
   | FunCall _ -> "NYI"
 

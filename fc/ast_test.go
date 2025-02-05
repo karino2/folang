@@ -4,6 +4,10 @@ import (
 	"testing"
 )
 
+func MyExprToGo(expr Expr) string {
+	return ExprToGo(func(Stmt) string { return "" }, expr)
+}
+
 func TestExprToGo(t *testing.T) {
 	var tests = []struct {
 		input Expr
@@ -24,7 +28,7 @@ func TestExprToGo(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		got := ExprToGo(test.input)
+		got := MyExprToGo(test.input)
 		if got != test.want {
 			t.Errorf("want %s, got %s.", test.want, got)
 		}
