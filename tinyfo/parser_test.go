@@ -687,7 +687,7 @@ let ika () =
 			let hoge () =
 				5-7+1+2
 			`,
-			"frt.OpPlus(frt.OpPlus(frt.OpMinus(5, 7), 1), 2)",
+			"(((5-7)+1)+2)",
 		},
 		// left assoc + ()
 		{
@@ -696,7 +696,7 @@ let ika () =
 let hoge () =
   5-7+(1+2+3)
 `,
-			"frt.OpPlus(frt.OpMinus(5, 7), frt.OpPlus(frt.OpPlus(1, 2), 3))",
+			"((5-7)+((1+2)+3))",
 		},
 		{
 			// once match parse wrongly move one token after end.
@@ -830,7 +830,7 @@ let ika (a:int) =
 	else
 	  "def"
 `,
-			"frt.OpAnd(frt.OpEqual(a, 0), frt.OpEqual(a, 2))",
+			"(frt.OpEqual(a, 0)&&frt.OpEqual(a, 2))",
 		},
 		{
 			`let ika (a:int) =

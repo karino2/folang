@@ -1,11 +1,9 @@
 package frt
 
 import (
-	"cmp"
 	"fmt"
 
 	gcmp "github.com/google/go-cmp/cmp"
-	"golang.org/x/exp/constraints"
 )
 
 func Pipe[T any, U any](elem T, f func(T) U) U {
@@ -23,18 +21,6 @@ func Println(str string) {
 // 1 arg sprintf. This is often used and enough for self host.
 func Sprintf1[T any](fmtstr string, arg T) string {
 	return fmt.Sprintf(fmtstr, arg)
-}
-
-func OpPlus[T cmp.Ordered](e1 T, e2 T) T {
-	return e1 + e2
-}
-
-type Numeric interface {
-	constraints.Integer | constraints.Float
-}
-
-func OpMinus[T Numeric](e1 T, e2 T) T {
-	return e1 - e2
 }
 
 func OpEqual[T any](e1 T, e2 T) bool {

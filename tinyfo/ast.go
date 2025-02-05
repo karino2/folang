@@ -20,6 +20,7 @@ func (*StringLiteral) expr() {}
 func (*IntImm) expr()        {}
 func (*UnitVal) expr()       {}
 func (*BoolLiteral) expr()   {}
+func (*BinOpCall) expr()     {}
 func (*FunCall) expr()       {}
 func (*FieldAccess) expr()   {}
 func (*Var) expr()           {}
@@ -134,6 +135,27 @@ func (fa *FieldAccess) ToGo() string { return fmt.Sprintf("%s.%s", fa.targetExpr
 type ResolvedTypeParam struct {
 	Name         string
 	ResolvedType FType // nil if not resoled.
+}
+
+type BinOpCall struct {
+	Op         string
+	ReturnType FType
+	Lhs        Expr
+	Rhs        Expr
+}
+
+func (b *BinOpCall) FType() FType {
+	return b.ReturnType
+}
+
+func (b *BinOpCall) ToGo() string {
+	var buf bytes.Buffer
+	buf.WriteString("(")
+	buf.WriteString(b.Lhs.ToGo())
+	buf.WriteString(b.Op)
+	buf.WriteString(b.Rhs.ToGo())
+	buf.WriteString(")")
+	return buf.String()
 }
 
 type FunCall struct {
@@ -489,38 +511,45 @@ func NewIfElseCall(cond Expr, tbody *Block, fbody *Block) *FunCall {
 	return &FunCall{pvar, []Expr{cond, tbody, fbody}, []ResolvedTypeParam{}}
 }
 
-func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) *FunCall {
+func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) Expr {
 	if btype == PIPE {
 		// PIPE needs different inference pattern.
 		return NewPipeCall(lhs, rhs)
 	}
 
-	// normal arithmetic.
-	// all func like OpPlus has one type argument.
-	// And type is T->T->(T|bool)
-	// currently I just assume both side type is already resolved.
-	// And return type is also the same. So use it as type parameter result.
+	// special handling for '=' '<>' because we want to use DeepEquals for slice and other structures.
+	if btype == EQ || btype == BRACKET {
+		// Function call and type is T->T->bool
+		// currently I just assume both side type is already resolved.
+		t1name := UniqueTmpTypeParamName()
+		resolvedType := lhs.FType()
+		var typeparams []ResolvedTypeParam
+		typeparams = append(typeparams, ResolvedTypeParam{t1name, resolvedType})
 
-	t1name := UniqueTmpTypeParamName()
-	resolvedType := lhs.FType()
-	var typeparams []ResolvedTypeParam
-	typeparams = append(typeparams, ResolvedTypeParam{t1name, resolvedType})
-	retType := resolvedType
+		pvar := &Var{binfo.goFuncName, &FFunc{[]FType{resolvedType, resolvedType, FBool}, []string{t1name}}}
+		return &FunCall{pvar, []Expr{lhs, rhs}, typeparams}
+	}
 
+	// normal binop.
+	// we just use golang native operator.
+	// currently I just assume both side type is already resolved and the same type.
+	// And return type is also the same (or bool for comparison). So use it as type parameter result.
+
+	rtype := lhs.FType()
+	retType := rtype
 	// It's better those login in binOpInfo, but just handle here for a while.
 	switch btype {
-	case EQ:
-		retType = FBool
-	case BRACKET:
-		retType = FBool
 	case AMPAMP:
 		// arg is also bool, Resolving with this info is NYI.
 		retType = FBool
+	case BARBAR:
+		retType = FBool
+	case GT:
+		retType = FBool
+	case LT:
+		retType = FBool
 	}
-
-	pvar := &Var{binfo.goFuncName, &FFunc{[]FType{resolvedType, resolvedType, retType}, []string{t1name}}}
-	return &FunCall{pvar, []Expr{lhs, rhs}, typeparams}
-
+	return &BinOpCall{binfo.goFuncName, retType, lhs, rhs}
 }
 
 // frt.Pipe<T1, T2> : T1->(T1->T2)->T2

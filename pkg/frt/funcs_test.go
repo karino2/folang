@@ -47,13 +47,6 @@ func TestPipeTake(t *testing.T) {
 	}
 }
 
-func TestOpPlus(t *testing.T) {
-	got := OpPlus[string]("abc", "def")
-	if got != "abcdef" {
-		t.Errorf("got %v", got)
-	}
-}
-
 func TestOpEaualSlice(t *testing.T) {
 	s1 := []string{"1", "2"}
 	s2 := []string{"1", "2"}

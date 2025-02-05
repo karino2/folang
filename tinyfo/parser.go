@@ -36,6 +36,7 @@ const (
 	INT_IMM
 	OF
 	BAR
+	BARBAR
 	RARROW
 	UNDER_SCORE
 	MATCH
@@ -85,11 +86,14 @@ type binOpInfo struct {
 // int is preedance
 var binOpMap = map[TokenType]binOpInfo{
 	PIPE:    {1, "frt.Pipe"},
-	AMPAMP:  {2, "frt.OpAnd"},
+	AMPAMP:  {2, "&&"},
+	BARBAR:  {2, "||"},
+	GT:      {2, ">"},
+	LT:      {2, "<"},
 	EQ:      {3, "frt.OpEqual"}, // as a comparison operator
 	BRACKET: {3, "frt.OpNotEqual"},
-	PLUS:    {4, "frt.OpPlus"},
-	MINUS:   {4, "frt.OpMinus"},
+	PLUS:    {4, "+"},
+	MINUS:   {4, "-"},
 }
 
 type Token struct {
@@ -337,6 +341,12 @@ func (tkz *Tokenizer) analyzeCur() {
 		if tkz.isCharAt(tkz.pos+1, '>') {
 			cur.ttype = PIPE
 			cur.stringVal = "|>"
+			cur.len = 2
+			return
+		}
+		if tkz.isCharAt(tkz.pos+1, '|') {
+			cur.ttype = BARBAR
+			cur.stringVal = "||"
 			cur.len = 2
 			return
 		}
