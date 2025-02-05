@@ -832,6 +832,16 @@ let ika (a:int) =
 `,
 			"frt.OpAnd(frt.OpEqual(a, 0), frt.OpEqual(a, 2))",
 		},
+		{
+			`let ika (a:int) =
+  if not (a = 0) then
+    "abc"
+	else
+	  "def"
+
+`,
+			"frt.OpNot(",
+		},
 	}
 
 	for _, test := range tests {
@@ -995,7 +1005,7 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 let ika (a:int) =
-  if a = 0 && a = 2 then
+  if not (a = 0) then
     "abc"
 	else
 	  "def"

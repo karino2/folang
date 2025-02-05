@@ -54,6 +54,7 @@ const (
 	THEN
 	ELSE
 	ELIF
+	NOT
 )
 
 var keywordMap = map[string]TokenType{
@@ -72,7 +73,8 @@ var keywordMap = map[string]TokenType{
 	"if":           IF,
 	"then":         THEN,
 	"else":         ELSE,
-	"ELIF":         ELIF,
+	"elif":         ELIF,
+	"not":          NOT,
 }
 
 type binOpInfo struct {
@@ -1015,7 +1017,9 @@ func (p *Parser) parseSliceExpr() Expr {
 }
 
 /*
-TERM = GOEVAL | MATCH_EXPR | IF_EXPR | SLICE_EXPR | ATOM ATOM*
+TERM = GOEVAL | MATCH_EXPR | IF_EXPR | SLICE_EXPR | ATOM ATOM* | 'not' TERM
+
+'not' in F# has much lower precedence, but I handle here because it's easier and OK for most of the case.
 */
 func (p *Parser) parseTerm() Expr {
 	tk := p.Current()
@@ -1034,6 +1038,15 @@ func (p *Parser) parseTerm() Expr {
 
 	if tk.ttype == IF {
 		return p.parseIfExpr()
+	}
+
+	if tk.ttype == NOT {
+		p.consume(NOT)
+		target := p.parseTerm()
+
+		// treat as frt.OpNot call.
+		pvar := &Var{"frt.OpNot", NewFFunc(FBool, FBool)}
+		return &FunCall{pvar, []Expr{target}, []ResolvedTypeParam{}}
 	}
 
 	var exprs []Expr

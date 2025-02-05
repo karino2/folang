@@ -50,6 +50,10 @@ func OpAnd(e1 bool, e2 bool) bool {
 	return e1 && e2
 }
 
+func OpNot(e1 bool) bool {
+	return !e1
+}
+
 func IfElse[T any](cond bool, tbody func() T, fbody func() T) T {
 	if cond {
 		return tbody()
@@ -85,3 +89,9 @@ func NewTuple2[T any, U any](e0 T, e1 U) Tuple2[T, U] {
 // [Tuples - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/tuples)
 func Fst[T any, U any](tup Tuple2[T, U]) T { return tup.E0 }
 func Snd[T any, U any](tup Tuple2[T, U]) U { return tup.E1 }
+
+func Assert(cond bool, msg string) {
+	if !cond {
+		panic(msg)
+	}
+}
