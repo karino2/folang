@@ -1,9 +1,8 @@
 package main
 
-import (
-	"github.com/karino2/folang/pkg/frt"
-	"github.com/karino2/folang/pkg/slice"
-)
+import "github.com/karino2/folang/pkg/frt"
+
+import "github.com/karino2/folang/pkg/slice"
 
 func faToType(fa FieldAccess) FType {
 	rt := fa.targetType
@@ -38,12 +37,12 @@ func meToType(toT func(Expr) FType, me MatchExpr) FType {
 }
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
-	switch _v36 := (rexpr).(type) {
+	switch _v29 := (rexpr).(type) {
 	case ReturnableExpr_Block:
-		b := _v36.Value
+		b := _v29.Value
 		return blockToType(toT, b)
 	case ReturnableExpr_MatchExpr:
-		me := _v36.Value
+		me := _v29.Value
 		return meToType(toT, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -53,17 +52,13 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 func fcToFuncType(fc FunCall) FuncType {
 	tfv := fc.targetFunc
 	ft := tfv.ftype
-	switch _v37 := (ft).(type) {
+	switch _v30 := (ft).(type) {
 	case FType_FFunc:
-		ft := _v37.Value
+		ft := _v30.Value
 		return ft
 	default:
 		return FuncType{}
 	}
-}
-
-func fcArgTypes(fc FunCall) []FType {
-	return frt.Pipe(fcToFuncType(fc), fargs)
 }
 
 func fcToType(fc FunCall) FType {
@@ -82,9 +77,9 @@ func fcToType(fc FunCall) FType {
 }
 
 func ExprToType(expr Expr) FType {
-	switch _v38 := (expr).(type) {
+	switch _v31 := (expr).(type) {
 	case Expr_GoEval:
-		ge := _v38.Value
+		ge := _v31.Value
 		return ge.typeArg
 	case Expr_StringLiteral:
 		return New_FType_FString
@@ -95,22 +90,22 @@ func ExprToType(expr Expr) FType {
 	case Expr_BoolLiteral:
 		return New_FType_FBool
 	case Expr_FieldAccess:
-		fa := _v38.Value
+		fa := _v31.Value
 		return faToType(fa)
 	case Expr_Var:
-		v := _v38.Value
+		v := _v31.Value
 		return v.ftype
 	case Expr_RecordGen:
-		rg := _v38.Value
+		rg := _v31.Value
 		return New_FType_FRecord(rg.recordType)
 	case Expr_LazyBlock:
-		lb := _v38.Value
+		lb := _v31.Value
 		return lblockToType(ExprToType, lb)
 	case Expr_ReturnableExpr:
-		re := _v38.Value
+		re := _v31.Value
 		return returnableToType(ExprToType, re)
 	case Expr_FunCall:
-		fc := _v38.Value
+		fc := _v31.Value
 		return fcToType(fc)
 	default:
 		panic("Union pattern fail. Never reached here.")

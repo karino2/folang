@@ -189,20 +189,84 @@ let reToGo (sToGo: Stmt->string) (eToGo: Expr->string) (rexpr:ReturnableExpr) : 
   | MatchExpr me -> meToGo eToGo btogRet me
 
 /*
-TODO: FunCallToGo
+
+FunCallToGo
+
 */
+
+
+let ftiToParamName (i:int) (ft:FType) =
+  frt.Sprintf1 "_r%d" i
+
+// ("_r0", FInt) -> "_r0 int"
+let ntpairToParam (tGo:FType->string) (ntp: string*FType) =
+  let tpgo = frt.Snd ntp |> tGo 
+  let name = frt.Fst ntp
+  name + " " + tpgo
+
+let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
+  let funcType = fcToFuncType fc
+  let fargTypes = fargs funcType
+  let argNum = slice.Length fc.args
+  let restTypes = slice.Skip argNum fargTypes
+  let restParamNames = slice.Mapi ftiToParamName restTypes
+  let b = buf.New ()
+  buf.Write b "(func (" // OK
+  slice.Zip restParamNames restTypes |> slice.Map (ntpairToParam tGo)
+  |> strings.Concat ", " |> buf.Write b
+  buf.Write b ") "
+  let fret = freturn funcType
+  if fret = FUnit then
+    buf.Write b "{ "
+  else
+    tGo fret |> buf.Write b
+    buf.Write b "{ return "
+  buf.Write b fc.targetFunc.name
+  buf.Write b "("
+  slice.Map eGo fc.args |> strings.Concat ", " |> buf.Write b
+  buf.Write b ", "
+  strings.Concat ", " restParamNames |> buf.Write b
+  buf.Write b ") })"
+  buf.String b
+
+let fcUnitArgOnly (fc:FunCall) =
+  let al = slice.Length fc.args
+  if al = 1 then
+    Unit = slice.Head fc.args 
+  else
+    false
+
+let fcFullApplyGo (eGo:Expr->string) (fc:FunCall) =
+  let b = buf.New ()
+  buf.Write b fc.targetFunc.name
+  buf.Write b "("
+  if not (fcUnitArgOnly fc) then
+    slice.Map eGo fc.args |> strings.Concat ", " |> buf.Write b
+  buf.Write b ")"
+  buf.String b
+
+let fcToGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
+  let funcType = fcToFuncType fc
+  let fargTypes = fargs funcType
+  let al = slice.Length fc.args
+  let tal = slice.Length fargTypes
+  if al > tal then GoEval "panic(\"Too many argument\")"
+  if al < tal then
+    fcPartialApplyGo tGo eGo fc
+  else
+    fcFullApplyGo eGo fc
 
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   match expr with
   | BoolLiteral b -> frt.Sprintf1 "%t" b
   | GoEval ge -> ge.goStmt
-  | StringLiteral s -> frt.Sprintf1 "\\\"%s\\\"" s
+  | StringLiteral s -> frt.Sprintf1 "\"%s\"" s
   | IntImm i -> frt.Sprintf1 "%d" i
   | Unit -> ""
   | FieldAccess fa -> fa.targetName + "." + fa.fieldName
   | Var v -> v.name
   | RecordGen rg -> rgToGo eToGo rg
   | ReturnableExpr re -> reToGo sToGo eToGo re
-  | FunCall _ -> "NYI"
+  | FunCall fc -> fcToGo FTypeToGo eToGo fc
 

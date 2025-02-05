@@ -41,8 +41,6 @@ let fcToFuncType (fc:FunCall) =
   | FFunc ft -> ft
   | _ -> GoEval<FuncType> "FuncType{}" // never happens.
 
-let fcArgTypes (fc:FunCall) =
-  fcToFuncType fc |> fargs
 
 let fcToType (fc:FunCall) =
   let ft = fcToFuncType fc

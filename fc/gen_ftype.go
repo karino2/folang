@@ -107,7 +107,7 @@ type UnionType struct {
 
 func fargs(ft FuncType) []FType {
 	l := slice.Length(ft.targets)
-	return frt.Pipe(ft.targets, (func(_r0 []FType) []FType { return slice.Take(frt.OpMinus(l, 1), _r0) }))
+	return frt.Pipe(ft.targets, (func(_r0 []FType) []FType { return slice.Take((l - 1), _r0) }))
 }
 
 func freturn(ft FuncType) FType {
@@ -126,7 +126,7 @@ func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
 		case FType_FUnit:
 			return ""
 		default:
-			return frt.OpPlus(" ", toGo(last))
+			return (" " + toGo(last))
 		}
 	})()
 	buf.Write(bw, ret)
@@ -179,15 +179,15 @@ func lookupCase(fu UnionType, caseName string) NameTypePair {
 }
 
 func unionCaseStructName(unionName string, caseName string) string {
-	return frt.OpPlus(frt.OpPlus(unionName, "_"), caseName)
+	return ((unionName + "_") + caseName)
 }
 
 func fSliceToGo(fs SliceType, toGo func(FType) string) string {
-	return frt.OpPlus("[]", toGo(fs.elemType))
+	return ("[]" + toGo(fs.elemType))
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v24 := (ft).(type) {
+	switch _v19 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -197,25 +197,25 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnit:
 		return ""
 	case FType_FFunc:
-		ft := _v24.Value
+		ft := _v19.Value
 		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v24.Value
+		fr := _v19.Value
 		return recordTypeToGo(fr)
 	case FType_FUnion:
-		fu := _v24.Value
+		fu := _v19.Value
 		return funionToGo(fu)
 	case FType_FExtType:
-		fe := _v24.Value
+		fe := _v19.Value
 		return fe
 	case FType_FSlice:
-		fs := _v24.Value
+		fs := _v19.Value
 		return fSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
-		fp := _v24.Value
+		fp := _v19.Value
 		return fp
 	case FType_FParametrized:
-		fp := _v24.Value
+		fp := _v19.Value
 		return fp
 	default:
 		panic("Union pattern fail. Never reached here.")
