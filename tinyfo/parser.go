@@ -1624,8 +1624,18 @@ EXT_DEF = (EXT_TYPE_DEF|EXT_FUNC_DEF)
 */
 func (p *Parser) parsePackageInfo() *PackageInfo {
 	p.consume(PACKAGE_INFO)
-	pkgName := p.identName()
-	p.gotoNext()
+	var pkgName string
+
+	if p.currentIs(IDENTIFIER) {
+		pkgName = p.identName()
+		p.gotoNext()
+	} else {
+		if !p.currentIs(UNDER_SCORE) {
+			panic("Wrong package info name type.")
+		}
+		pkgName = "_"
+		p.gotoNext()
+	}
 	p.consume(EQ)
 	p.skipEOLOne()
 	p.skipSpace()

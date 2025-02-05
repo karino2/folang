@@ -469,6 +469,26 @@ func TestPkfInfoTypeFun(t *testing.T) {
 
 }
 
+func TestPkgInfoUnderScoreDef(t *testing.T) {
+	src := `package_info _ =
+  type Buffer
+  let WriteString: Buffer->()
+
+`
+	parser := NewParser()
+	parser.Parse("", []byte(src))
+
+	got := parser.scope.LookupType("Buffer")
+	if _, ok := got.(*FExtType); !ok {
+		t.Errorf("Buffer type is not FExtType: %v", got)
+	}
+
+	got2 := parser.scope.LookupVar("WriteString")
+	if _, ok := got2.Type.(*FFunc); !ok {
+		t.Errorf("WriteString type is not FFunc: %v", got)
+	}
+}
+
 func TestBlockComment(t *testing.T) {
 	src := `package main
 

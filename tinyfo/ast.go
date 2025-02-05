@@ -1191,9 +1191,17 @@ func NewPackageInfo(name string) *PackageInfo {
 }
 
 func (pi *PackageInfo) registerExtType(name string) *FExtType {
-	ret := &FExtType{pi.name + "." + name}
+	ret := &FExtType{pi.fullName(name)}
 	pi.typeInfo[name] = ret
 	return ret
+}
+
+func (pi *PackageInfo) fullName(name string) string {
+	if pi.name == "_" {
+		return name
+	} else {
+		return pi.name + "." + name
+	}
 }
 
 func (pi *PackageInfo) registerToScope(scope *Scope) {
@@ -1203,7 +1211,7 @@ func (pi *PackageInfo) registerToScope(scope *Scope) {
 	}
 
 	for fname, ftp := range pi.funcInfo {
-		fullName := pi.name + "." + fname
+		fullName := pi.fullName(fname)
 		scope.DefineVar(fullName, &Var{fullName, ftp})
 	}
 }
