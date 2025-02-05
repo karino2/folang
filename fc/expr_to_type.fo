@@ -1,0 +1,71 @@
+package main
+
+import frt
+import slice
+
+let faToType (fa:FieldAccess) =
+  let rt = fa.targetType
+  let field = frGetField rt fa.fieldName
+  field.ftype
+
+let lblockReturnType (toT: Expr->FType) (lb:LazyBlock) =
+  toT lb.finalExpr
+
+let lblockToType (toT: Expr->FType)  (lb:LazyBlock)=
+  let rtype = lblockReturnType toT lb
+  FFunc {targets=[FUnit; rtype]}
+
+let blockReturnType (toT: Expr->FType) (block:Block) =
+  toT block.finalExpr
+
+let blockToType (toT: Expr->FType)  (b:Block)=
+  blockReturnType toT b
+
+let blockToExpr (block:Block) =
+  ReturnableExpr (Block block)
+
+let meToType (toT: Expr->FType) (me:MatchExpr) =
+  let frule = me.rules |> slice.Head
+  frule.body |> blockToExpr |> toT
+
+let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
+  match rexpr with
+  | Block b -> blockToType toT b
+  | MatchExpr me -> meToType toT me
+
+let fcToFuncType (fc:FunCall) =
+  // double field access like fc.targetFunc.ftype is NYI.
+  let tfv = fc.targetFunc
+  let ft = tfv.ftype
+  match ft with
+  | FFunc ft -> ft
+  | _ -> GoEval<FuncType> "FuncType{}" // never happens.
+
+let fcArgTypes (fc:FunCall) =
+  fcToFuncType fc |> fargs
+
+let fcToType (fc:FunCall) =
+  let ft = fcToFuncType fc
+  let tlen = fargs ft |> slice.Length
+  let alen = slice.Length fc.args
+  if alen = tlen then
+    freturn ft
+  else
+    // prtial apply.
+    GoEval "if alen > tlen { panic(\"too many arugments\")}"
+    let newts = slice.Skip alen ft.targets
+    FFunc {targets=newts}
+
+let ExprToType (expr:Expr) : FType =
+  match expr with
+  | GoEval ge -> ge.typeArg
+  | StringLiteral _ -> FString
+  | IntImm _ -> FInt
+  | Unit -> FUnit
+  | BoolLiteral _ -> FBool
+  | FieldAccess fa -> faToType fa
+  | Var v -> v.ftype
+  | RecordGen rg -> FRecord rg.recordType
+  | LazyBlock lb -> lblockToType ExprToType lb
+  | ReturnableExpr re -> returnableToType ExprToType re
+  | FunCall fc -> fcToType fc
