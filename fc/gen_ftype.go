@@ -114,7 +114,7 @@ func freturn(ft FuncType) FType {
 	return slice.Last(ft.targets)
 }
 
-func FFuncToGo(ft FuncType, toGo func(FType) string) string {
+func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
 	last := slice.Last(ft.targets)
 	args := fargs(ft)
 	bw := buf.New()
@@ -133,7 +133,7 @@ func FFuncToGo(ft FuncType, toGo func(FType) string) string {
 	return buf.String(bw)
 }
 
-func FRecordToGo(frec RecordType) string {
+func recordTypeToGo(frec RecordType) string {
 	return frec.name
 }
 
@@ -170,7 +170,7 @@ func frMatch(frec RecordType, fieldNames []string) bool {
 	}))
 }
 
-func FUnionToGo(fu UnionType) string {
+func funionToGo(fu UnionType) string {
 	return fu.name
 }
 
@@ -182,7 +182,7 @@ func unionCaseStructName(unionName string, caseName string) string {
 	return frt.OpPlus(frt.OpPlus(unionName, "_"), caseName)
 }
 
-func FSliceToGo(fs SliceType, toGo func(FType) string) string {
+func fSliceToGo(fs SliceType, toGo func(FType) string) string {
 	return frt.OpPlus("[]", toGo(fs.elemType))
 }
 
@@ -198,19 +198,19 @@ func FTypeToGo(ft FType) string {
 		return ""
 	case FType_FFunc:
 		ft := _v24.Value
-		return FFuncToGo(ft, FTypeToGo)
+		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
 		fr := _v24.Value
-		return FRecordToGo(fr)
+		return recordTypeToGo(fr)
 	case FType_FUnion:
 		fu := _v24.Value
-		return FUnionToGo(fu)
+		return funionToGo(fu)
 	case FType_FExtType:
 		fe := _v24.Value
 		return fe
 	case FType_FSlice:
 		fs := _v24.Value
-		return FSliceToGo(fs, FTypeToGo)
+		return fSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
 		fp := _v24.Value
 		return fp

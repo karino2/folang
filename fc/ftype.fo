@@ -30,7 +30,7 @@ let fargs (ft:FuncType) =
 let freturn (ft:FuncType) =
   slice.Last ft.targets
 
-let FFuncToGo (ft:FuncType) (toGo:FType->string) =
+let funcTypeToGo (ft:FuncType) (toGo:FType->string) =
   let last = slice.Last ft.targets
   let args = fargs ft
   let bw = buf.New ()
@@ -43,7 +43,7 @@ let FFuncToGo (ft:FuncType) (toGo:FType->string) =
   buf.Write bw ret
   buf.String bw
 
-let FRecordToGo (frec: RecordType) =
+let recordTypeToGo (frec: RecordType) =
   frec.name
 
 let frStructName (frec: RecordType) =
@@ -74,7 +74,7 @@ let frMatch (frec: RecordType) (fieldNames: []string)=
     sortedInput = sortedFName
 
 
-let FUnionToGo (fu: UnionType) =
+let funionToGo (fu: UnionType) =
   fu.name
 
 let lookupCase (fu: UnionType) (caseName: string) =
@@ -84,7 +84,7 @@ let lookupCase (fu: UnionType) (caseName: string) =
 let unionCaseStructName (unionName: string) (caseName: string) =
   unionName + "_" + caseName
 
-let FSliceToGo (fs: SliceType) (toGo:FType->string) =
+let fSliceToGo (fs: SliceType) (toGo:FType->string) =
   "[]" + (toGo fs.elemType)
 
 let FTypeToGo (ft:FType) : string =
@@ -93,10 +93,10 @@ let FTypeToGo (ft:FType) : string =
   | FBool -> "bool"
   | FString -> "string"    
   | FUnit -> "" // When use as return type in Go, "" is suitable.
-  | FFunc ft -> FFuncToGo ft FTypeToGo
-  | FRecord fr -> FRecordToGo fr
-  | FUnion fu -> FUnionToGo fu
+  | FFunc ft -> funcTypeToGo ft FTypeToGo
+  | FRecord fr -> recordTypeToGo fr
+  | FUnion fu -> funionToGo fu
   | FExtType fe -> fe // for external type with typename fe, use that type name as is.
-  | FSlice fs -> FSliceToGo fs FTypeToGo
+  | FSlice fs -> fSliceToGo fs FTypeToGo
   | FPreUsed fp -> fp
   | FParametrized fp -> fp

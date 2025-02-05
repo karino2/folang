@@ -23,7 +23,7 @@ func toGoSimple(ftype FType) string { return fmt.Sprintf("%v", ftype) }
 
 func TestFFuncToGo(t *testing.T) {
 	target := FuncType{[]FType{New_FType_FInt, New_FType_FInt, New_FType_FString, New_FType_FString}}
-	got := FFuncToGo(target, toGoSimple)
+	got := funcTypeToGo(target, toGoSimple)
 
 	if got != "func ({},{},{}) {}" {
 		t.Errorf("got %s", got)
