@@ -3,6 +3,7 @@ package_info frt =
   let Sprintf1<T>: string->T->string
   let Fst<T, U> : T*U->T
   let Snd<T, U> : T*U->U
+  let Assert : bool->string->()
 
 package_info buf =
   type Buffer
@@ -22,6 +23,8 @@ package_info slice =
   let SortBy<T, U>: (T->U)->[]T->[]T
   let Skip<T>: int->[]T->[]T
   let Zip<T, U>: []T->[]U->[]T*U
+  let Forall<T>: (T->bool)->[]T->bool
+  let Forany<T>: (T->bool)->[]T->bool
 
 package_info strings =
   let Concat: string->[]string->string

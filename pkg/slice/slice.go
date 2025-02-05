@@ -95,3 +95,21 @@ func Zip[T, U any](s1 []T, s2 []U) []frt.Tuple2[T, U] {
 	}
 	return ret
 }
+
+func Forall[T any](pred func(T) bool, s []T) bool {
+	for _, e := range s {
+		if !pred(e) {
+			return false
+		}
+	}
+	return true
+}
+
+func Forany[T any](pred func(T) bool, s []T) bool {
+	for _, e := range s {
+		if pred(e) {
+			return true
+		}
+	}
+	return false
+}
