@@ -45,6 +45,11 @@ func OpNotEqual[T any](e1 T, e2 T) bool {
 	return !OpEqual(e1, e2)
 }
 
+// should handle short cut, NYI.
+func OpAnd(e1 bool, e2 bool) bool {
+	return e1 && e2
+}
+
 func IfElse[T any](cond bool, tbody func() T, fbody func() T) T {
 	if cond {
 		return tbody()

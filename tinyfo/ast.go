@@ -513,6 +513,9 @@ func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) *FunCall
 		retType = FBool
 	case BRACKET:
 		retType = FBool
+	case AMPAMP:
+		// arg is also bool, Resolving with this info is NYI.
+		retType = FBool
 	}
 
 	pvar := &Var{binfo.goFuncName, &FFunc{[]FType{resolvedType, resolvedType, retType}, []string{t1name}}}

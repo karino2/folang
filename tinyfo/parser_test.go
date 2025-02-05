@@ -821,6 +821,17 @@ let ika () =
 `,
 			`return "\n"`,
 		},
+		{
+			`package main
+
+let ika (a:int) =
+  if a = 0 && a = 2 then
+    "abc"
+	else
+	  "def"
+`,
+			"frt.OpAnd(frt.OpEqual(a, 0), frt.OpEqual(a, 2))",
+		},
 	}
 
 	for _, test := range tests {
@@ -983,8 +994,11 @@ let hoge () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika () =
-  "\n"
+let ika (a:int) =
+  if a = 0 && a = 2 then
+    "abc"
+	else
+	  "def"
 
 `
 

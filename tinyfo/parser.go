@@ -44,7 +44,9 @@ const (
 	FALSE
 	PACKAGE_INFO
 	DOT
-	AND
+	AND    // "and"
+	AMP    // "&"
+	AMPAMP // "&&"
 	PLUS
 	MINUS
 	ASTER
@@ -81,10 +83,11 @@ type binOpInfo struct {
 // int is preedance
 var binOpMap = map[TokenType]binOpInfo{
 	PIPE:    {1, "frt.Pipe"},
-	EQ:      {2, "frt.OpEqual"}, // as a comparison operator
-	BRACKET: {2, "frt.OpNotEqual"},
-	PLUS:    {3, "frt.OpPlus"},
-	MINUS:   {3, "frt.OpMinus"},
+	AMPAMP:  {2, "frt.OpAnd"},
+	EQ:      {3, "frt.OpEqual"}, // as a comparison operator
+	BRACKET: {3, "frt.OpNotEqual"},
+	PLUS:    {4, "frt.OpPlus"},
+	MINUS:   {4, "frt.OpMinus"},
 }
 
 type Token struct {
@@ -348,6 +351,14 @@ func (tkz *Tokenizer) analyzeCur() {
 		cur.setOneChar(GT, b)
 	case b == '+':
 		cur.setOneChar(PLUS, b)
+	case b == '&':
+		if tkz.isCharAt(tkz.pos+1, '&') {
+			cur.ttype = AMPAMP
+			cur.stringVal = "&&"
+			cur.len = 2
+			return
+		}
+		cur.setOneChar(AMP, b)
 	case b == '*':
 		cur.setOneChar(ASTER, b)
 	case b == '-':
