@@ -55,6 +55,14 @@ func Map[T any, U any](f func(T) U, s []T) []U {
 	return res
 }
 
+func Mapi[T any, U any](f func(int, T) U, s []T) []U {
+	var res []U
+	for i, e := range s {
+		res = append(res, f(i, e))
+	}
+	return res
+}
+
 func Iter[T any](action func(T), s []T) {
 	for _, e := range s {
 		action(e)
