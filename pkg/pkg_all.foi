@@ -16,6 +16,7 @@ package_info slice =
   let Head<T>: []T -> T
   let Take<T> : int->[]T->[]T
   let Map<T, U> : (T->U)->[]T->[]U
+  let Iter<T> : (T->())->[]T->()
   let Filter<T> : (T->bool)->[]T->[]T
   let Sort<T>: []T -> []T
   let SortBy<T, U>: (T->U)->[]T->[]T

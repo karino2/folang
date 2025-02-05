@@ -55,6 +55,12 @@ func Map[T any, U any](f func(T) U, s []T) []U {
 	return res
 }
 
+func Iter[T any](action func(T), s []T) {
+	for _, e := range s {
+		action(e)
+	}
+}
+
 func Filter[T any](pred func(T) bool, s []T) []T {
 	var res []T
 	for _, e := range s {
