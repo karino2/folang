@@ -123,13 +123,13 @@ func (v *Var) ToGo() string       { return v.Name }
 func (v *Var) IsUnresolved() bool { return IsUnresolved(v.Type) }
 
 type FieldAccess struct {
-	targetName string
+	targetExpr Expr
 	targetType *FRecord
 	fieldName  string
 }
 
 func (fa *FieldAccess) FType() FType { return fa.targetType.GetField(fa.fieldName).Type }
-func (fa *FieldAccess) ToGo() string { return fmt.Sprintf("%s.%s", fa.targetName, fa.fieldName) }
+func (fa *FieldAccess) ToGo() string { return fmt.Sprintf("%s.%s", fa.targetExpr.ToGo(), fa.fieldName) }
 
 type ResolvedTypeParam struct {
 	Name         string

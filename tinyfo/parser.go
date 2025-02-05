@@ -805,15 +805,24 @@ func (p *Parser) parseVariableReference() Expr {
 	v := p.scope.LookupVar(firstId)
 	if v != nil {
 		// symbol found, record field access.
-		p.gotoNext()
-		p.consume(DOT)
-
-		fname := p.identName()
+		var expr Expr = v
 		p.gotoNext()
 
-		// v must be record.
-		rtype := v.FType().(*FRecord)
-		return &FieldAccess{firstId, rtype, fname}
+		// Special handling for a.b.c.d
+		// Target expr should be more versatile.
+		// But I just want to use a.b.c.d.
+		// So just support that case.
+		for p.currentIs(DOT) {
+			p.consume(DOT)
+
+			fname := p.identName()
+			p.gotoNext()
+
+			// v must be record.
+			rtype := expr.FType().(*FRecord)
+			expr = &FieldAccess{expr, rtype, fname}
+		}
+		return expr
 	} else {
 		// external pkg access.
 		fullName := p.parseFullName()

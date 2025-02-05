@@ -988,6 +988,17 @@ let hoge () =
 `,
 			[]string{"ika() string", "= ika()"},
 		},
+		{
+			`package main
+
+type Inner = {Name: string}
+type Nested = {Name: string; Elem: Inner}
+
+let ika (a:Nested) =
+   a.Elem.Name
+`,
+			[]string{") string", "a.Elem.Name"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1004,11 +1015,11 @@ let hoge () =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika (a:int) =
-  if not (a = 0) then
-    "abc"
-	else
-	  "def"
+type Inner = {Name: string}
+type Nested = {Name: string; Elem: Inner}
+
+let ika (a:Nested) =
+   a.Elem.Name
 
 `
 
