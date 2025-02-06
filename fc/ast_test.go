@@ -79,3 +79,15 @@ panic("Union pattern fail. Never reached here.")
 		t.Errorf("want %s, got %s", want, got)
 	}
 }
+
+func TestRecordDefToGo(t *testing.T) {
+	rd := RecordDef{"hoge", []NameTypePair{{"X", New_FType_FString}, {"Y", New_FType_FString}}}
+	got := rdfToGo(rd)
+	want := `type hoge struct {
+  X string
+  Y string
+}`
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}

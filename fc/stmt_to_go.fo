@@ -1,0 +1,102 @@
+package main
+import frt
+import buf
+import slice
+import strings
+
+let imToGo (pn:string) =
+  frt.Sprintf1 "import \"%s\"" pn
+
+let pmToGo (pn:string) =
+  frt.Sprintf1 "package %s" pn
+
+/*
+
+  LetFuncDef to Go implementation.
+
+*/
+
+let paramsToGo (pm: Var) =
+   let ts = FTypeToGo pm.ftype
+   pm.name + " " + ts
+
+/*
+  Emit parameters of func defs like following:
+  a int, b string, c []int
+*/
+let lfdParamsToGo (lfd:LetFuncDef) =
+   lfd.params |> slice.Map paramsToGo |> strings.Concat ", "
+
+let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
+  let b = buf.New ()
+  buf.Write b "func "
+  buf.Write b lfd.name
+  buf.Write b "("
+  lfdParamsToGo lfd |> buf.Write b
+  buf.Write b ")"
+  blockToType ExprToType lfd.body |> FTypeToGo |> buf.Write b
+  buf.Write b "{\n"
+  bToGoRet lfd.body |> buf.Write b
+  buf.Write b "\n}"
+  buf.String b
+
+
+
+let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =
+  let rhs = eToGo lvd.rhs
+  lvd.name + " := " + rhs
+
+/*
+  RecordDef to Go implementation.
+*/
+
+let rdffieldToGo (field: NameTypePair) =
+  "  " + field.name + " " + (FTypeToGo field.ftype)
+
+let rdfToGo (rdf:RecordDef) =
+  let b = buf.New ()
+  buf.Write b "type "
+  buf.Write b rdf.name
+  buf.Write b " struct {\n"
+  rdf.fields |> slice.Map rdffieldToGo |> strings.Concat "\n" |> buf.Write b
+  buf.Write b "\n}" 
+  buf.String b
+
+/*
+   UnionDef to Go implementation.
+*/
+
+/*
+| Import of string
+| Package of string
+| PackageInfo of PackageInfo
+| LetFuncDef of LetFuncDef
+| LetVarDef of LetVarDef
+| ExprStmt of Expr
+| DefStmt of DefStmt
+| MultipleDefs of MultipeDefs
+and LetFuncDef = {name: string; params: []Var; body:Block}
+and LetVarDef = {name: string; rhs: Expr}
+and PackageInfo = {name: string; funcInfo: funcTypeDict; typeInfo: extTypeDict}
+and RecordDef = {name: string; fields: []NameTypePair}
+and UnionDef = {name: string; cases: []NameTypePair}
+and DefStmt =
+| RecordDef of RecordDef
+| UnionDef of UnionDef
+and MultipeDefs = {defs: []DefStmt}
+*/
+
+
+let StmtToGo (stmt:Stmt) : string=
+  let eToGo = ExprToGo StmtToGo
+  let reToGoRet = reToGoReturn StmtToGo eToGo
+  let bToGoRet = blockToGoReturn StmtToGo eToGo reToGoRet
+  match stmt with
+  | Import im -> imToGo im
+  | Package pn -> pmToGo pn
+  | PackageInfo -> ""
+  | LetFuncDef lfd -> lfdToGo bToGoRet lfd
+  | LetVarDef lvd -> lvdToGo eToGo lvd
+  | ExprStmt expr -> eToGo expr
+  | DefStmt _ -> "NYI"
+  | MultipleDefs _ -> "NYI"
