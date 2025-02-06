@@ -85,7 +85,7 @@ Build following case header. (If unit or _ variable, generate code appropriately
 let mpToCaseHeader (uname: string) (mp: MatchPattern) (tmpVarName: string) =
   let b = buf.New ()
   buf.Write b "case "
-  unionCaseStructName uname mp.caseId |> buf.Write b
+  unionCSName uname mp.caseId |> buf.Write b
   buf.Write b ":\n"
   if mp.varName <> "_" && mp.varName <> "" then
     buf.Write b mp.varName

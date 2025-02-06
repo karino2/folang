@@ -67,25 +67,144 @@ let rdfToGo (rdf:RecordDef) =
 */
 
 /*
-| Import of string
-| Package of string
-| PackageInfo of PackageInfo
-| LetFuncDef of LetFuncDef
-| LetVarDef of LetVarDef
-| ExprStmt of Expr
-| DefStmt of DefStmt
-| MultipleDefs of MultipeDefs
-and LetFuncDef = {name: string; params: []Var; body:Block}
-and LetVarDef = {name: string; rhs: Expr}
-and PackageInfo = {name: string; funcInfo: funcTypeDict; typeInfo: extTypeDict}
-and RecordDef = {name: string; fields: []NameTypePair}
-and UnionDef = {name: string; cases: []NameTypePair}
-and DefStmt =
-| RecordDef of RecordDef
-| UnionDef of UnionDef
-and MultipeDefs = {defs: []DefStmt}
+Union implementation.
+For following code:
+type IntOrString =
+
+	| I of int
+	| B of bool
+
+The result becomes following three types.
+
+- IntOrString interface
+- IntOrString_I struct (with Value int)
+- IntOrString_B struct (with Value bool)
+
+We call IntOrString_I "case struct of I".
 */
 
+/*
+	type IntOrString interface {
+	  IntOrString_Union()
+	}
+*/
+let udUnionDef (ud:UnionDef) =
+  let b = buf.New ()
+  buf.Write b "type "
+  buf.Write b ud.name
+  buf.Write b " interface {\n"
+  buf.Write b "  "
+  buf.Write b ud.name
+  buf.Write b "_Union()\n"
+  buf.Write b "}\n"
+  buf.String b
+
+/*
+func (IntOrString_I) [method]
+*/
+let csToConformMethod (uname:string) (method:string) (cas: NameTypePair) =
+  let csname = unionCSName uname cas.name
+  "func (" + csname + ") " + method
+
+/*
+func (IntOrString_I) IntOrString_Union(){}
+func (IntOrString_B) IntOrString_Union(){}
+*/
+let udCSConformMethods (ud:UnionDef) =
+  let method = ud.name + "_Union(){}\n"
+  ud.cases |> slice.Map (csToConformMethod ud.name method) |> strings.Concat ""
+
+/*
+	type IntOrString_I struct {
+	   Value int
+	}
+*/
+let udCSDef (ud:UnionDef) (cas: NameTypePair) =
+  let b = buf.New ()
+  buf.Write b "type "
+  unionCSName ud.name cas.name |> buf.Write b
+  buf.Write b " struct {\n"
+  if cas.ftype <> FUnit then
+    buf.Write b "  Value "
+    FTypeToGo cas.ftype |> buf.Write b
+    buf.Write b "\n"
+  buf.Write b "}\n"
+  buf.String b
+
+// New_IntOrString_I
+let csConstructorName  (unionName: string) (cas: NameTypePair) =
+   "New_" + (unionCSName unionName cas.name)
+
+/*
+CS Constructor, function case.
+
+func New_IntOrString_I(v int) IntOrString { return IntOrString_I{v} }
+*/
+let csConstructFunc (uname:string) (cas: NameTypePair) =
+  let b = buf.New ()
+  buf.Write b "func "
+  csConstructorName uname cas |> buf.Write b
+  buf.Write b "(v "
+  FTypeToGo cas.ftype |> buf.Write b
+  buf.Write b ") "
+  buf.Write b uname
+  buf.Write b " { return "
+  buf.Write b (unionCSName uname cas.name)
+  buf.Write b "{v} }\n"
+  buf.String b
+
+
+/*
+CS Constructor, variable case.
+
+No arg case constructor case.
+In this case, folang regard no arg func as variable.
+So the result must be following:
+
+var New_IntOrString_I IntOrString = &IntOrString_I{}
+*/
+let csConstructVar (uname:string) (cas: NameTypePair) =
+  let b = buf.New ()
+  buf.Write b "var "
+  csConstructorName uname cas |> buf.Write b
+  buf.Write b " "
+  buf.Write b uname
+  buf.Write b " = "
+  buf.Write b (unionCSName uname cas.name)
+  buf.Write b "{}\n"
+  buf.String b
+
+let csConstruct (uname:string) (cas: NameTypePair) =
+  if cas.ftype = FUnit then
+    csConstructVar uname cas
+  else
+    csConstructFunc uname cas
+
+let caseToGo (ud:UnionDef) (cas: NameTypePair) =
+  let sdf = udCSDef ud cas
+  let csdf = csConstruct ud.name cas
+  sdf + "\n" + csdf + "\n"
+
+let udfToGo (ud:UnionDef) =
+  let b = buf.New ()
+  udUnionDef ud |> buf.Write b
+  buf.Write b "\n"
+  udCSConformMethods ud |> buf.Write b
+  buf.Write b "\n"
+  ud.cases |> slice.Map (caseToGo ud) |> strings.Concat "" |> buf.Write b
+  buf.String b
+
+/*
+  DefStmt to Go, MultpleDefs to Go
+*/
+
+let dsToGo (ds:DefStmt) =
+   match ds with
+   | RecordDef rd -> rdfToGo rd
+   | UnionDef ud -> udfToGo ud
+
+let mdToGo (md:MultipleDefs) =
+  md.defs |>  slice.Map dsToGo |> strings.Concat "\n"
 
 let StmtToGo (stmt:Stmt) : string=
   let eToGo = ExprToGo StmtToGo
@@ -98,5 +217,5 @@ let StmtToGo (stmt:Stmt) : string=
   | LetFuncDef lfd -> lfdToGo bToGoRet lfd
   | LetVarDef lvd -> lvdToGo eToGo lvd
   | ExprStmt expr -> eToGo expr
-  | DefStmt _ -> "NYI"
-  | MultipleDefs _ -> "NYI"
+  | DefStmt ds -> dsToGo ds
+  | MultipleDefs md -> mdToGo md

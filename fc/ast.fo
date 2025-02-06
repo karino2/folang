@@ -60,7 +60,7 @@ and Stmt =
 | LetVarDef of LetVarDef
 | ExprStmt of Expr
 | DefStmt of DefStmt
-| MultipleDefs of MultipeDefs
+| MultipleDefs of MultipleDefs
 and LetFuncDef = {name: string; params: []Var; body:Block}
 and LetVarDef = {name: string; rhs: Expr}
 and PackageInfo = {name: string; funcInfo: funcTypeDict; typeInfo: extTypeDict}
@@ -69,5 +69,5 @@ and UnionDef = {name: string; cases: []NameTypePair}
 and DefStmt =
 | RecordDef of RecordDef
 | UnionDef of UnionDef
-and MultipeDefs = {defs: []DefStmt}
+and MultipleDefs = {defs: []DefStmt}
 

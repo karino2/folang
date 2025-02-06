@@ -178,7 +178,7 @@ func lookupCase(fu UnionType, caseName string) NameTypePair {
 	return lookupPairByName(caseName, fu.cases)
 }
 
-func unionCaseStructName(unionName string, caseName string) string {
+func unionCSName(unionName string, caseName string) string {
 	return ((unionName + "_") + caseName)
 }
 

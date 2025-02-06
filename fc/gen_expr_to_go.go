@@ -82,7 +82,7 @@ func blockToGo(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(
 func mpToCaseHeader(uname string, mp MatchPattern, tmpVarName string) string {
 	b := buf.New()
 	buf.Write(b, "case ")
-	frt.PipeUnit(unionCaseStructName(uname, mp.caseId), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(unionCSName(uname, mp.caseId), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ":\n")
 	frt.IfOnly((frt.OpNotEqual(mp.varName, "_") && frt.OpNotEqual(mp.varName, "")), (func() {
 		buf.Write(b, mp.varName)

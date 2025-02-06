@@ -202,10 +202,10 @@ type Stmt_DefStmt struct {
 func New_Stmt_DefStmt(v DefStmt) Stmt { return Stmt_DefStmt{v} }
 
 type Stmt_MultipleDefs struct {
-	Value MultipeDefs
+	Value MultipleDefs
 }
 
-func New_Stmt_MultipleDefs(v MultipeDefs) Stmt { return Stmt_MultipleDefs{v} }
+func New_Stmt_MultipleDefs(v MultipleDefs) Stmt { return Stmt_MultipleDefs{v} }
 
 type LetFuncDef struct {
 	name   string
@@ -248,6 +248,6 @@ type DefStmt_UnionDef struct {
 
 func New_DefStmt_UnionDef(v UnionDef) DefStmt { return DefStmt_UnionDef{v} }
 
-type MultipeDefs struct {
+type MultipleDefs struct {
 	defs []DefStmt
 }

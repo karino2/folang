@@ -80,8 +80,8 @@ let funionToGo (fu: UnionType) =
 let lookupCase (fu: UnionType) (caseName: string) =
   lookupPairByName caseName fu.cases
 
-// Return IntOrString_I
-let unionCaseStructName (unionName: string) (caseName: string) =
+// IntOrString_I
+let unionCSName (unionName: string) (caseName: string) =
   unionName + "_" + caseName
 
 let fSliceToGo (fs: SliceType) (toGo:FType->string) =
