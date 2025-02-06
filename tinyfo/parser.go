@@ -1156,7 +1156,7 @@ func (p *Parser) parseBlockAfterPushScope() *Block {
 	for {
 		if p.Current().ttype == LET {
 			stmts = append(stmts, p.parseLet())
-			p.skipEOLOne()
+			p.skipEOL()
 		} else {
 			last = p.parseExpr()
 

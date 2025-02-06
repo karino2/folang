@@ -842,6 +842,17 @@ let ika (a:int) =
 `,
 			"frt.OpNot(",
 		},
+		// comment inside block.
+		{
+			`package main
+
+let ika () =
+   let a = 1
+	 // this is comment
+	 a
+`,
+			"ika", // whatever
+		},
 	}
 
 	for _, test := range tests {
@@ -1015,11 +1026,10 @@ let ika (a:Nested) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type Inner = {Name: string}
-type Nested = {Name: string; Elem: Inner}
-
-let ika (a:Nested) =
-   a.Elem.Name
+let ika () =
+   let a = 1
+	 // this is comment
+	 a
 
 `
 
