@@ -1,0 +1,83 @@
+package main
+
+// import frt
+
+type TokenType =
+| ILLEGAL
+|	EOF
+|	SPACE
+|	IDENTIFIER
+|	EQ
+|	LET
+|	TYPE
+|	EOL
+|	PACKAGE
+|	IMPORT
+|	LPAREN
+|	RPAREN
+|	LBRACE
+|	RBRACE
+|	LSBRACKET
+|	RSBRACKET
+|	LT
+|	GT
+|	BRACKET // <>
+|	PIPE
+|	STRING
+|	COLON
+|	COMMA
+|	SEMICOLON
+|	INT_IMM
+|	OF
+|	BAR
+|	BARBAR
+|	RARROW
+|	UNDER_SCORE
+|	MATCH
+|	WITH
+|	TRUE
+|	FALSE
+|	PACKAGE_INFO
+|	DOT
+|	AND    // "and"
+|	AMP    // "&"
+|	AMPAMP // "&&"
+|	PLUS
+|	MINUS
+|	ASTER
+|	IF
+|	THEN
+|	ELSE
+|	ELIF
+|	NOT
+
+type Token = {ttype: TokenType; begin: int; len: int; stringVal: string; intVal: int }
+
+type Tokenizer = {buf: string; current: Token; col: int}
+
+package_info _ =
+  let newToken: TokenType->int->int->Token
+  let newTokenizer: string->Tokenizer
+  let nextToken: string->Token->Token
+  let nextNLToken: string->Token->Token
+
+let newTkz (buf:string) =
+  let itk = newToken ILLEGAL 0 0
+  let ftk = nextToken buf itk
+  // ftk must be first line. so ftk.begin is col in this case.
+  {buf=buf; current=ftk; col=ftk.begin}
+
+// goto non-space next token.
+let tkzNext (tkz: Tokenizer) =
+  match tkz.current.ttype with
+  | EOF -> tkz
+  | EOL ->
+      let nt = nextToken tkz.buf tkz.current
+      let bol = tkz.current.begin + tkz.current.len
+      {buf=tkz.buf; current=nt; col=nt.begin-bol}
+  | _->
+    let nt = nextToken tkz.buf tkz.current
+    let delta = nt.begin - tkz.current.begin
+    let ncol = tkz.col + delta
+    {buf=tkz.buf; current=nt; col=ncol}
+
