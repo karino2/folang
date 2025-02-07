@@ -40,3 +40,30 @@ package main`
 		t.Errorf("after EOL, token is not package: %T", tkz.current.ttype)
 	}
 }
+
+func TestTokenizernextNOL(t *testing.T) {
+	src := `let hoge () =
+	 // test
+	 // test2
+   123
+`
+
+	tkz := newTkz(src) // let
+	tkz = tkzNext(tkz) // hoge
+	tkz = tkzNext(tkz) // LPAREN
+	tkz = tkzNext(tkz) // RPAREN
+	tkz = tkzNext(tkz) // EQ
+	tkz = tkzNext(tkz) // EOL
+
+	if tkz.current.ttype != New_TokenType_EOL {
+		t.Errorf("not eol, %T", tkz.current.ttype)
+	}
+
+	tkz = tkzNextNOL(tkz)
+	if tkz.current.ttype != New_TokenType_INT_IMM {
+		t.Errorf("not int imm, %T", tkz.current.ttype)
+	}
+	if tkz.col != 3 {
+		t.Errorf("want col 3, but got %d", tkz.col)
+	}
+}

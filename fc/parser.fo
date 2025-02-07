@@ -1,0 +1,57 @@
+package main
+
+import frt
+
+// wrapper types.
+/*
+package_info _ =
+  type Scope
+  let NewScope: ()->Scope
+*/
+
+type ParseState = {
+  tkz: Tokenizer;
+  // offsideCol: []int;
+  // scope: Scope;
+  // typeDefCtx
+}
+
+let initParse (src: string) =
+  let tkz = newTkz src
+  {tkz=tkz}
+
+let currentTk (ps:ParseState) =
+  ps.tkz.current
+
+let psNext (ps:ParseState) =
+   let ntk = tkzNext ps.tkz
+   {tkz=ntk}
+
+let psNextNOL (ps:ParseState) =
+   let ntk = tkzNextNOL ps.tkz
+   {tkz=ntk}
+
+
+let psExpect (ps:ParseState) (ttype:TokenType) =
+  let cur = currentTk ps
+  if cur.ttype <> ttype then
+    frt.Panic("non expected token")
+  ()
+
+let psConsume (ps:ParseState) (ttype:TokenType) =
+  psExpect ps ttype
+  psNext ps
+
+
+let psIdentName (ps:ParseState) =
+  psExpect ps IDENTIFIER
+  let cur = currentTk ps
+  cur.stringVal
+
+let parsePackage (ps:ParseState) =
+  let nps = psConsume ps PACKAGE
+  let pname = psIdentName nps
+  let nnps = psNextNOL nps
+  let pkg = Package pname
+  (nnps, pkg)
+

@@ -4,4 +4,5 @@ package_info frt =
   let Fst<T, U> : T*U->T
   let Snd<T, U> : T*U->U
   let Assert : bool->string->()
+  let Panic : string->()
 

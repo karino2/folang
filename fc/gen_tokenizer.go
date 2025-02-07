@@ -1,5 +1,7 @@
 package main
 
+import "github.com/karino2/folang/pkg/frt"
+
 type TokenType interface {
 	TokenType_Union()
 }
@@ -321,4 +323,13 @@ func tkzNext(tkz Tokenizer) Tokenizer {
 		ncol := (tkz.col + delta)
 		return Tokenizer{buf: tkz.buf, current: nt, col: ncol}
 	}
+}
+
+func tkzNextNOL(tkz Tokenizer) Tokenizer {
+	ntkz := tkzNext(tkz)
+	return frt.IfElse(frt.OpEqual(ntkz.current.ttype, New_TokenType_EOL), (func() Tokenizer {
+		return tkzNextNOL(ntkz)
+	}), (func() Tokenizer {
+		return ntkz
+	}))
 }

@@ -352,14 +352,88 @@ func nextToken(buf string, prev Token) Token {
 }
 
 /*
-NL: non-eol token.
+	Scope implementation.
+	Currently, map is not supported, and side effect is hard to write in folang.
+	So I write Scope related code in golang, then call it from folang.
+*/
 
-can't count col, we need another solution.
-func nextNLToken(buf string, prev Token) Token {
-	tk := nextToken(buf, prev)
-	for tk.ttype == New_TokenType_EOL {
-		tk = nextToken(buf, tk)
+/*
+I should postpone these implementation until I need. YAGNI.
+
+type scopeImpl struct {
+	varMap     map[string]Var
+	typeGenMap map[string]func() FType
+	recordMap  map[string]RecordType
+	typeMap    map[string]FType
+	parent     *scopeImpl
+}
+
+func newScope0(parent *scopeImpl) *scopeImpl {
+	s := &scopeImpl{}
+	s.varMap = make(map[string]Var)
+	s.typeGenMap = make(map[string]func() FType)
+	s.recordMap = make(map[string]RecordType)
+	s.typeMap = make(map[string]FType)
+	s.parent = parent
+	return s
+}
+
+func NewScope() Scope {
+	return newScope0(nil)
+}
+
+// for folang, show pointer as real type for hidden side effect.
+type Scope = *scopeImpl
+
+func scDefVar(s Scope, name string, v Var) {
+	s.varMap[name] = v
+}
+
+// currently, we can't support Result because of absence of generic type.
+// We use golang style convention though F# convention is bool is first.
+func scLookupVar(s Scope, name string) frt.Tuple2[Var, bool] {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.varMap[name]
+		if ok {
+			return frt.NewTuple2(ret, true)
+		}
+		cur = cur.parent
 	}
-	return tk
+	return frt.NewTuple2(Var{}, false)
+}
+
+func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.typeMap[name]
+		if ok {
+			return frt.NewTuple2(ret, true)
+		}
+		cur = cur.parent
+	}
+	return frt.NewTuple2(New_FType_FUnit, false)
+}
+
+func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
+	for _, rt := range s.recordMap {
+		if frMatch(rt, fieldNames) {
+			return frt.NewTuple2(rt, true)
+		}
+	}
+	return frt.NewTuple2(RecordType{}, false)
+
+}
+
+func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
+	cur := s
+	for cur != nil {
+		ret := scLookupRecordCur(cur, fieldNames)
+		if ret.E1 {
+			return ret
+		}
+		cur = cur.parent
+	}
+	return frt.NewTuple2(RecordType{}, false)
 }
 */

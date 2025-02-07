@@ -1,6 +1,6 @@
 package main
 
-// import frt
+import frt
 
 type TokenType =
 | ILLEGAL
@@ -80,4 +80,12 @@ let tkzNext (tkz: Tokenizer) =
     let delta = nt.begin - tkz.current.begin
     let ncol = tkz.col + delta
     {buf=tkz.buf; current=nt; col=ncol}
+
+// goto non-eol next token.
+let tkzNextNOL (tkz:Tokenizer) : Tokenizer =
+  let ntkz = tkzNext tkz
+  if ntkz.current.ttype = EOL then
+    tkzNextNOL ntkz
+  else
+    ntkz
 

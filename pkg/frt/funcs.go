@@ -81,3 +81,7 @@ func Assert(cond bool, msg string) {
 		panic(msg)
 	}
 }
+
+func Panic(msg string) {
+	panic(msg)
+}
