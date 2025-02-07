@@ -1530,6 +1530,9 @@ func (p *Parser) parseRecordDef(rname string) Stmt {
 	for i := 0; p.Current().ttype != RBRACE; i++ {
 		if i != 0 {
 			p.consumeSL(SEMICOLON)
+			if p.Current().ttype == RBRACE {
+				break
+			}
 		}
 
 		fname := p.identName()

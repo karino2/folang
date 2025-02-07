@@ -853,6 +853,16 @@ let ika () =
 `,
 			"ika", // whatever
 		},
+		// last field semicolon ending.
+		{
+			`
+type ParseState = {
+  tkz: Tokenizer;
+  offsideCol: []int;
+}
+`,
+			"ParseState", // whatever
+		},
 	}
 
 	for _, test := range tests {
