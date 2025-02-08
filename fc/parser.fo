@@ -1,6 +1,7 @@
 package main
 
 import frt
+import slice
 
 // wrapper types.
 /*
@@ -20,8 +21,12 @@ let initParse (src: string) =
   let tkz = newTkz src
   {tkz=tkz}
 
-let currentTk (ps:ParseState) =
+let psCurrent (ps:ParseState) =
   ps.tkz.current
+
+let psCurrentTT (ps:ParseState) =
+  let tk = psCurrent ps
+  tk.ttype
 
 let psNext (ps:ParseState) =
    let ntk = tkzNext ps.tkz
@@ -32,26 +37,134 @@ let psNextNOL (ps:ParseState) =
    {tkz=ntk}
 
 
-let psExpect (ps:ParseState) (ttype:TokenType) =
-  let cur = currentTk ps
+let psExpect (ttype:TokenType) (ps:ParseState) =
+  let cur = psCurrent ps
   if cur.ttype <> ttype then
     frt.Panic("non expected token")
   ()
 
-let psConsume (ps:ParseState) (ttype:TokenType) =
-  psExpect ps ttype
+let psConsume (ttype:TokenType) (ps:ParseState) =
+  psExpect ttype ps
   psNext ps
 
 
 let psIdentName (ps:ParseState) =
-  psExpect ps IDENTIFIER
-  let cur = currentTk ps
+  psExpect IDENTIFIER ps
+  let cur = psCurrent ps
   cur.stringVal
 
 let parsePackage (ps:ParseState) =
-  let nps = psConsume ps PACKAGE
-  let pname = psIdentName nps
-  let nnps = psNextNOL nps
+  let ps2 = psConsume PACKAGE ps
+  let pname = psIdentName ps2
+  let ps3 = psNextNOL ps2
   let pkg = Package pname
-  (nnps, pkg)
+  (ps3, pkg)
 
+
+/*
+TYPE = ATOM_TYPE
+
+ATOM_TYPE = 'string' | 'int' | '(' ')'
+
+TODO:
+ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TYPE
+*/
+let parseType (ps:ParseState) =
+  let tk = psCurrent ps
+  match tk.ttype with
+  | LPAREN ->
+    let ps2 = ps |> psConsume LPAREN |> psConsume RPAREN
+    (ps2, FUnit)
+  | IDENTIFIER ->
+    let tname = tk.stringVal
+    let ps3 = psNext ps
+    let rtype = if tname = "string" then
+                  FString
+                elif tname = "int" then
+                  FInt
+                elif tname = "bool" then
+                  FBool
+                else
+                  frt.Panic("NYI")
+                  FUnit
+    (ps3, rtype)
+  | _ ->
+    frt.Panic("Unknown type")
+    (ps, FUnit)
+
+
+type Param =
+| PVar of Var
+| PUnit
+
+/*
+	PARAM = '(' ')'
+				|	'(' IDENTIFIER : TYPE ')'
+
+*/
+let parseParam (ps:ParseState) =
+  let ps2 = psConsume LPAREN ps
+  let tk = psCurrent ps2
+  match tk.ttype with
+  | RPAREN ->
+     let ps3 = psConsume RPAREN ps2
+     (ps3, PUnit)
+  | _ ->
+    let vname = psIdentName ps2
+    let ps3 = psNext ps2 |> psConsume COLON
+    let tpair = parseType ps3
+    let ps4 = frt.Fst tpair |> psConsume RPAREN
+    let tp = frt.Snd tpair
+    let v = {Var.name=vname; ftype=tp}
+    // TODO: define var to scope here.
+    (ps4, (PVar v))
+
+/*
+func (p *Parser) parseParams() []*Var {
+	var params []*Var
+
+	one := p.parseParam()
+	if one == nil {
+		return params
+	}
+
+	params = append(params, one)
+
+	for p.Current().ttype == LPAREN {
+		one = p.parseParam()
+		params = append(params, one)
+	}
+	return params
+}
+*/
+let parseParams (ps:ParseState) : ParseState*[]Param =
+  let ftp = parseParam ps
+  let ps2 = frt.Fst ftp
+  let prm1 = frt.Snd ftp
+  match prm1 with
+  | PUnit ->
+      let zero = GoEval<[]Param> "[]Param{}"
+      (ps2, zero)
+  | PVar _ ->
+      let tt = psCurrentTT ps2
+      match tt with
+      | LPAREN ->
+        let ftp2 = parseParams ps2
+        let ps3 = frt.Fst ftp2
+        let prms2 = frt.Snd ftp2
+        let pas3 = slice.Append prm1 prms2
+        (ps3, pas3)
+      | _ -> (ps2, [prm1])
+
+
+/*
+LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
+*/
+/*
+let parseLetFuncDef (ps:ParseState) =
+  let ps2 = psConsume ps LET
+  let fname = psIdentName ps2
+  let ps3 = psNext ps2
+
+  // TODO: put current func for recursive call.
+*/
