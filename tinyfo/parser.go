@@ -666,6 +666,14 @@ func (p *Parser) identName() string {
 	return p.Current().stringVal
 }
 
+func (p *Parser) identOrUSName() string {
+	if p.currentIs(UNDER_SCORE) {
+		return "_"
+	}
+	p.expect(IDENTIFIER)
+	return p.Current().stringVal
+}
+
 func (p *Parser) consume(ttype TokenType) {
 	tk := p.Current()
 	if tk.ttype != ttype {
@@ -1485,6 +1493,43 @@ func (p *Parser) parseFuncDefLet() Stmt {
 }
 
 /*
+Destructuring, only support pair for a while like:
+let (a, b) = ...
+
+LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER ',' IDENTIFIER ')' '=' expr
+*/
+func (p *Parser) parseDestLetDefVar() Stmt {
+	p.consume(LET)
+	p.consume(LPAREN)
+	vname1 := p.identOrUSName()
+	p.gotoNext()
+	p.consume(COMMA)
+	vname2 := p.identOrUSName()
+	p.gotoNext()
+	p.consume(RPAREN)
+	p.consume(EQ)
+
+	rhs := p.parseExpr()
+	if tp, ok := rhs.FType().(*FTuple); ok {
+		if len(tp.Elems) != 2 {
+			panic("Destructuring let, rhs tuple not 2D.")
+		}
+		if vname1 != "_" {
+			v1 := &Var{vname1, tp.Elems[0]}
+			p.scope.DefineVar(vname1, v1)
+		}
+		if vname2 != "_" {
+			v2 := &Var{vname2, tp.Elems[1]}
+			p.scope.DefineVar(vname2, v2)
+		}
+
+		return &LetDestVarDef{[]string{vname1, vname2}, rhs}
+	} else {
+		panic("destructuring with righ expr not tuple.")
+	}
+}
+
+/*
 LET_VAR_DEF = 'let' IDENTIFIER '=' expr
 */
 func (p *Parser) parseLetDefVar() Stmt {
@@ -1506,16 +1551,23 @@ func (p *Parser) parseLetDefVar() Stmt {
 }
 
 /*
-LET = LET_VAR_DEF | LET_FUNC_DEF
+LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
 
 LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
 */
 func (p *Parser) parseLet() Stmt {
-	nn := p.peekNextNext()
-	if nn.ttype == EQ {
-		return p.parseLetDefVar()
+	nt := p.peekNext()
+	if nt.ttype == LPAREN {
+		return p.parseDestLetDefVar()
 	} else {
-		return p.parseFuncDefLet()
+		nn := p.peekNextNext()
+		if nn.ttype == EQ {
+			return p.parseLetDefVar()
+		} else {
+			return p.parseFuncDefLet()
+		}
+
 	}
 }
 

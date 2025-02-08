@@ -76,6 +76,9 @@ func NewTuple2[T any, U any](e0 T, e1 U) Tuple2[T, U] {
 func Fst[T any, U any](tup Tuple2[T, U]) T { return tup.E0 }
 func Snd[T any, U any](tup Tuple2[T, U]) U { return tup.E1 }
 
+// Destructuring.
+func Destr[T any, U any](tup Tuple2[T, U]) (T, U) { return tup.E0, tup.E1 }
+
 func Assert(cond bool, msg string) {
 	if !cond {
 		panic(msg)

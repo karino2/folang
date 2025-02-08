@@ -885,15 +885,16 @@ type Stmt interface {
 	ToGo() string
 }
 
-func (*FuncDef) stmt()      {}
-func (*LetVarDef) stmt()    {}
-func (*Import) stmt()       {}
-func (*Package) stmt()      {}
-func (*ExprStmt) stmt()     {}
-func (*RecordDef) stmt()    {}
-func (*UnionDef) stmt()     {}
-func (*MultipleDefs) stmt() {}
-func (*PackageInfo) stmt()  {}
+func (*FuncDef) stmt()       {}
+func (*LetDestVarDef) stmt() {}
+func (*LetVarDef) stmt()     {}
+func (*Import) stmt()        {}
+func (*Package) stmt()       {}
+func (*ExprStmt) stmt()      {}
+func (*RecordDef) stmt()     {}
+func (*UnionDef) stmt()      {}
+func (*MultipleDefs) stmt()  {}
+func (*PackageInfo) stmt()   {}
 
 type Import struct {
 	PackageName string
@@ -1037,6 +1038,34 @@ func (lvd *LetVarDef) ToGo() string {
 	buf.WriteString(lvd.Name)
 	buf.WriteString(" := ")
 	buf.WriteString(lvd.Rhs.ToGo())
+	return buf.String()
+}
+
+/*
+let (a, b) = expr
+
+Name: "a"
+Rhs: expr, type must be Tuple2
+*/
+type LetDestVarDef struct {
+	Names []string
+	Rhs   Expr
+}
+
+func (ldvd *LetDestVarDef) ToGo() string {
+	var buf bytes.Buffer
+	if len(ldvd.Names) != 2 {
+		panic("Non 2 elem destructuring, NYI.")
+	}
+	buf.WriteString(ldvd.Names[0])
+	// if last arg is '_', do not emit ', _' because go lint complaint it.
+	if ldvd.Names[1] != "_" {
+		buf.WriteString(", ")
+		buf.WriteString(ldvd.Names[1])
+	}
+	buf.WriteString(" := frt.Destr(")
+	buf.WriteString(ldvd.Rhs.ToGo())
+	buf.WriteString(")")
 	return buf.String()
 }
 

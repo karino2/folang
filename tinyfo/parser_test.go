@@ -876,6 +876,44 @@ let fuga () =
 `,
 			"ika{X: ",
 		},
+		{
+			`package main
+
+let ika () =
+  (123, "abc")
+
+let fuga () =
+  let (a, b) = ika ()
+	a+1
+
+`,
+			"a, b := frt.Destr(ika())",
+		},
+		{
+			`package main
+
+let ika () =
+  (123, "abc")
+
+let fuga () =
+  let (_, b) = ika ()
+	b+"def"
+`,
+			"_, b :=",
+		},
+		{
+			`package main
+
+let ika () =
+  (123, "abc")
+
+let fuga () =
+  let (a, _) = ika ()
+	a+4
+
+`,
+			"a :=",
+		},
 	}
 
 	for _, test := range tests {
@@ -1065,13 +1103,12 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-type hoge = {X: string; Y: int}
-type ika = {X: string; Y: int}
+let ika () =
+  (123, "abc")
 
 let fuga () =
-   let h = {X="ab"; Y="de"}
-	 let i = {ika.X="gh"; Y="jk"}
-	 (h, i)
+  let (a, _) = ika ()
+	a+4
 
 `
 

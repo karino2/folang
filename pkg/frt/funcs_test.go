@@ -71,3 +71,14 @@ func TestSprintf1(t *testing.T) {
 		t.Errorf("got %s", got)
 	}
 }
+
+func TestDestructuring(t *testing.T) {
+	tup := NewTuple2("abc", 123)
+	a, b := Destr(tup)
+	if a != "abc" {
+		t.Errorf("a is not abc, but %s", a)
+	}
+	if b != 123 {
+		t.Errorf("b is not 123 buf %d", b)
+	}
+}
