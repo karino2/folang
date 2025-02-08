@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/karino2/folang/pkg/frt"
+)
 
 func TestParsePackage(t *testing.T) {
 	src := `package main
@@ -35,4 +39,33 @@ func TestParseParams(t *testing.T) {
 	if tt != New_TokenType_EQ {
 		t.Errorf("want EQ, got %T", tt)
 	}
+}
+
+func TestParseLetFuncDef(t *testing.T) {
+	src := `let hoge () =
+  123
+`
+	ps := initParse(src)
+	gotPair := parseLetFuncDef(ps)
+	_, stmt := frt.Destr(gotPair)
+
+	if lfdS, ok := stmt.(Stmt_LetFuncDef); ok {
+		lfd := lfdS.Value
+		if lfd.name != "hoge" {
+			t.Errorf("name is not hoge, %v", lfd)
+		}
+	} else {
+		t.Errorf("not stmt not lfd, %T", stmt)
+	}
+
+	got := StmtToGo(stmt)
+	want := `func hoge()int{
+
+return 123
+}`
+
+	if got != want {
+		t.Errorf("want %s, got %s", want, got)
+	}
+
 }

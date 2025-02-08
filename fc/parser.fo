@@ -36,6 +36,12 @@ let psNextNOL (ps:ParseState) =
    let ntk = tkzNextNOL ps.tkz
    {tkz=ntk}
 
+let psSkipEOL (ps:ParseState) =
+   if (psCurrentTT ps) = EOL then
+     psNextNOL ps
+    else
+     ps
+
 
 let psExpect (ttype:TokenType) (ps:ParseState) =
   let cur = psCurrent ps
@@ -112,59 +118,55 @@ let parseParam (ps:ParseState) =
   | _ ->
     let vname = psIdentName ps2
     let ps3 = psNext ps2 |> psConsume COLON
-    let tpair = parseType ps3
-    let ps4 = frt.Fst tpair |> psConsume RPAREN
-    let tp = frt.Snd tpair
+    let (ps4, tp) = parseType ps3
+    let ps5 = psConsume RPAREN ps4
     let v = {Var.name=vname; ftype=tp}
     // TODO: define var to scope here.
-    (ps4, (PVar v))
+    (ps5, (PVar v))
 
-/*
-func (p *Parser) parseParams() []*Var {
-	var params []*Var
-
-	one := p.parseParam()
-	if one == nil {
-		return params
-	}
-
-	params = append(params, one)
-
-	for p.Current().ttype == LPAREN {
-		one = p.parseParam()
-		params = append(params, one)
-	}
-	return params
-}
-*/
-let parseParams (ps:ParseState) : ParseState*[]Param =
-  let ftp = parseParam ps
-  let ps2 = frt.Fst ftp
-  let prm1 = frt.Snd ftp
+let parseParams (ps:ParseState) : ParseState*[]Var =
+  let (ps2, prm1) = parseParam ps
   match prm1 with
   | PUnit ->
-      let zero = GoEval<[]Param> "[]Param{}"
+      let zero = GoEval<[]Var> "[]Var{}"
       (ps2, zero)
-  | PVar _ ->
+  | PVar v ->
       let tt = psCurrentTT ps2
       match tt with
       | LPAREN ->
         let ftp2 = parseParams ps2
         let ps3 = frt.Fst ftp2
         let prms2 = frt.Snd ftp2
-        let pas3 = slice.Append prm1 prms2
+        let pas3 = slice.Append v prms2
         (ps3, pas3)
-      | _ -> (ps2, [prm1])
+      | _ -> (ps2, [v])
 
+let parseAtom (ps:ParseState) =
+  let cur = psCurrent ps
+  let expr = match cur.ttype with
+              | STRING -> StringLiteral cur.stringVal
+              | INT_IMM -> IntImm cur.intVal
+              | _ -> Unit
+  let ps2 = psNext ps
+  (ps2, expr)
+
+let parseBlock (ps:ParseState) =
+  let (ps2, expr) = parseAtom ps
+  let block = GoEval<Block> "Block{[]Stmt{}, expr}"
+  let ps3 = psSkipEOL ps2
+  (ps3, block)
 
 /*
 LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
 */
-/*
 let parseLetFuncDef (ps:ParseState) =
-  let ps2 = psConsume ps LET
+  let ps2 = psConsume LET ps
   let fname = psIdentName ps2
-  let ps3 = psNext ps2
-
+  let (ps3, params) = psNext ps2 |> parseParams
   // TODO: put current func for recursive call.
-*/
+  let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock
+  let stmt = LetFuncDef {LetFuncDef.name=fname; params=params; body=block}
+  (ps4, stmt)
+  
+  
+

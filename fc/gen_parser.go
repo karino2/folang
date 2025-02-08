@@ -32,6 +32,14 @@ func psNextNOL(ps ParseState) ParseState {
 	return ParseState{tkz: ntk}
 }
 
+func psSkipEOL(ps ParseState) ParseState {
+	return frt.IfElse(frt.OpEqual(psCurrentTT(ps), New_TokenType_EOL), (func() ParseState {
+		return psNextNOL(ps)
+	}), (func() ParseState {
+		return ps
+	}))
+}
+
 func psExpect(ttype TokenType, ps ParseState) {
 	cur := psCurrent(ps)
 	frt.IfOnly(frt.OpNotEqual(cur.ttype, ttype), (func() {
@@ -117,35 +125,65 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 	default:
 		vname := psIdentName(ps2)
 		ps3 := frt.Pipe(psNext(ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) }))
-		tpair := parseType(ps3)
-		ps4 := frt.Pipe(frt.Fst(tpair), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }))
-		tp := frt.Snd(tpair)
+		ps4, tp := frt.Destr(parseType(ps3))
+		ps5 := psConsume(New_TokenType_RPAREN, ps4)
 		v := Var{name: vname, ftype: tp}
-		return frt.NewTuple2(ps4, New_Param_PVar(v))
+		return frt.NewTuple2(ps5, New_Param_PVar(v))
 	}
 }
 
-func parseParams(ps ParseState) frt.Tuple2[ParseState, []Param] {
-	ftp := parseParam(ps)
-	ps2 := frt.Fst(ftp)
-	prm1 := frt.Snd(ftp)
-	switch (prm1).(type) {
+func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
+	ps2, prm1 := frt.Destr(parseParam(ps))
+	switch _v160 := (prm1).(type) {
 	case Param_PUnit:
-		zero := []Param{}
+		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
+		v := _v160.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
 			ftp2 := parseParams(ps2)
 			ps3 := frt.Fst(ftp2)
 			prms2 := frt.Snd(ftp2)
-			pas3 := slice.Append(prm1, prms2)
+			pas3 := slice.Append(v, prms2)
 			return frt.NewTuple2(ps3, pas3)
 		default:
-			return frt.NewTuple2(ps2, ([]Param{prm1}))
+			return frt.NewTuple2(ps2, ([]Var{v}))
 		}
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
+}
+
+func parseAtom(ps ParseState) frt.Tuple2[ParseState, Expr] {
+	cur := psCurrent(ps)
+	expr := (func() Expr {
+		switch (cur.ttype).(type) {
+		case TokenType_STRING:
+			return New_Expr_StringLiteral(cur.stringVal)
+		case TokenType_INT_IMM:
+			return New_Expr_IntImm(cur.intVal)
+		default:
+			return New_Expr_Unit
+		}
+	})()
+	ps2 := psNext(ps)
+	return frt.NewTuple2(ps2, expr)
+}
+
+func parseBlock(ps ParseState) frt.Tuple2[ParseState, Block] {
+	ps2, expr := frt.Destr(parseAtom(ps))
+	block := Block{[]Stmt{}, expr}
+	ps3 := psSkipEOL(ps2)
+	return frt.NewTuple2(ps3, block)
+}
+
+func parseLetFuncDef(ps ParseState) frt.Tuple2[ParseState, Stmt] {
+	ps2 := psConsume(New_TokenType_LET, ps)
+	fname := psIdentName(ps2)
+	ps3, params := frt.Destr(frt.Pipe(psNext(ps2), parseParams))
+	ps4, block := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_EQ, ps3), psSkipEOL), parseBlock))
+	stmt := New_Stmt_LetFuncDef(LetFuncDef{name: fname, params: params, body: block})
+	return frt.NewTuple2(ps4, stmt)
 }
