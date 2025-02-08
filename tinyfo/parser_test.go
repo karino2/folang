@@ -1020,6 +1020,22 @@ let ika (a:Nested) =
 `,
 			[]string{") string", "a.Elem.Name"},
 		},
+		{
+			`package main
+
+let ika (a:int) =
+  if a = 1 then
+	  "abc"
+	elif a <> 5 then
+	  "def"
+	elif a = 3 then
+	  "xxx"
+	else
+	  "ghi"
+
+`,
+			[]string{"frt.IfElse(frt.OpEqual(a, 1)", "return frt.IfElse(frt.OpNotEqual(a, 5)"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1036,10 +1052,15 @@ let ika (a:Nested) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika () =
-   let a = 1
-	 // this is comment
-	 a
+let ika (a:int) =
+  if a = 1 then
+	  "abc"
+	elif a <> 5 then
+	  "def"
+	elif a = 3 then
+	  "xxx"
+	else
+	  "ghi"
 
 `
 

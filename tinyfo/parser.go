@@ -973,15 +973,11 @@ func (p *Parser) parseInlineBlock() *Block {
 }
 
 /*
-IF_EXPR = 'if' expr 'then' block ('else' block)?
+IF_EXPR = 'if' expr 'then' block (('elif' expr 'then' block)* 'else' block)?
 
-- expr must bo bool type.
-- both block must be the same return type.
-- if there is EOL after 'then', it assumue offside block
-- if there is no else block, block return type must be unit.
+But for elif, this function parse just after if symbol.
 */
-func (p *Parser) parseIfExpr() Expr {
-	p.consume(IF)
+func (p *Parser) parseIfAfterIfExpr() Expr {
 	cond := p.parseExpr()
 	if cond.FType() != FBool {
 		panic("cond is not bool")
@@ -995,11 +991,20 @@ func (p *Parser) parseIfExpr() Expr {
 		savePos := p.Current()
 
 		p.skipEOLOne()
-		if !p.currentIs(ELSE) {
+		if !p.currentIs(ELSE) && !p.currentIs(ELIF) {
 			// no else block.
 			p.revertTo(savePos)
 			return NewIfOnlyCall(cond, tbody)
 		}
+		if p.currentIs(ELIF) {
+			p.consume(ELIF)
+			// 'elif' means 'else' block which start with 'if' expression.
+			// but offside rule is a little tricky.
+			// So regard this else block as ifblock start from here.
+			ebody := p.parseIfAfterIfExpr()
+			return NewIfElseCall(cond, tbody, NewBlock(ebody))
+		}
+
 		p.consume(ELSE)
 		p.skipEOLOne()
 		fbody := p.parseBlock()
@@ -1014,6 +1019,19 @@ func (p *Parser) parseIfExpr() Expr {
 		fbody := p.parseInlineBlock()
 		return NewIfElseCall(cond, tbody, fbody)
 	}
+}
+
+/*
+IF_EXPR = 'if' expr 'then' block (('elif' expr 'then' block)* 'else' block)?
+
+- expr must bo bool type.
+- both block must be the same return type.
+- if there is EOL after 'then', it assumue offside block
+- if there is no else block, block return type must be unit.
+*/
+func (p *Parser) parseIfExpr() Expr {
+	p.consume(IF)
+	return p.parseIfAfterIfExpr()
 }
 
 /*
