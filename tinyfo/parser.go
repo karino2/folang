@@ -452,6 +452,18 @@ func (s *Scope) LookupType(name string) FType {
 	return nil
 }
 
+func (s *Scope) LookupRecordByName(rname string) *FRecord {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.recordMap[rname]
+		if ok {
+			return ret
+		}
+		cur = cur.parent
+	}
+	return nil
+}
+
 func (s *Scope) lookupRecordCur(fieldNames []string) *FRecord {
 	for _, rt := range s.recordMap {
 		if rt.Match(fieldNames) {
@@ -758,21 +770,35 @@ RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
 
 FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
 
-FIELD_INITIALIZER = IDENTIFIER '=' expr
+FIELD_INITIALIZER = IDENTIFIER '=' expr | SPECIFIED_INITIALIZER
+
+Specified initializer specify record name like: {myRec.X = 3; Y=4; Z=5}
+
+SPECIFIED_INITIALIZER = IDENTIFIER '.' IDENTIFIER '=' expr
 */
 func (p *Parser) parseRecordGen() Expr {
 	p.consumeSL(LBRACE)
 
 	var fnames []string
 	var fvals []Expr
+	recName := ""
 	for i := 0; p.Current().ttype != RBRACE; i++ {
 		if i != 0 {
 			p.consumeSL(SEMICOLON)
 		}
 
-		fnames = append(fnames, p.identName())
-
+		fnameCand := p.identName()
 		p.gotoNextSL()
+
+		if p.currentIs(DOT) {
+			p.consume(DOT)
+			recName = fnameCand
+			fnameCand = p.identName()
+			p.gotoNextSL()
+		}
+
+		fnames = append(fnames, fnameCand)
+
 		p.consumeSL(EQ)
 		one := p.parseExpr()
 		fvals = append(fvals, one)
@@ -781,8 +807,12 @@ func (p *Parser) parseRecordGen() Expr {
 	p.consume(RBRACE)
 	rg := NewRecordGen(fnames, fvals)
 
-	rtype := p.scope.LookupRecord(rg.fieldNames)
-	rg.recordType = rtype
+	if recName != "" {
+		// specified initializer
+		rg.recordType = p.scope.LookupRecordByName(recName)
+	} else {
+		rg.recordType = p.scope.LookupRecord(rg.fieldNames)
+	}
 
 	return rg
 }

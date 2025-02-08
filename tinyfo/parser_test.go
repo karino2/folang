@@ -863,6 +863,19 @@ type ParseState = {
 `,
 			"ParseState", // whatever
 		},
+		{
+			`package main
+
+type hoge = {X: string; Y: int}
+type ika = {X: string; Y: int}
+
+let fuga () =
+   let h = {X="ab"; Y="de"}
+	 let i = {ika.X="gh"; Y="jk"}
+	 (h, i)
+`,
+			"ika{X: ",
+		},
 	}
 
 	for _, test := range tests {
@@ -1052,15 +1065,13 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika (a:int) =
-  if a = 1 then
-	  "abc"
-	elif a <> 5 then
-	  "def"
-	elif a = 3 then
-	  "xxx"
-	else
-	  "ghi"
+type hoge = {X: string; Y: int}
+type ika = {X: string; Y: int}
+
+let fuga () =
+   let h = {X="ab"; Y="de"}
+	 let i = {ika.X="gh"; Y="jk"}
+	 (h, i)
 
 `
 
