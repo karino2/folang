@@ -2,6 +2,7 @@ package_info slice =
   let Length<T>: []T -> int
   let Last<T>: []T -> T
   let Head<T>: []T -> T
+  let Append<T>: T->[]T->[]T
   let Take<T> : int->[]T->[]T
   let Map<T, U> : (T->U)->[]T->[]U
   let Mapi<T, U> : (int->T->U)->[]T->[]U

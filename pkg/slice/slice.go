@@ -121,3 +121,7 @@ func Forany[T any](pred func(T) bool, s []T) bool {
 	}
 	return false
 }
+
+func Append[T any](elem T, s []T) []T {
+	return append(s, elem)
+}
