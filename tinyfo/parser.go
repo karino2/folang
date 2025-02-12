@@ -1343,11 +1343,11 @@ func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
 }
 
 /*
-FUNC_ELEM = TERM_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
+NON_TUPLE_FUNC_ELEM = TERM_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
 
 Only One nesting is supported like (a->b)->c->d resolved as func (arg1:func(a)b, arg2: c) d
 */
-func (p *Parser) parseFuncElemType() FType {
+func (p *Parser) parseNonTupleFuncElemType() FType {
 	if p.Current().ttype == LPAREN {
 		next := p.peekNext()
 		if next.ttype == RPAREN {
@@ -1362,6 +1362,22 @@ func (p *Parser) parseFuncElemType() FType {
 		return ft
 	}
 	return p.parseTermType()
+}
+
+/*
+FUNC_ELEM = NON_TUPLE_FUNC_ELEM ('*' NON_TUPLE_FUNC_ELEM)*
+
+But support only pair for tuple.
+*/
+func (p *Parser) parseFuncElemType() FType {
+	first := p.parseNonTupleFuncElemType()
+	if p.currentIs(ASTER) {
+		p.consume(ASTER)
+		sec := p.parseNonTupleFuncElemType()
+		return NewFTuple(first, sec)
+	} else {
+		return first
+	}
 }
 
 /*

@@ -914,6 +914,18 @@ let fuga () =
 `,
 			"a :=",
 		},
+		{
+			`package main
+
+package_info _=
+  let lookupFunc: string->(()->string)*bool
+
+let ika () =
+  lookupFunc "hoge"
+
+`,
+			"ika() frt.Tuple2[func () string, bool]{",
+		},
 	}
 
 	for _, test := range tests {
@@ -1103,12 +1115,11 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let ika () =
-  (123, "abc")
+package_info _=
+  let lookupFunc: string->(()->string)*bool
 
-let fuga () =
-  let (a, _) = ika ()
-	a+4
+let ika () =
+  lookupFunc "hoge"
 
 `
 
