@@ -69,3 +69,37 @@ return 123
 	}
 
 }
+
+func TestParseTwoFunc(t *testing.T) {
+	src := `package main
+import "fmt"
+
+let hello (msg:string) = 
+    GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
+
+let main () =
+   hello "World"
+
+`
+	ps := initParse(src)
+	gotPair := parseStmts(ps)
+	_, stmts := frt.Destr(gotPair)
+	got := StmtsToGo(stmts)
+
+	want :=
+		`package main
+
+import "fmt"
+
+func hello(msg string){
+fmt.Printf("Hello %s\n", msg)
+}
+
+func main(){
+hello("World")
+}
+`
+	if got != want {
+		t.Errorf("want %s, got %s.", want, got)
+	}
+}

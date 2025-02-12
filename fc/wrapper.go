@@ -352,28 +352,55 @@ func nextToken(buf string, prev Token) Token {
 }
 
 /*
+	  GoEvalExpr utility.
+		It might be possible to implement in folang, but I already have it in tinyfo, so use it.
+*/
+func reinterpretEscape(buf string) string {
+	var b bytes.Buffer
+	eof := len(buf)
+	i := 0
+	for {
+		if i == eof {
+			break
+		}
+		c := buf[i]
+		if c == '\\' {
+			i++
+			if i == eof {
+				panic("escape just before EOF, wrong")
+			}
+			c2 := buf[i]
+			if c2 == 'n' {
+				b.WriteByte('\n')
+			} else {
+				b.WriteByte(c2)
+			}
+		} else {
+			b.WriteByte(c)
+		}
+		i++
+	}
+	return b.String()
+}
+
+/*
 	Scope implementation.
 	Currently, map is not supported, and side effect is hard to write in folang.
 	So I write Scope related code in golang, then call it from folang.
 */
 
-/*
-I should postpone these implementation until I need. YAGNI.
-
 type scopeImpl struct {
-	varMap     map[string]Var
-	typeGenMap map[string]func() FType
-	recordMap  map[string]RecordType
-	typeMap    map[string]FType
-	parent     *scopeImpl
+	// var factory Map
+	varFacMap map[string]func() Var
+	parent    *scopeImpl
 }
+
+// for folang, show pointer as real type for hidden side effect.
+type Scope = *scopeImpl
 
 func newScope0(parent *scopeImpl) *scopeImpl {
 	s := &scopeImpl{}
-	s.varMap = make(map[string]Var)
-	s.typeGenMap = make(map[string]func() FType)
-	s.recordMap = make(map[string]RecordType)
-	s.typeMap = make(map[string]FType)
+	s.varFacMap = make(map[string]func() Var)
 	s.parent = parent
 	return s
 }
@@ -382,25 +409,35 @@ func NewScope() Scope {
 	return newScope0(nil)
 }
 
-// for folang, show pointer as real type for hidden side effect.
-type Scope = *scopeImpl
-
 func scDefVar(s Scope, name string, v Var) {
-	s.varMap[name] = v
+	s.varFacMap[name] = func() Var { return v }
+}
+
+func scDefVarFac(s Scope, name string, fac func() Var) {
+	s.varFacMap[name] = fac
 }
 
 // currently, we can't support Result because of absence of generic type.
 // We use golang style convention though F# convention is bool is first.
-func scLookupVar(s Scope, name string) frt.Tuple2[Var, bool] {
+func scLookupVarFac(s Scope, name string) frt.Tuple2[func() Var, bool] {
 	cur := s
 	for cur != nil {
-		ret, ok := cur.varMap[name]
+		ret, ok := cur.varFacMap[name]
 		if ok {
 			return frt.NewTuple2(ret, true)
 		}
 		cur = cur.parent
 	}
-	return frt.NewTuple2(Var{}, false)
+	return frt.NewTuple2[func() Var](nil, false)
+}
+
+/*
+I should postpone these implementation until I need. YAGNI.
+
+type scopeImpl struct {
+	typeGenMap map[string]func() FType
+	recordMap  map[string]RecordType
+	typeMap    map[string]FType
 }
 
 func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {

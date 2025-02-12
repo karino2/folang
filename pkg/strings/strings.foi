@@ -1,4 +1,5 @@
 package_info strings =
   let Concat: string->[]string->string
   let Length: string->int
+  let AppendTail: string->string->string
 

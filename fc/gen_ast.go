@@ -1,6 +1,6 @@
 package main
 
-type GoEval struct {
+type GoEvalExpr struct {
 	goStmt  string
 	typeArg FType
 }
@@ -25,7 +25,7 @@ type Expr interface {
 	Expr_Union()
 }
 
-func (Expr_GoEval) Expr_Union()         {}
+func (Expr_GoEvalExpr) Expr_Union()     {}
 func (Expr_StringLiteral) Expr_Union()  {}
 func (Expr_IntImm) Expr_Union()         {}
 func (Expr_Unit) Expr_Union()           {}
@@ -37,11 +37,11 @@ func (Expr_RecordGen) Expr_Union()      {}
 func (Expr_LazyBlock) Expr_Union()      {}
 func (Expr_ReturnableExpr) Expr_Union() {}
 
-type Expr_GoEval struct {
-	Value GoEval
+type Expr_GoEvalExpr struct {
+	Value GoEvalExpr
 }
 
-func New_Expr_GoEval(v GoEval) Expr { return Expr_GoEval{v} }
+func New_Expr_GoEvalExpr(v GoEvalExpr) Expr { return Expr_GoEvalExpr{v} }
 
 type Expr_StringLiteral struct {
 	Value string

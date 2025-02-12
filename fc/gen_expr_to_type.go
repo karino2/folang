@@ -78,7 +78,7 @@ func fcToType(fc FunCall) FType {
 
 func ExprToType(expr Expr) FType {
 	switch _v31 := (expr).(type) {
-	case Expr_GoEval:
+	case Expr_GoEvalExpr:
 		ge := _v31.Value
 		return ge.typeArg
 	case Expr_StringLiteral:

@@ -17,3 +17,7 @@ func Concat(sep string, strs []string) string {
 func Length(str string) int {
 	return len(str)
 }
+
+func AppendTail(tail string, s string) string {
+	return s + tail
+}

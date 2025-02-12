@@ -27,6 +27,13 @@ func Head[T any](s []T) T {
 	return s[0]
 }
 
+func Tail[T any](s []T) []T {
+	if len(s) == 0 {
+		panic("call Tail to empty list")
+	}
+	return s[1:]
+}
+
 func Take[T any](num int, s []T) []T {
 	var res []T
 
@@ -124,4 +131,9 @@ func Forany[T any](pred func(T) bool, s []T) bool {
 
 func Append[T any](elem T, s []T) []T {
 	return append(s, elem)
+}
+
+func Prepend[T any](elem T, s []T) []T {
+	ret := []T{elem}
+	return append(ret, s...)
 }

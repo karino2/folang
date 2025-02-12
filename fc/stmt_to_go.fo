@@ -219,3 +219,6 @@ let StmtToGo (stmt:Stmt) : string=
   | ExprStmt expr -> eToGo expr
   | DefStmt ds -> dsToGo ds
   | MultipleDefs md -> mdToGo md
+
+let StmtsToGo (stmts:[]Stmt) =
+  slice.Map StmtToGo stmts |> strings.Concat "\n\n" |> strings.AppendTail "\n"

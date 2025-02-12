@@ -153,12 +153,12 @@ func udfToGo(ud UnionDef) string {
 }
 
 func dsToGo(ds DefStmt) string {
-	switch _v137 := (ds).(type) {
+	switch _v142 := (ds).(type) {
 	case DefStmt_RecordDef:
-		rd := _v137.Value
+		rd := _v142.Value
 		return rdfToGo(rd)
 	case DefStmt_UnionDef:
-		ud := _v137.Value
+		ud := _v142.Value
 		return udfToGo(ud)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -173,31 +173,35 @@ func StmtToGo(stmt Stmt) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(StmtToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(StmtToGo, eToGo, _r0) })
 	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(StmtToGo, eToGo, reToGoRet, _r0) })
-	switch _v138 := (stmt).(type) {
+	switch _v143 := (stmt).(type) {
 	case Stmt_Import:
-		im := _v138.Value
+		im := _v143.Value
 		return imToGo(im)
 	case Stmt_Package:
-		pn := _v138.Value
+		pn := _v143.Value
 		return pmToGo(pn)
 	case Stmt_PackageInfo:
 		return ""
 	case Stmt_LetFuncDef:
-		lfd := _v138.Value
+		lfd := _v143.Value
 		return lfdToGo(bToGoRet, lfd)
 	case Stmt_LetVarDef:
-		lvd := _v138.Value
+		lvd := _v143.Value
 		return lvdToGo(eToGo, lvd)
 	case Stmt_ExprStmt:
-		expr := _v138.Value
+		expr := _v143.Value
 		return eToGo(expr)
 	case Stmt_DefStmt:
-		ds := _v138.Value
+		ds := _v143.Value
 		return dsToGo(ds)
 	case Stmt_MultipleDefs:
-		md := _v138.Value
+		md := _v143.Value
 		return mdToGo(md)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
+}
+
+func StmtsToGo(stmts []Stmt) string {
+	return frt.Pipe(frt.Pipe(slice.Map(StmtToGo, stmts), (func(_r0 []string) string { return strings.Concat("\n\n", _r0) })), (func(_r0 string) string { return strings.AppendTail("\n", _r0) }))
 }

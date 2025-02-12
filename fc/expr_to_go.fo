@@ -5,6 +5,10 @@ import slice
 import buf
 import strings
 
+// wrapper types.
+package_info _ =
+  let reinterpretEscape: string->string
+
 
 let rgFVToGo  (toGo: Expr->string) (fvPair: string*Expr) =
   let fn = frt.Fst fvPair
@@ -41,7 +45,10 @@ let buildReturn (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: Returnab
                 let mayReturn = if ExprToType lastExpr = FUnit then "" else "return "
                 let lg = eToGo lastExpr
                 mayReturn + lg
-  stmtGos + "\n" + lastGo
+  if stmtGos = "" then
+    lastGo
+  else
+    stmtGos + "\n" + lastGo
 
 
 let wrapFunc (toGo: FType->string) (rtype:FType) (goReturnBody:string) =
@@ -260,7 +267,7 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   match expr with
   | BoolLiteral b -> frt.Sprintf1 "%t" b
-  | GoEval ge -> ge.goStmt
+  | GoEvalExpr ge -> reinterpretEscape ge.goStmt
   | StringLiteral s -> frt.Sprintf1 "\"%s\"" s
   | IntImm i -> frt.Sprintf1 "%d" i
   | Unit -> ""

@@ -12,7 +12,7 @@ package_info _ =
   let etdKVs: extTypeDict->[]string*string
   let uniqueTmpVarName: ()->string
 
-type GoEval = {goStmt: string; typeArg: FType}
+type GoEvalExpr = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
 
 // stands for record field access of form: targetName.fieldName
@@ -27,7 +27,7 @@ Only support variable match for a while:
 type MatchPattern = {caseId: string; varName: string}
 
 type Expr =
-| GoEval of GoEval
+| GoEvalExpr of GoEvalExpr
 | StringLiteral of string
 | IntImm of int
 | Unit

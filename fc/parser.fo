@@ -4,22 +4,34 @@ import frt
 import slice
 
 // wrapper types.
-/*
 package_info _ =
   type Scope
   let NewScope: ()->Scope
-*/
+  let scDefVar: Scope->string->Var->()
+  let scLookupVarFac: Scope->string->(()->Var)*bool
+
 
 type ParseState = {
   tkz: Tokenizer;
+  scope: Scope;
   // offsideCol: []int;
-  // scope: Scope;
   // typeDefCtx
 }
 
+let newParse (tkz:Tokenizer) (scope:Scope) =
+  {tkz=tkz; scope=scope}
+
+let psWithTkz (org:ParseState) (tkz:Tokenizer) =
+  {tkz=tkz; scope=org.scope}
+
+let psWithScope (org:ParseState) (nsc:Scope) =
+  {tkz=org.tkz; scope=nsc}
+
+
 let initParse (src: string) =
   let tkz = newTkz src
-  {tkz=tkz}
+  let scope = NewScope ()
+  newParse tkz scope
 
 let psCurrent (ps:ParseState) =
   ps.tkz.current
@@ -30,11 +42,11 @@ let psCurrentTT (ps:ParseState) =
 
 let psNext (ps:ParseState) =
    let ntk = tkzNext ps.tkz
-   {tkz=ntk}
+   psWithTkz ps ntk
 
 let psNextNOL (ps:ParseState) =
-   let ntk = tkzNextNOL ps.tkz
-   {tkz=ntk}
+  let ntk = tkzNextNOL ps.tkz
+  psWithTkz ps ntk
 
 let psSkipEOL (ps:ParseState) =
    if (psCurrentTT ps) = EOL then
@@ -59,12 +71,25 @@ let psIdentName (ps:ParseState) =
   let cur = psCurrent ps
   cur.stringVal
 
+let psStringVal (ps:ParseState) =
+  psExpect STRING ps
+  let cur = psCurrent ps
+  cur.stringVal
+
+
 let parsePackage (ps:ParseState) =
   let ps2 = psConsume PACKAGE ps
   let pname = psIdentName ps2
   let ps3 = psNextNOL ps2
   let pkg = Package pname
   (ps3, pkg)
+
+let parseImport (ps:ParseState) =
+  let ps2 = psConsume IMPORT ps
+  let pname = psStringVal ps2
+  let ps3 = psNextNOL ps2
+  let imp = Import pname
+  (ps3, imp)
 
 
 /*
@@ -141,20 +166,87 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
         (ps3, pas3)
       | _ -> (ps2, [v])
 
+let parseGoEval (ps:ParseState) =
+  let ps2 = psNext ps // consume "GoEval"
+  let cur = psCurrent ps2
+  let ge = {goStmt=cur.stringVal; typeArg=FUnit}
+  let ps3 = psNext ps2
+  (ps3, GoEvalExpr ge)
+
 let parseAtom (ps:ParseState) =
   let cur = psCurrent ps
-  let expr = match cur.ttype with
+  if cur.ttype = IDENTIFIER && cur.stringVal = "GoEval" then
+    parseGoEval ps
+  else
+    let expr = match cur.ttype with
               | STRING -> StringLiteral cur.stringVal
               | INT_IMM -> IntImm cur.intVal
+              | IDENTIFIER ->
+                  let (vfac, ok) = scLookupVarFac ps.scope cur.stringVal
+                  if ok then
+                    vfac () |> Var
+                  else
+                    frt.Panic "Unkonw var ref"
+                    Unit
               | _ -> Unit
-  let ps2 = psNext ps
-  (ps2, expr)
+    let ps2 = psNext ps
+    (ps2, expr)
+
+let isEndOfTerm (ps:ParseState) =
+  match psCurrentTT ps with
+  | EOF -> true
+  | EOL -> true
+  | _ -> false
+
+let parseAtomList (ps:ParseState) : ParseState*[]Expr =
+  let (ps2, one) = parseAtom ps
+  if isEndOfTerm ps2 then
+    (ps2, [one])
+  else
+    let (ps3, rest) = parseAtomList ps2
+    let al = slice.Prepend one rest
+    (ps3, al)
+
+let parseTerm (ps:ParseState) =
+  let (ps2, es) = parseAtomList ps
+  if (slice.Length es) = 1 then
+    (ps2, (slice.Head es))
+  else
+    // funcall
+    let head = slice.Head es
+    let tail = slice.Tail es
+    match head with
+    | Var v ->
+      let fc = {targetFunc=v; args=tail}
+      (ps2, FunCall fc)
+    | _ ->
+      frt.Panic "Funcall head is not var"
+      (ps2, head)
+
 
 let parseBlock (ps:ParseState) =
-  let (ps2, expr) = parseAtom ps
+  let (ps2, expr) = parseTerm ps
   let block = GoEval<Block> "Block{[]Stmt{}, expr}"
   let ps3 = psSkipEOL ps2
   (ps3, block)
+
+let vToT (v:Var) =
+  v.ftype
+
+// FFunc of FuncType
+// FuncType = {targets: []FType}
+// LetFuncDef = {name: string; params: []Var; body:Block}
+let lfdToFuncType (lfd:LetFuncDef) =
+  let rtype = blockToExpr lfd.body |> ExprToType
+  let targets = slice.Map vToT lfd.params |> slice.Append rtype
+  {FuncType.targets=targets}
+
+// I want to make this func as factory.
+// But currently, last arg () is not supported.
+// So I return Var here and handle in wrapper.go for a while.
+let lfdToFuncVar (lfd:LetFuncDef) =
+  let ft = lfdToFuncType lfd |> FFunc
+  {Var.name=lfd.name; ftype=ft}
 
 /*
 LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
@@ -165,8 +257,28 @@ let parseLetFuncDef (ps:ParseState) =
   let (ps3, params) = psNext ps2 |> parseParams
   // TODO: put current func for recursive call.
   let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock
-  let stmt = LetFuncDef {LetFuncDef.name=fname; params=params; body=block}
+  let lfd =  {LetFuncDef.name=fname; params=params; body=block}
+  lfdToFuncVar lfd |> scDefVar ps4.scope fname 
+  let stmt = LetFuncDef lfd
   (ps4, stmt)
-  
-  
 
+
+let parseStmt (ps:ParseState) =
+  match psCurrentTT ps with
+  | PACKAGE -> parsePackage ps
+  | IMPORT -> parseImport ps
+  | LET -> parseLetFuncDef ps
+  | _ ->
+    frt.Panic "Unknown stmt"
+    parsePackage ps // never reached this line.
+
+let parseStmts (ps:ParseState) : ParseState*[]Stmt =
+  let ps2 = psSkipEOL ps
+  if (psCurrentTT ps2) = EOF then
+    let s = GoEval<[]Stmt> "[]Stmt{}"
+    (ps2, s)
+  else
+    let (ps3, one) = parseStmt ps
+    let (ps4, rest) = parseStmts ps3
+    let ss = slice.Prepend one rest
+    (ps4, ss)

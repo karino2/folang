@@ -56,7 +56,7 @@ let fcToType (fc:FunCall) =
 
 let ExprToType (expr:Expr) : FType =
   match expr with
-  | GoEval ge -> ge.typeArg
+  | GoEvalExpr ge -> ge.typeArg
   | StringLiteral _ -> FString
   | IntImm _ -> FInt
   | Unit -> FUnit
