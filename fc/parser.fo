@@ -9,6 +9,8 @@ package_info _ =
   let NewScope: ()->Scope
   let scDefVar: Scope->string->Var->()
   let scLookupVarFac: Scope->string->(()->Var)*bool
+  let scRegisterRecType: Scope->RecordType->()
+  let scLookupRecord: Scope->[]string->RecordType*bool
 
 
 type ParseState = {
@@ -17,6 +19,12 @@ type ParseState = {
   // offsideCol: []int;
   // typeDefCtx
 }
+
+
+// wrapper types. Use ParseState
+package_info _ =
+  let withPs<T>: ParseState->T->ParseState*T
+
 
 let newParse (tkz:Tokenizer) (scope:Scope) =
   {tkz=tkz; scope=scope}
@@ -173,42 +181,85 @@ let parseGoEval (ps:ParseState) =
   let ps3 = psNext ps2
   (ps3, GoEvalExpr ge)
 
-let parseAtom (ps:ParseState) =
-  let cur = psCurrent ps
-  if cur.ttype = IDENTIFIER && cur.stringVal = "GoEval" then
-    parseGoEval ps
+
+// FIELD_INITIALIZER = IDENTIFIER '=' expr
+let parseFiIni (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
+  let fname = psIdentName ps
+  let (ps2, expr) = psNextNOL ps |> psConsume EQ |> psSkipEOL |> parseE
+  (ps2, {name=fname;expr=expr})
+
+
+let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]NEPair =
+  let (ps2, nep) = parseFiIni parseE ps
+  if (psCurrentTT ps2) = RBRACE then
+    (ps2, [nep])
   else
-    let expr = match cur.ttype with
-              | STRING -> StringLiteral cur.stringVal
-              | INT_IMM -> IntImm cur.intVal
-              | IDENTIFIER ->
-                  let (vfac, ok) = scLookupVarFac ps.scope cur.stringVal
-                  if ok then
-                    vfac () |> Var
-                  else
-                    frt.Panic "Unkonw var ref"
-                    Unit
-              | _ -> Unit
-    let ps2 = psNext ps
-    (ps2, expr)
+    let (ps3, rest) = psConsume SEMICOLON ps2 |> parseFieldInitializers parseE
+    slice.Prepend nep rest |> withPs ps3
+
+let NVPToName (nvp:NEPair) =
+  nvp.name
+
+/*
+RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
+
+FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
+
+FIELD_INITIALIZER = IDENTIFIER '=' expr
+*/
+let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
+  let (ps2, neps) = psConsume LBRACE ps |> parseFieldInitializers parseE
+  let ps3 = psConsume RBRACE ps2
+  let (rtype, ok) = slice.Map NVPToName neps |> scLookupRecord ps3.scope
+  if ok then
+    {fieldsNV=neps; recordType=rtype}
+    |> RecordGen |> withPs ps3
+  else
+    frt.Panic "record field name match to no record type."
+    (ps3, Unit)
+
+let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
+  let cur = psCurrent ps
+  let pn = psNext ps
+  match cur.ttype with
+  | STRING ->
+    StringLiteral cur.stringVal |> withPs pn
+  | INT_IMM ->
+    IntImm cur.intVal |> withPs pn
+  | LBRACE ->
+    parseRecordGen parseE ps
+  | IDENTIFIER ->
+    if cur.stringVal = "GoEval" then
+      parseGoEval ps
+    else
+      let (vfac, ok) = scLookupVarFac ps.scope cur.stringVal
+      if ok then
+        vfac () |> Var |> withPs pn
+      else
+        frt.Panic "Unkonw var ref"
+        (ps, Unit)
+  | _ -> (ps, Unit)
+
 
 let isEndOfTerm (ps:ParseState) =
   match psCurrentTT ps with
   | EOF -> true
   | EOL -> true
+  | SEMICOLON -> true
+  | RBRACE -> true
   | _ -> false
 
-let parseAtomList (ps:ParseState) : ParseState*[]Expr =
-  let (ps2, one) = parseAtom ps
+let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
+  let (ps2, one) = parseAtom parseE ps
   if isEndOfTerm ps2 then
     (ps2, [one])
   else
-    let (ps3, rest) = parseAtomList ps2
+    let (ps3, rest) = parseAtomList parseE ps2
     let al = slice.Prepend one rest
     (ps3, al)
 
-let parseTerm (ps:ParseState) =
-  let (ps2, es) = parseAtomList ps
+let parseTerm (ps:ParseState) : Expr =
+  let (ps2, es) = parseAtomList parseTerm ps
   if (slice.Length es) = 1 then
     (ps2, (slice.Head es))
   else
@@ -262,12 +313,60 @@ let parseLetFuncDef (ps:ParseState) =
   let stmt = LetFuncDef lfd
   (ps4, stmt)
 
+// FIELD_DEF = ID ':' TYPE
+let parseFieldDef (ps:ParseState) =
+  let fname = psIdentName ps
+  let (ps2, tp) = psNextNOL ps |> psConsume COLON |> parseType
+  let ntp = {NameTypePair.name=fname; ftype=tp}
+  (ps2, ntp)
+
+
+let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
+  let (ps2, ntp) = parseFieldDef ps
+  if (psCurrentTT ps2) = RBRACE then
+    (ps2, [ntp])
+  else
+    let (ps3, rest) = psConsume SEMICOLON ps2 |> parseFieldDefs
+    let result = slice.Prepend ntp rest
+    (ps3, result)
+
+let rdToRecType (rd:RecordDef) =
+  // golang complaint:
+  // S1016 - Use a type conversion instead of manually copying struct fields 
+  // {RecordType.name=rd.name; fields=rd.fields}
+  GoEval<RecordType> "RecordType(rd)"
+
+// RECORD_DEF = '{' FIELD_DEFS '}'
+//
+// FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
+let parseRecordDef (tname:string) (ps:ParseState) =
+  let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs
+  let ps3 = psConsume RBRACE ps2
+  let rd = {RecordDef.name=tname; fields=ntps}
+  // register record typedef.
+  let recType = rdToRecType rd
+  scRegisterRecType ps3.scope recType
+  (ps3, rd)
+
+
+// TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)
+//
+// RECORD_DEF = '{' FIELD_DEFS '}'
+//
+// UNION_DEF = '|'...
+let parseTypeDef (ps:ParseState) =
+  let ps2 = psConsume TYPE ps
+  let tname = psIdentName ps2
+  let (ps3, rd) = psNextNOL ps2 |> psConsume EQ |> parseRecordDef tname
+  let rdstmt = RecordDef rd |> DefStmt
+  (ps3, rdstmt)
 
 let parseStmt (ps:ParseState) =
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps
   | IMPORT -> parseImport ps
   | LET -> parseLetFuncDef ps
+  | TYPE -> parseTypeDef ps
   | _ ->
     frt.Panic "Unknown stmt"
     parsePackage ps // never reached this line.
@@ -279,6 +378,6 @@ let parseStmts (ps:ParseState) : ParseState*[]Stmt =
     (ps2, s)
   else
     let (ps3, one) = parseStmt ps
-    let (ps4, rest) = parseStmts ps3
+    let (ps4, rest) = parseStmts (psSkipEOL ps3)
     let ss = slice.Prepend one rest
     (ps4, ss)

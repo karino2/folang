@@ -106,10 +106,13 @@ type FunCall struct {
 	targetFunc Var
 	args       []Expr
 }
+type NEPair struct {
+	name string
+	expr Expr
+}
 type RecordGen struct {
-	fieldNames  []string
-	fieldValues []Expr
-	recordType  RecordType
+	fieldsNV   []NEPair
+	recordType RecordType
 }
 type Block struct {
 	stmts     []Stmt

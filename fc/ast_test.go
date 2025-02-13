@@ -25,7 +25,10 @@ func TestExprToGo(t *testing.T) {
 			"rec.field1",
 		},
 		{
-			New_Expr_RecordGen(RecordGen{[]string{"hoge", "ika"}, []Expr{New_Expr_StringLiteral("sval"), New_Expr_IntImm(123)}, RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}}),
+			New_Expr_RecordGen(
+				RecordGen{[]NEPair{{"hoge", New_Expr_StringLiteral("sval")},
+					{"ika", New_Expr_IntImm(123)}},
+					RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}}),
 			"MyRec{hoge: \"sval\", ika: 123}",
 		},
 	}

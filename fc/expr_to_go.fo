@@ -10,9 +10,9 @@ package_info _ =
   let reinterpretEscape: string->string
 
 
-let rgFVToGo  (toGo: Expr->string) (fvPair: string*Expr) =
-  let fn = frt.Fst fvPair
-  let fv = frt.Snd fvPair
+let rgFVToGo  (toGo: Expr->string) (fvPair: NEPair) =
+  let fn = fvPair.name
+  let fv = fvPair.expr
   let fvGo = toGo fv
   fn + ": " + fvGo
 
@@ -21,7 +21,7 @@ let rgToGo (toGo: Expr->string) (rg:RecordGen) =
   let b = buf.New ()
   frStructName rtype |> buf.Write b
   buf.Write b "{"
-  let fvGo = slice.Zip rg.fieldNames rg.fieldValues
+  let fvGo = rg.fieldsNV
              |> slice.Map (rgFVToGo toGo)
              |> strings.Concat ", "
   buf.Write b fvGo

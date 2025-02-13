@@ -392,6 +392,8 @@ func reinterpretEscape(buf string) string {
 type scopeImpl struct {
 	// var factory Map
 	varFacMap map[string]func() Var
+	recordMap map[string]RecordType
+	typeMap   map[string]FType
 	parent    *scopeImpl
 }
 
@@ -401,6 +403,8 @@ type Scope = *scopeImpl
 func newScope0(parent *scopeImpl) *scopeImpl {
 	s := &scopeImpl{}
 	s.varFacMap = make(map[string]func() Var)
+	s.recordMap = make(map[string]RecordType)
+	s.typeMap = make(map[string]FType)
 	s.parent = parent
 	return s
 }
@@ -431,25 +435,10 @@ func scLookupVarFac(s Scope, name string) frt.Tuple2[func() Var, bool] {
 	return frt.NewTuple2[func() Var](nil, false)
 }
 
-/*
-I should postpone these implementation until I need. YAGNI.
-
-type scopeImpl struct {
-	typeGenMap map[string]func() FType
-	recordMap  map[string]RecordType
-	typeMap    map[string]FType
-}
-
-func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
-	cur := s
-	for cur != nil {
-		ret, ok := cur.typeMap[name]
-		if ok {
-			return frt.NewTuple2(ret, true)
-		}
-		cur = cur.parent
-	}
-	return frt.NewTuple2(New_FType_FUnit, false)
+func scRegisterRecType(s Scope, recType RecordType) {
+	rname := recType.name
+	s.recordMap[rname] = recType
+	s.typeMap[rname] = New_FType_FRecord(recType)
 }
 
 func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
@@ -473,4 +462,28 @@ func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
 	}
 	return frt.NewTuple2(RecordType{}, false)
 }
+
+/*
+I should postpone these implementation until I need. YAGNI.
+
+type scopeImpl struct {
+	typeGenMap map[string]func() FType
+}
+
+func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.typeMap[name]
+		if ok {
+			return frt.NewTuple2(ret, true)
+		}
+		cur = cur.parent
+	}
+	return frt.NewTuple2(New_FType_FUnit, false)
+}
+
 */
+
+func withPs[T any](ps ParseState, v T) frt.Tuple2[ParseState, T] {
+	return frt.NewTuple2(ps, v)
+}

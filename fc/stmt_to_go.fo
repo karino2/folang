@@ -33,7 +33,7 @@ let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
   buf.Write b lfd.name
   buf.Write b "("
   lfdParamsToGo lfd |> buf.Write b
-  buf.Write b ")"
+  buf.Write b ") "
   blockToType ExprToType lfd.body |> FTypeToGo |> buf.Write b
   buf.Write b "{\n"
   bToGoRet lfd.body |> buf.Write b

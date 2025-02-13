@@ -44,7 +44,8 @@ type Expr =
 */
 | ReturnableExpr of ReturnableExpr
 and FunCall = {targetFunc: Var; args: []Expr}
-and RecordGen = {fieldNames: []string; fieldValues: []Expr; recordType: RecordType}
+and NEPair = {name: string; expr: Expr}
+and RecordGen = {fieldsNV: []NEPair; recordType: RecordType}
 and Block = {stmts: []Stmt; finalExpr: Expr}
 and LazyBlock = {stmts: []Stmt; finalExpr: Expr}
 and MatchRule = {pattern: MatchPattern; body: Block}

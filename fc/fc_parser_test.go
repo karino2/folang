@@ -59,7 +59,7 @@ func TestParseLetFuncDef(t *testing.T) {
 	}
 
 	got := StmtToGo(stmt)
-	want := `func hoge()int{
+	want := `func hoge() int{
 return 123
 }`
 
@@ -90,15 +90,71 @@ let main () =
 
 import "fmt"
 
-func hello(msg string){
+func hello(msg string) {
 fmt.Printf("Hello %s\n", msg)
 }
 
-func main(){
+func main() {
 hello("World")
 }
 `
 	if got != want {
 		t.Errorf("want %s, got %s.", want, got)
+	}
+}
+
+func transpile(src string) string {
+	ps := initParse(src)
+	gotPair := parseStmts(ps)
+	_, stmts := frt.Destr(gotPair)
+	return StmtsToGo(stmts)
+}
+
+func TestParseAndTranspile(t *testing.T) {
+	var tests = []struct {
+		input string
+		want  string
+	}{
+		{
+			`type hoge = {X: string; Y: int}
+
+let ika () =
+    {X="abc"; Y=123}
+
+`,
+			`type hoge struct {
+  X string
+  Y int
+}
+
+func ika() hoge{
+return hoge{X: "abc", Y: 123}
+}
+`,
+		},
+	}
+	for _, test := range tests {
+		got := transpile(test.input)
+
+		if got != test.want {
+			t.Errorf("got [%s], want [%s]", got, test.want)
+		}
+	}
+
+}
+func TestParseAddhook(t *testing.T) {
+	src := `package main
+
+type hoge = {X: string; Y: string}
+
+let ika () =
+    {X="abc"; Y="def"}
+
+`
+
+	got := transpile(src)
+	// t.Error(got)
+	if got == "dummy" {
+		t.Error(got)
 	}
 }

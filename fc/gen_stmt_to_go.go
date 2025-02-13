@@ -31,7 +31,7 @@ func lfdToGo(bToGoRet func(Block) string, lfd LetFuncDef) string {
 	buf.Write(b, lfd.name)
 	buf.Write(b, "(")
 	frt.PipeUnit(lfdParamsToGo(lfd), (func(_r0 string) { buf.Write(b, _r0) }))
-	buf.Write(b, ")")
+	buf.Write(b, ") ")
 	frt.PipeUnit(frt.Pipe(blockToType(ExprToType, lfd.body), FTypeToGo), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "{\n")
 	frt.PipeUnit(bToGoRet(lfd.body), (func(_r0 string) { buf.Write(b, _r0) }))

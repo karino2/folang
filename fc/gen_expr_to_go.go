@@ -8,9 +8,9 @@ import "github.com/karino2/folang/pkg/buf"
 
 import "github.com/karino2/folang/pkg/strings"
 
-func rgFVToGo(toGo func(Expr) string, fvPair frt.Tuple2[string, Expr]) string {
-	fn := frt.Fst(fvPair)
-	fv := frt.Snd(fvPair)
+func rgFVToGo(toGo func(Expr) string, fvPair NEPair) string {
+	fn := fvPair.name
+	fv := fvPair.expr
 	fvGo := toGo(fv)
 	return ((fn + ": ") + fvGo)
 }
@@ -20,8 +20,8 @@ func rgToGo(toGo func(Expr) string, rg RecordGen) string {
 	b := buf.New()
 	frt.PipeUnit(frStructName(rtype), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "{")
-	fvGo := frt.Pipe(frt.Pipe(slice.Zip(rg.fieldNames, rg.fieldValues), (func(_r0 []frt.Tuple2[string, Expr]) []string {
-		return slice.Map((func(_r0 frt.Tuple2[string, Expr]) string { return rgFVToGo(toGo, _r0) }), _r0)
+	fvGo := frt.Pipe(frt.Pipe(rg.fieldsNV, (func(_r0 []NEPair) []string {
+		return slice.Map((func(_r0 NEPair) string { return rgFVToGo(toGo, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
 	buf.Write(b, fvGo)
 	buf.Write(b, "}")
