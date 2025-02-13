@@ -66,11 +66,9 @@ func TestMatchExprToGo(t *testing.T) {
 switch _v1 := (udata).(type){
 case IntOrString_I:
 ival := _v1.Value
-
 return "I match"
 case IntOrString_S:
 sval := _v1.Value
-
 return "S match"
 default:
 panic("Union pattern fail. Never reached here.")

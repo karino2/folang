@@ -60,7 +60,6 @@ func TestParseLetFuncDef(t *testing.T) {
 
 	got := StmtToGo(stmt)
 	want := `func hoge()int{
-
 return 123
 }`
 
