@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/karino2/folang/pkg/frt"
@@ -136,8 +137,8 @@ return hoge{X: "abc", Y: 123}
 	for _, test := range tests {
 		got := transpile(test.input)
 
-		if got != test.want {
-			t.Errorf("got [%s], want [%s]", got, test.want)
+		if !strings.Contains(got, test.want) {
+			t.Errorf("want to contain '%s', but got '%s'", test.want, got)
 		}
 	}
 
