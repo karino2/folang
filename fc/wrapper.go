@@ -488,8 +488,26 @@ func withPs[T any](ps ParseState, v T) frt.Tuple2[ParseState, T] {
 	return frt.NewTuple2(ps, v)
 }
 
-// apply psNext like function and keep result.
-func Thr[T any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, T]) frt.Tuple2[ParseState, T] {
-	p, e := frt.Destr(prev)
-	return frt.NewTuple2(fn(p), e)
+/*
+inference from funcall to arg side is NYI.
+
+func Cnv1[T any, U any](fn func(T) T, prev frt.Tuple2[T, U]) frt.Tuple2[T, U] {
+	t, u := frt.Destr(prev)
+	return frt.NewTuple2(fn(t), u)
+}
+
+func Cnv2[T any, U any](fn func(U) U, prev frt.Tuple2[T, U]) frt.Tuple2[T, U] {
+	t, u := frt.Destr(prev)
+	return frt.NewTuple2(t, fn(u))
+}
+*/
+
+func Cnv1[U any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
+	t, u := frt.Destr(prev)
+	return frt.NewTuple2(fn(t), u)
+}
+
+func Cnv2[U any](fn func(U) U, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
+	t, u := frt.Destr(prev)
+	return frt.NewTuple2(t, fn(u))
 }

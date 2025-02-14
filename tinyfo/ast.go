@@ -264,9 +264,15 @@ func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
 	case *FSlice:
 		// only check one level of []T
 		if pet, ok := gt.elemType.(*FParametrized); ok {
-			// exprType must be slice to.
-			est := exprType.(*FSlice)
-			paramInfo[pet.name] = est.elemType
+			if est, ok := exprType.(*FSlice); ok {
+				paramInfo[pet.name] = est.elemType
+			} else {
+				// target is []T, expr is U
+				// reverse match, unsupported.
+				_ = exprType.(*FParametrized)
+				// paramInfo[ep.name] = gt
+				panic("funcall arg to expr inference, NYI.")
+			}
 		}
 	case *FTuple:
 		etup := exprType.(*FTuple)
