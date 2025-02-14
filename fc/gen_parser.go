@@ -192,22 +192,22 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 		return frt.NewTuple2(ps3, New_Param_PUnit)
 	default:
 		vname := psIdentName(ps2)
-		ps3 := frt.Pipe(psNext(ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) }))
-		ps4, tp := frt.Destr(parseType(ps3))
-		ps5 := psConsume(New_TokenType_RPAREN, ps4)
+		ps3, tp := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psNext(ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) })), parseType), (func(_r0 frt.Tuple2[ParseState, FType]) frt.Tuple2[ParseState, FType] {
+			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
+		})))
 		v := Var{name: vname, ftype: tp}
-		return frt.NewTuple2(ps5, New_Param_PVar(v))
+		return frt.NewTuple2(ps3, New_Param_PVar(v))
 	}
 }
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v246 := (prm1).(type) {
+	switch _v256 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v246.Value
+		v := _v256.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -309,9 +309,9 @@ func parseAtomList(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps Pars
 	return frt.IfElse(isEndOfTerm(ps2), (func() frt.Tuple2[ParseState, []Expr] {
 		return frt.NewTuple2(ps2, ([]Expr{one}))
 	}), (func() frt.Tuple2[ParseState, []Expr] {
-		ps3, rest := frt.Destr(parseAtomList(parseE, ps2))
-		al := slice.Prepend(one, rest)
-		return frt.NewTuple2(ps3, al)
+		return frt.Pipe(parseAtomList(parseE, ps2), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+			return CnvR((func(_r0 []Expr) []Expr { return slice.Prepend(one, _r0) }), _r0)
+		}))
 	}))
 }
 
@@ -322,9 +322,9 @@ func parseTerm(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	}), (func() frt.Tuple2[ParseState, Expr] {
 		head := slice.Head(es)
 		tail := slice.Tail(es)
-		switch _v250 := (head).(type) {
+		switch _v260 := (head).(type) {
 		case Expr_Var:
-			v := _v250.Value
+			v := _v260.Value
 			fc := FunCall{targetFunc: v, args: tail}
 			return frt.NewTuple2(ps2, New_Expr_FunCall(fc))
 		default:
@@ -378,9 +378,9 @@ func parseFieldDefs(ps ParseState) frt.Tuple2[ParseState, []NameTypePair] {
 	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_RBRACE), (func() frt.Tuple2[ParseState, []NameTypePair] {
 		return frt.NewTuple2(ps2, ([]NameTypePair{ntp}))
 	}), (func() frt.Tuple2[ParseState, []NameTypePair] {
-		ps3, rest := frt.Destr(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), parseFieldDefs))
-		result := slice.Prepend(ntp, rest)
-		return frt.NewTuple2(ps3, result)
+		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), parseFieldDefs), (func(_r0 frt.Tuple2[ParseState, []NameTypePair]) frt.Tuple2[ParseState, []NameTypePair] {
+			return CnvR((func(_r0 []NameTypePair) []NameTypePair { return slice.Prepend(ntp, _r0) }), _r0)
+		}))
 	}))
 }
 
@@ -393,8 +393,7 @@ func parseRecordDef(tname string, ps ParseState) frt.Tuple2[ParseState, RecordDe
 		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RBRACE, _r0) }), _r0)
 	})))
 	rd := RecordDef{name: tname, fields: ntps}
-	recType := rdToRecType(rd)
-	scRegisterRecType(ps2.scope, recType)
+	frt.PipeUnit(rdToRecType(rd), (func(_r0 RecordType) { scRegisterRecType(ps2.scope, _r0) }))
 	return frt.NewTuple2(ps2, rd)
 }
 

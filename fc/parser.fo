@@ -187,12 +187,13 @@ let parseParam (ps:ParseState) =
      (ps3, PUnit)
   | _ ->
     let vname = psIdentName ps2
-    let ps3 = psNext ps2 |> psConsume COLON
-    let (ps4, tp) = parseType ps3
-    let ps5 = psConsume RPAREN ps4
+    let (ps3, tp) = psNext ps2
+                    |> psConsume COLON
+                    |> parseType
+                    |> CnvL (psConsume RPAREN)
     let v = {Var.name=vname; ftype=tp}
     // TODO: define var to scope here.
-    (ps5, (PVar v))
+    (ps3, (PVar v))
 
 let parseParams (ps:ParseState) : ParseState*[]Var =
   let (ps2, prm1) = parseParam ps
@@ -287,9 +288,8 @@ let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
   if isEndOfTerm ps2 then
     (ps2, [one])
   else
-    let (ps3, rest) = parseAtomList parseE ps2
-    let al = slice.Prepend one rest
-    (ps3, al)
+    parseAtomList parseE ps2
+    |> CnvR (slice.Prepend one)
 
 let parseTerm (ps:ParseState) : Expr =
   let (ps2, es) = parseAtomList parseTerm ps
@@ -358,9 +358,9 @@ let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
   if (psCurrentTT ps2) = RBRACE then
     (ps2, [ntp])
   else
-    let (ps3, rest) = psConsume SEMICOLON ps2 |> parseFieldDefs
-    let result = slice.Prepend ntp rest
-    (ps3, result)
+    psConsume SEMICOLON ps2
+    |> parseFieldDefs
+    |> CnvR (slice.Prepend ntp)
 
 let rdToRecType (rd:RecordDef) =
   // golang complaint:
@@ -375,8 +375,7 @@ let parseRecordDef (tname:string) (ps:ParseState) =
   let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE)
   let rd = {RecordDef.name=tname; fields=ntps}
   // register record typedef.
-  let recType = rdToRecType rd
-  scRegisterRecType ps2.scope recType
+  rdToRecType rd |> scRegisterRecType ps2.scope
   (ps2, rd)
 
 
