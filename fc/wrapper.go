@@ -487,3 +487,9 @@ func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
 func withPs[T any](ps ParseState, v T) frt.Tuple2[ParseState, T] {
 	return frt.NewTuple2(ps, v)
 }
+
+// apply psNext like function and keep result.
+func Thr[T any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, T]) frt.Tuple2[ParseState, T] {
+	p, e := frt.Destr(prev)
+	return frt.NewTuple2(fn(p), e)
+}
