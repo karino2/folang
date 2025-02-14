@@ -28,7 +28,7 @@ package_info _ =
   // let CnvL<T, U>: (T->T)->T*U->T*U
   // let CnvR<T, U>: (U->U)->T*U->T*U
   let CnvL<U>: (ParseState->ParseState)->ParseState*U->ParseState*U
-  let CnvR<U>: (U->U)->T*U->T*U
+  let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
 
 
 let newParse (tkz:Tokenizer) (scope:Scope) =
@@ -89,21 +89,53 @@ let psStringVal (ps:ParseState) =
   let cur = psCurrent ps
   cur.stringVal
 
+let psStrNx (f: ParseState->string) (ps:ParseState) =
+  let s = f ps
+  let ps2 = psNext ps
+  (ps2, s)
+
+
+// psIdentName and Next
+let psIdentNameNx (ps:ParseState) =
+  psStrNx psIdentName ps
+
+let psStringValNx (ps:ParseState) =
+  psStrNx psStringVal ps
+
+
+let psCurrentNx (ps:ParseState) =
+  let tk = psCurrent ps
+  let ps2 = psNext ps
+  (ps2, tk)
+
+let psCurrentTTNx (ps:ParseState) =
+  let tt = psCurrentTT ps
+  let ps2 = psNext ps
+  (ps2, tt)
+
+// NxL means NextNOL
+let psIdentNameNxL (ps:ParseState) =
+  psIdentNameNx ps |> CnvL psSkipEOL
+
+let psStringValNxL (ps:ParseState) =
+  psStringValNx ps |> CnvL psSkipEOL
+
+let psCurrentNxL (ps:ParseState) =
+  psCurrentNx ps |> CnvL psSkipEOL
+
+let psCurrentTTNxL (ps:ParseState) =
+  psCurrentTTNx ps |> CnvL psSkipEOL
+
 
 let parsePackage (ps:ParseState) =
-  let ps2 = psConsume PACKAGE ps
-  let pname = psIdentName ps2
-  let ps3 = psNextNOL ps2
-  let pkg = Package pname
-  (ps3, pkg)
+  psConsume PACKAGE ps
+  |> psIdentNameNxL
+  |> CnvR Package
 
 let parseImport (ps:ParseState) =
-  let ps2 = psConsume IMPORT ps
-  let pname = psStringVal ps2
-  let ps3 = psNextNOL ps2
-  let imp = Import pname
-  (ps3, imp)
-
+  psConsume IMPORT ps
+  |> psStringValNxL
+  |> CnvR Import
 
 /*
 TYPE = ATOM_TYPE
@@ -172,19 +204,15 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
       let tt = psCurrentTT ps2
       match tt with
       | LPAREN ->
-        let ftp2 = parseParams ps2
-        let ps3 = frt.Fst ftp2
-        let prms2 = frt.Snd ftp2
-        let pas3 = slice.Append v prms2
-        (ps3, pas3)
+        parseParams ps2
+        |> CnvR (slice.Append v)
       | _ -> (ps2, [v])
 
 let parseGoEval (ps:ParseState) =
-  let ps2 = psNext ps // consume "GoEval"
-  let cur = psCurrent ps2
-  let ge = {goStmt=cur.stringVal; typeArg=FUnit}
-  let ps3 = psNext ps2
-  (ps3, GoEvalExpr ge)
+  let (ps2, s) = psNext ps // consume "GoEval" token
+                  |> psStringValNx
+  let ge = {goStmt=s; typeArg=FUnit}
+  (ps2, GoEvalExpr ge)
 
 
 // FIELD_INITIALIZER = IDENTIFIER '=' expr
@@ -199,8 +227,9 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
   if (psCurrentTT ps2) = RBRACE then
     (ps2, [nep])
   else
-    let (ps3, rest) = psConsume SEMICOLON ps2 |> parseFieldInitializers parseE
-    slice.Prepend nep rest |> withPs ps3
+    psConsume SEMICOLON ps2
+    |> parseFieldInitializers parseE
+    |> CnvR (slice.Prepend nep)
 
 let NVPToName (nvp:NEPair) =
   nvp.name
@@ -357,9 +386,8 @@ let parseRecordDef (tname:string) (ps:ParseState) =
 //
 // UNION_DEF = '|'...
 let parseTypeDef (ps:ParseState) =
-  let ps2 = psConsume TYPE ps
-  let tname = psIdentName ps2
-  let (ps3, rd) = psNextNOL ps2 |> psConsume EQ |> parseRecordDef tname
+  let (ps2, tname) = psConsume TYPE ps |> psIdentNameNxL
+  let (ps3, rd) = psConsume EQ ps2 |> parseRecordDef tname
   let rdstmt = RecordDef rd |> DefStmt
   (ps3, rdstmt)
 
