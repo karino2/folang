@@ -628,6 +628,19 @@ let main () =
 `,
 			"buf.WriteString(b, \"hogehoge\")",
 		},
+		// comment inside package_info
+		{
+			`package_info buf =
+  type Buffer
+  // comment test
+  let WriteString: Buffer->string->()
+
+let main () =
+  let b = GoEval<buf.Buffer> "buf.Buffer{}"
+  buf.WriteString b "hogehoge"
+`,
+			"buf.WriteString(b, \"hogehoge\")",
+		},
 		{
 			`package_info buf =
   type Buffer
@@ -1117,6 +1130,8 @@ func TestParserAddhook(t *testing.T) {
 
 package_info _=
   let lookupFunc: string->(()->string)*bool
+	// test
+  let hoge: string->string
 
 let ika () =
   lookupFunc "hoge"

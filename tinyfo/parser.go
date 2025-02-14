@@ -1799,8 +1799,7 @@ func (p *Parser) parsePackageInfo() *PackageInfo {
 		p.gotoNext()
 	}
 	p.consume(EQ)
-	p.skipEOLOne()
-	p.skipSpace()
+	p.skipEOL()
 	p.pushOffside()
 	pi := NewPackageInfo(pkgName)
 
@@ -1808,7 +1807,7 @@ func (p *Parser) parsePackageInfo() *PackageInfo {
 	defer p.popOffside()
 	for !p.isEndOfBlock() {
 		p.parseExtDef(pi)
-		p.skipEOLOne()
+		p.skipEOL()
 	}
 
 	p.popScope()
