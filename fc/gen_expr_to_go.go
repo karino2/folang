@@ -112,13 +112,13 @@ func mrToCase(btogRet func(Block) string, uname string, tmpVarName string, mr Ma
 	return buf.String(b)
 }
 
-func mrHasCaseVar(mr MatchRule) bool {
+func mrHasNoCaseVar(mr MatchRule) bool {
 	pat := mr.pattern
-	return ((frt.OpNotEqual(pat.caseId, "_") && frt.OpNotEqual(pat.varName, "")) && frt.OpNotEqual(pat.varName, "_"))
+	return ((frt.OpEqual(pat.caseId, "_") || frt.OpEqual(pat.varName, "")) || frt.OpEqual(pat.varName, "_"))
 }
 
 func meHasCaseVar(me MatchExpr) bool {
-	return slice.Forall(mrHasCaseVar, me.rules)
+	return frt.OpNot(slice.Forall(mrHasNoCaseVar, me.rules))
 }
 
 func mrIsDefault(mr MatchRule) bool {

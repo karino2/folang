@@ -307,15 +307,15 @@ func scanTokenAt(buf string, pos int) Token {
 		return newOneCharToken(New_TokenType_SEMICOLON, pos, b)
 	case b == '|':
 		if isCharAt(buf, pos+1, '>') {
-			return newStLikeToken(New_TokenType_PIPE, 2, "|>")
+			return newStLikeToken(New_TokenType_PIPE, pos, "|>")
 		}
 		if isCharAt(buf, pos+1, '|') {
-			return newStLikeToken(New_TokenType_BARBAR, 2, "||")
+			return newStLikeToken(New_TokenType_BARBAR, pos, "||")
 		}
 		return newOneCharToken(New_TokenType_BAR, pos, b)
 	case b == '<':
 		if isCharAt(buf, pos+1, '>') {
-			return newStLikeToken(New_TokenType_BRACKET, 2, "<>")
+			return newStLikeToken(New_TokenType_BRACKET, pos, "<>")
 		}
 		return newOneCharToken(New_TokenType_LT, pos, b)
 	case b == '>':
@@ -324,14 +324,14 @@ func scanTokenAt(buf string, pos int) Token {
 		return newOneCharToken(New_TokenType_PLUS, pos, b)
 	case b == '&':
 		if isCharAt(buf, pos+1, '&') {
-			return newStLikeToken(New_TokenType_AMPAMP, 2, "&&")
+			return newStLikeToken(New_TokenType_AMPAMP, pos, "&&")
 		}
 		return newOneCharToken(New_TokenType_AMP, pos, b)
 	case b == '*':
 		return newOneCharToken(New_TokenType_ASTER, pos, b)
 	case b == '-':
 		if isCharAt(buf, pos+1, '>') {
-			return newStLikeToken(New_TokenType_RARROW, 2, "->")
+			return newStLikeToken(New_TokenType_RARROW, pos, "->")
 		}
 		return newOneCharToken(New_TokenType_MINUS, pos, b)
 	default:
@@ -400,7 +400,7 @@ type scopeImpl struct {
 // for folang, show pointer as real type for hidden side effect.
 type Scope = *scopeImpl
 
-func newScope0(parent *scopeImpl) *scopeImpl {
+func newScope(parent *scopeImpl) *scopeImpl {
 	s := &scopeImpl{}
 	s.varFacMap = make(map[string]func() Var)
 	s.recordMap = make(map[string]RecordType)
@@ -409,8 +409,12 @@ func newScope0(parent *scopeImpl) *scopeImpl {
 	return s
 }
 
+func popScope(src Scope) Scope {
+	return src.parent
+}
+
 func NewScope() Scope {
-	return newScope0(nil)
+	return newScope(nil)
 }
 
 func scDefVar(s Scope, name string, v Var) {

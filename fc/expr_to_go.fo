@@ -105,7 +105,7 @@ let mpToCaseHeader (uname: string) (mp: MatchPattern) (tmpVarName: string) =
 /*
  btogRet is bounded blockToGoReturn.
 
- Generate following codes.)
+ Generate following codes.
 
 case IntOrBool_I:
 	[varName] := tmpV
@@ -129,15 +129,15 @@ let mrToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (mr: 
   buf.Write b "\n"
   buf.String b  
 
-let mrHasCaseVar (mr: MatchRule) =
+let mrHasNoCaseVar (mr: MatchRule) =
   let pat = mr.pattern
-  pat.caseId <> "_" && pat.varName <> "" && pat.varName <> "_"
+  pat.caseId = "_" || pat.varName = "" || pat.varName = "_"
 
 /*
   If atlease one value or not (if not, tmp var is not necessary).
 */
 let meHasCaseVar (me:MatchExpr) =
-  slice.Forall mrHasCaseVar me.rules
+  not (slice.Forall mrHasNoCaseVar me.rules)
 
 let mrIsDefault (mr:MatchRule) =
   let pat = mr.pattern

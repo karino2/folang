@@ -204,6 +204,39 @@ let ika () =
 	}
 
 }
+
+func TestTranspileContainsMulti(t *testing.T) {
+	var tests = []struct {
+		input string
+		wants []string
+	}{
+		{
+			`package main
+
+type IntOrString =
+  | I of int
+  | S of string
+
+let ika () =
+  match I 123 with
+  | I i -> i
+  | S _ -> 456
+
+`,
+			[]string{"i := _v1.Value", "switch _v1 :="},
+		},
+	}
+
+	for _, test := range tests {
+		got := transpile(test.input)
+
+		for _, want := range test.wants {
+			if !strings.Contains(got, want) {
+				t.Errorf("want to contain '%s', but got '%s'", want, got)
+			}
+		}
+	}
+}
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
@@ -212,7 +245,9 @@ type IntOrString =
   | S of string
 
 let ika () =
-    I 123
+    match I 123 with
+    | I i -> i
+    | S _ -> 456
 
 `
 
