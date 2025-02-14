@@ -379,16 +379,64 @@ let parseRecordDef (tname:string) (ps:ParseState) =
   (ps2, rd)
 
 
+// CASE_DEF = '|' IDENIFIER OF TYPE
+let parseOneCaseDef (ps:ParseState) =
+  let (ps2, cname) = psConsume BAR ps |> psIdentNameNx
+  match psCurrentTT ps2 with
+  | OF ->
+    let (ps3, tp) = psConsume OF ps2 |> parseType
+    let cs = {NameTypePair.name=cname; ftype=tp}
+    (ps3, cs)
+  | _ ->
+    // no "of", unit case.
+    let ps3 = psConsume EOL ps2
+    let cs = {NameTypePair.name=cname; ftype=FUnit}
+    (ps3, cs)
+
+
+let parseCaseDefs (ps:ParseState) : []NameTypePair =
+  let (ps2, cs) = parseOneCaseDef ps
+  let ps3 = psSkipEOL ps2
+  if (psCurrentTT ps3) = BAR then
+    parseCaseDefs ps3 |> CnvR (slice.Prepend cs)
+  else
+    (ps2, [cs])
+    
+
+/*
+UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
+
+CASE_DEF = '|' IDENIFIER OF TYPE
+*/
+let parseUnionDef (tname:string) (ps:ParseState) =
+  let (ps2, css) = parseCaseDefs ps
+  // TODO: register UnionDef here.
+  {UnionDef.name=tname; cases=css}
+  |> withPs ps2
+  
+
 // TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)
 //
 // RECORD_DEF = '{' FIELD_DEFS '}'
 //
 // UNION_DEF = '|'...
 let parseTypeDef (ps:ParseState) =
-  let (ps2, tname) = psConsume TYPE ps |> psIdentNameNxL
+  let (ps2, tname) = psConsume TYPE ps |> psIdentNameNxL |> CnvL (psConsume EQ) |> CnvL psSkipEOL
+  match psCurrentTT ps2 with
+  | LBRACE ->
+    parseRecordDef tname ps2 |> CnvR RecordDef |> CnvR DefStmt
+  | BAR ->
+    parseUnionDef tname ps2  |> CnvR UnionDef |> CnvR DefStmt
+  | _ ->
+    frt.Panic "NYI"
+    (ps2, ExprStmt Unit)
+
+
+/*
   let (ps3, rd) = psConsume EQ ps2 |> parseRecordDef tname
   let rdstmt = RecordDef rd |> DefStmt
   (ps3, rdstmt)
+*/
 
 let parseStmt (ps:ParseState) =
   match psCurrentTT ps with

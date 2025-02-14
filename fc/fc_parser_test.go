@@ -111,7 +111,7 @@ func transpile(src string) string {
 	return StmtsToGo(stmts)
 }
 
-func TestParseAndTranspile(t *testing.T) {
+func TestTranspileContain(t *testing.T) {
 	var tests = []struct {
 		input string
 		want  string
@@ -131,6 +131,54 @@ let ika () =
 func ika() hoge{
 return hoge{X: "abc", Y: 123}
 }
+`,
+		},
+		{
+			`type IntOrString =
+  | I of int
+  | S of string
+`,
+			`type IntOrString interface {
+  IntOrString_Union()
+}
+
+func (IntOrString_I) IntOrString_Union(){}
+func (IntOrString_S) IntOrString_Union(){}
+
+type IntOrString_I struct {
+  Value int
+}
+
+func New_IntOrString_I(v int) IntOrString { return IntOrString_I{v} }
+
+type IntOrString_S struct {
+  Value string
+}
+
+func New_IntOrString_S(v string) IntOrString { return IntOrString_S{v} }
+`,
+		},
+		{
+			`type AorB =
+  | A
+  | B
+`,
+			`type AorB interface {
+  AorB_Union()
+}
+
+func (AorB_A) AorB_Union(){}
+func (AorB_B) AorB_Union(){}
+
+type AorB_A struct {
+}
+
+var New_AorB_A AorB = AorB_A{}
+
+type AorB_B struct {
+}
+
+var New_AorB_B AorB = AorB_B{}
 `,
 		},
 	}

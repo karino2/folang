@@ -202,12 +202,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v256 := (prm1).(type) {
+	switch _v273 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v256.Value
+		v := _v273.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -322,9 +322,9 @@ func parseTerm(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	}), (func() frt.Tuple2[ParseState, Expr] {
 		head := slice.Head(es)
 		tail := slice.Tail(es)
-		switch _v260 := (head).(type) {
+		switch _v277 := (head).(type) {
 		case Expr_Var:
-			v := _v260.Value
+			v := _v277.Value
 			fc := FunCall{targetFunc: v, args: tail}
 			return frt.NewTuple2(ps2, New_Expr_FunCall(fc))
 		default:
@@ -397,11 +397,58 @@ func parseRecordDef(tname string, ps ParseState) frt.Tuple2[ParseState, RecordDe
 	return frt.NewTuple2(ps2, rd)
 }
 
+func parseOneCaseDef(ps ParseState) frt.Tuple2[ParseState, NameTypePair] {
+	ps2, cname := frt.Destr(frt.Pipe(psConsume(New_TokenType_BAR, ps), psIdentNameNx))
+	switch (psCurrentTT(ps2)).(type) {
+	case TokenType_OF:
+		ps3, tp := frt.Destr(frt.Pipe(psConsume(New_TokenType_OF, ps2), parseType))
+		cs := NameTypePair{name: cname, ftype: tp}
+		return frt.NewTuple2(ps3, cs)
+	default:
+		ps3 := psConsume(New_TokenType_EOL, ps2)
+		cs := NameTypePair{name: cname, ftype: New_FType_FUnit}
+		return frt.NewTuple2(ps3, cs)
+	}
+}
+
+func parseCaseDefs(ps ParseState) frt.Tuple2[ParseState, []NameTypePair] {
+	ps2, cs := frt.Destr(parseOneCaseDef(ps))
+	ps3 := psSkipEOL(ps2)
+	return frt.IfElse(frt.OpEqual(psCurrentTT(ps3), New_TokenType_BAR), (func() frt.Tuple2[ParseState, []NameTypePair] {
+		return frt.Pipe(parseCaseDefs(ps3), (func(_r0 frt.Tuple2[ParseState, []NameTypePair]) frt.Tuple2[ParseState, []NameTypePair] {
+			return CnvR((func(_r0 []NameTypePair) []NameTypePair { return slice.Prepend(cs, _r0) }), _r0)
+		}))
+	}), (func() frt.Tuple2[ParseState, []NameTypePair] {
+		return frt.NewTuple2(ps2, ([]NameTypePair{cs}))
+	}))
+}
+
+func parseUnionDef(tname string, ps ParseState) frt.Tuple2[ParseState, UnionDef] {
+	ps2, css := frt.Destr(parseCaseDefs(ps))
+	return frt.Pipe(UnionDef{name: tname, cases: css}, (func(_r0 UnionDef) frt.Tuple2[ParseState, UnionDef] { return withPs(ps2, _r0) }))
+}
+
 func parseTypeDef(ps ParseState) frt.Tuple2[ParseState, Stmt] {
-	ps2, tname := frt.Destr(frt.Pipe(psConsume(New_TokenType_TYPE, ps), psIdentNameNxL))
-	ps3, rd := frt.Destr(frt.Pipe(psConsume(New_TokenType_EQ, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, RecordDef] { return parseRecordDef(tname, _r0) })))
-	rdstmt := frt.Pipe(New_DefStmt_RecordDef(rd), New_Stmt_DefStmt)
-	return frt.NewTuple2(ps3, rdstmt)
+	ps2, tname := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_TYPE, ps), psIdentNameNxL), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] {
+		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_EQ, _r0) }), _r0)
+	})), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return CnvL(psSkipEOL, _r0) })))
+	switch (psCurrentTT(ps2)).(type) {
+	case TokenType_LBRACE:
+		return frt.Pipe(frt.Pipe(parseRecordDef(tname, ps2), (func(_r0 frt.Tuple2[ParseState, RecordDef]) frt.Tuple2[ParseState, DefStmt] {
+			return CnvR(New_DefStmt_RecordDef, _r0)
+		})), (func(_r0 frt.Tuple2[ParseState, DefStmt]) frt.Tuple2[ParseState, Stmt] {
+			return CnvR(New_Stmt_DefStmt, _r0)
+		}))
+	case TokenType_BAR:
+		return frt.Pipe(frt.Pipe(parseUnionDef(tname, ps2), (func(_r0 frt.Tuple2[ParseState, UnionDef]) frt.Tuple2[ParseState, DefStmt] {
+			return CnvR(New_DefStmt_UnionDef, _r0)
+		})), (func(_r0 frt.Tuple2[ParseState, DefStmt]) frt.Tuple2[ParseState, Stmt] {
+			return CnvR(New_Stmt_DefStmt, _r0)
+		}))
+	default:
+		frt.Panic("NYI")
+		return frt.NewTuple2(ps2, New_Stmt_ExprStmt(New_Expr_Unit))
+	}
 }
 
 func parseStmt(ps ParseState) frt.Tuple2[ParseState, Stmt] {
