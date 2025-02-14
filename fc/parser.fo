@@ -54,18 +54,18 @@ let psCurrentTT (ps:ParseState) =
   tk.ttype
 
 let psNext (ps:ParseState) =
-   let ntk = tkzNext ps.tkz
-   psWithTkz ps ntk
+  let ntk = tkzNext ps.tkz
+  psWithTkz ps ntk
 
 let psNextNOL (ps:ParseState) =
   let ntk = tkzNextNOL ps.tkz
   psWithTkz ps ntk
 
 let psSkipEOL (ps:ParseState) =
-   if (psCurrentTT ps) = EOL then
-     psNextNOL ps
-    else
-     ps
+  if (psCurrentTT ps) = EOL then
+    psNextNOL ps
+  else
+    ps
 
 
 let psExpect (ttype:TokenType) (ps:ParseState) =
