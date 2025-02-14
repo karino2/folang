@@ -172,8 +172,12 @@ let parseType (ps:ParseState) =
                 elif tname = "bool" then
                   FBool
                 else
-                  frt.Panic("NYI")
-                  FUnit
+                  let (res, ok) = scLookupType ps3.scope tname
+                  if ok then
+                    res
+                  else
+                    frt.Panic("type not found.")
+                    FUnit
     (ps3, rtype)
   | _ ->
     frt.Panic("Unknown type")
@@ -203,7 +207,7 @@ let parseParam (ps:ParseState) =
                     |> parseType
                     |> CnvL (psConsume RPAREN)
     let v = {Var.name=vname; ftype=tp}
-    // TODO: define var to scope here.
+    scDefVar ps3.scope vname v
     (ps3, (PVar v))
 
 let parseParams (ps:ParseState) : ParseState*[]Var =

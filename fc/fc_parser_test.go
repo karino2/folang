@@ -194,6 +194,33 @@ let ika () =
 `,
 			"New_IntOrString_I(123)",
 		},
+		// no content case
+		{
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+`, "switch (ab).(type)",
+		},
+		{
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let main () =
+  match A with
+  | A -> GoEval "fmt.Println(\"A match\")"
+  | B -> GoEval "fmt.Println(\"B match\")"
+`, "switch (New_AorB_A).(type)",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)

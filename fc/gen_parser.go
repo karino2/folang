@@ -161,8 +161,13 @@ func parseType(ps ParseState) frt.Tuple2[ParseState, FType] {
 				return frt.IfElse(frt.OpEqual(tname, "bool"), (func() FType {
 					return New_FType_FBool
 				}), (func() FType {
-					frt.Panic("NYI")
-					return New_FType_FUnit
+					res, ok := frt.Destr(scLookupType(ps3.scope, tname))
+					return frt.IfElse(ok, (func() FType {
+						return res
+					}), (func() FType {
+						frt.Panic("type not found.")
+						return New_FType_FUnit
+					}))
 				}))
 			}))
 		}))
@@ -204,6 +209,7 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
 		})))
 		v := Var{name: vname, ftype: tp}
+		scDefVar(ps3.scope, vname, v)
 		return frt.NewTuple2(ps3, New_Param_PVar(v))
 	}
 }
