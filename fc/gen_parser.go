@@ -202,12 +202,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v273 := (prm1).(type) {
+	switch _v277 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v273.Value
+		v := _v277.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -322,9 +322,9 @@ func parseTerm(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	}), (func() frt.Tuple2[ParseState, Expr] {
 		head := slice.Head(es)
 		tail := slice.Tail(es)
-		switch _v277 := (head).(type) {
+		switch _v281 := (head).(type) {
 		case Expr_Var:
-			v := _v277.Value
+			v := _v281.Value
 			fc := FunCall{targetFunc: v, args: tail}
 			return frt.NewTuple2(ps2, New_Expr_FunCall(fc))
 		default:
@@ -423,9 +423,48 @@ func parseCaseDefs(ps ParseState) frt.Tuple2[ParseState, []NameTypePair] {
 	}))
 }
 
+func udToUt(ud UnionDef) UnionType {
+	return UnionType(ud)
+}
+
+func udToFUt(ud UnionDef) FType {
+	return frt.Pipe(udToUt(ud), New_FType_FUnion)
+}
+
+func csRegisterCtor(sc Scope, ud UnionDef, cas NameTypePair) int {
+	ctorName := csConstructorName(ud.name, cas)
+	ut := udToFUt(ud)
+	v := (func() Var {
+		switch (cas.ftype).(type) {
+		case FType_FUnit:
+			return Var{name: ctorName, ftype: ut}
+		default:
+			tps := ([]FType{cas.ftype, ut})
+			funcTp := New_FType_FFunc(FuncType{targets: tps})
+			return Var{name: ctorName, ftype: funcTp}
+		}
+	})()
+	scDefVar(sc, cas.name, v)
+	return 1
+}
+
+func udRegisterCsCtors(sc Scope, ud UnionDef) int {
+	frt.Pipe(ud.cases, (func(_r0 []NameTypePair) []int {
+		return slice.Map((func(_r0 NameTypePair) int { return csRegisterCtor(sc, ud, _r0) }), _r0)
+	}))
+	return 1
+}
+
+func udRegisterToScope(sc Scope, ud UnionDef) {
+	udRegisterCsCtors(sc, ud)
+	frt.PipeUnit(udToFUt(ud), (func(_r0 FType) { scRegisterType(sc, ud.name, _r0) }))
+}
+
 func parseUnionDef(tname string, ps ParseState) frt.Tuple2[ParseState, UnionDef] {
 	ps2, css := frt.Destr(parseCaseDefs(ps))
-	return frt.Pipe(UnionDef{name: tname, cases: css}, (func(_r0 UnionDef) frt.Tuple2[ParseState, UnionDef] { return withPs(ps2, _r0) }))
+	ud := UnionDef{name: tname, cases: css}
+	udRegisterToScope(ps2.scope, ud)
+	return frt.NewTuple2(ps2, ud)
 }
 
 func parseTypeDef(ps ParseState) frt.Tuple2[ParseState, Stmt] {

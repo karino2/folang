@@ -11,6 +11,8 @@ package_info _ =
   let scLookupVarFac: Scope->string->(()->Var)*bool
   let scRegisterRecType: Scope->RecordType->()
   let scLookupRecord: Scope->[]string->RecordType*bool
+  let scRegisterType: Scope->string->FType->()
+  let scLookupType: Scope->string->FType*bool
 
 
 type ParseState = {
@@ -401,7 +403,37 @@ let parseCaseDefs (ps:ParseState) : []NameTypePair =
     parseCaseDefs ps3 |> CnvR (slice.Prepend cs)
   else
     (ps2, [cs])
-    
+
+let udToUt (ud:UnionDef) =
+  GoEval<UnionType> "UnionType(ud)"
+
+let udToFUt (ud:UnionDef) =
+  udToUt ud |> FUnion
+
+/*
+// New_IntOrString_I
+let csConstructorName  (unionName: string) (cas: NameTypePair) =
+*/
+let csRegisterCtor (sc:Scope) (ud: UnionDef) (cas: NameTypePair) =
+  let ctorName = csConstructorName ud.name cas
+  let ut = udToFUt ud
+  let v = match cas.ftype with
+          | FUnit ->
+            {Var.name=ctorName; ftype=ut}
+          | _ ->
+            let tps = [cas.ftype; ut]
+            let funcTp = FFunc {targets=tps}
+            {Var.name=ctorName; ftype=funcTp}
+  scDefVar sc cas.name v
+  1 // for map, return int is easier to handle.
+
+let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
+  ud.cases |> slice.Map (csRegisterCtor sc ud)
+  1
+
+let udRegisterToScope (sc:Scope) (ud:UnionDef) =
+  udRegisterCsCtors sc ud
+  udToFUt ud |> scRegisterType sc ud.name
 
 /*
 UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
@@ -410,9 +442,9 @@ CASE_DEF = '|' IDENIFIER OF TYPE
 */
 let parseUnionDef (tname:string) (ps:ParseState) =
   let (ps2, css) = parseCaseDefs ps
-  // TODO: register UnionDef here.
-  {UnionDef.name=tname; cases=css}
-  |> withPs ps2
+  let ud = {UnionDef.name=tname; cases=css}
+  udRegisterToScope ps2.scope ud
+  (ps2, ud)
   
 
 // TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)

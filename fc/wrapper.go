@@ -417,9 +417,11 @@ func scDefVar(s Scope, name string, v Var) {
 	s.varFacMap[name] = func() Var { return v }
 }
 
+/*
 func scDefVarFac(s Scope, name string, fac func() Var) {
 	s.varFacMap[name] = fac
 }
+*/
 
 // currently, we can't support Result because of absence of generic type.
 // We use golang style convention though F# convention is bool is first.
@@ -439,6 +441,10 @@ func scRegisterRecType(s Scope, recType RecordType) {
 	rname := recType.name
 	s.recordMap[rname] = recType
 	s.typeMap[rname] = New_FType_FRecord(recType)
+}
+
+func scRegisterType(s Scope, name string, ftype FType) {
+	s.typeMap[name] = ftype
 }
 
 func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
@@ -463,13 +469,6 @@ func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
 	return frt.NewTuple2(RecordType{}, false)
 }
 
-/*
-I should postpone these implementation until I need. YAGNI.
-
-type scopeImpl struct {
-	typeGenMap map[string]func() FType
-}
-
 func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
 	cur := s
 	for cur != nil {
@@ -481,8 +480,6 @@ func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
 	}
 	return frt.NewTuple2(New_FType_FUnit, false)
 }
-
-*/
 
 func withPs[T any](ps ParseState, v T) frt.Tuple2[ParseState, T] {
 	return frt.NewTuple2(ps, v)

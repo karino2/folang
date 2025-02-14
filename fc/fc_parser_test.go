@@ -181,6 +181,19 @@ type AorB_B struct {
 var New_AorB_B AorB = AorB_B{}
 `,
 		},
+		{
+			`package main
+
+type IntOrString =
+  | I of int
+  | S of string
+
+let ika () =
+    I 123
+
+`,
+			"New_IntOrString_I(123)",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -194,10 +207,12 @@ var New_AorB_B AorB = AorB_B{}
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type hoge = {X: string; Y: string}
+type IntOrString =
+  | I of int
+  | S of string
 
 let ika () =
-    {X="abc"; Y="def"}
+    I 123
 
 `
 
