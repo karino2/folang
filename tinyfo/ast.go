@@ -357,7 +357,7 @@ func (fc *FunCall) ResolveTypeParamByArgs() {
 	var newTypes []FType
 	for i, at := range fargs {
 		if i >= len(fc.Args) {
-			newTypes = append(newTypes, at)
+			newTypes = append(newTypes, updateType(at, tinfo))
 		} else {
 			realT := fc.Args[i].FType()
 			resolveOneType(at, realT, tinfo)
