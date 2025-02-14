@@ -25,10 +25,10 @@ type ParseState = {
 package_info _ =
   let withPs<T>: ParseState->T->ParseState*T
   // inference from funcall to arg side is NYI.
-  // let Cnv1<T, U>: (T->T)->T*U->T*U
-  // let Cnv2<T, U>: (U->U)->T*U->T*U
-  let Cnv1<U>: (ParseState->ParseState)->ParseState*U->ParseState*U
-  let Cnv2<U>: (U->U)->T*U->T*U
+  // let CnvL<T, U>: (T->T)->T*U->T*U
+  // let CnvR<T, U>: (U->U)->T*U->T*U
+  let CnvL<U>: (ParseState->ParseState)->ParseState*U->ParseState*U
+  let CnvR<U>: (U->U)->T*U->T*U
 
 
 let newParse (tkz:Tokenizer) (scope:Scope) =
@@ -213,7 +213,7 @@ FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
 FIELD_INITIALIZER = IDENTIFIER '=' expr
 */
 let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
-  let (ps2, neps) = psConsume LBRACE ps |> parseFieldInitializers parseE |> Cnv1 (psConsume RBRACE)
+  let (ps2, neps) = psConsume LBRACE ps |> parseFieldInitializers parseE |> CnvL (psConsume RBRACE)
   let (rtype, ok) = slice.Map NVPToName neps |> scLookupRecord ps2.scope
   if ok then
     {fieldsNV=neps; recordType=rtype}
@@ -280,7 +280,7 @@ let parseTerm (ps:ParseState) : Expr =
 
 
 let parseBlock (ps:ParseState) =
-  let (ps2, expr) = parseTerm ps |> Cnv1 psSkipEOL
+  let (ps2, expr) = parseTerm ps |> CnvL psSkipEOL
   let block = GoEval<Block> "Block{[]Stmt{}, expr}"
   (ps2, block)
 
@@ -343,7 +343,7 @@ let rdToRecType (rd:RecordDef) =
 //
 // FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
 let parseRecordDef (tname:string) (ps:ParseState) =
-  let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> Cnv1 (psConsume RBRACE)
+  let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE)
   let rd = {RecordDef.name=tname; fields=ntps}
   // register record typedef.
   let recType = rdToRecType rd
@@ -379,7 +379,7 @@ let parseStmts (ps:ParseState) : ParseState*[]Stmt =
     let s = GoEval<[]Stmt> "[]Stmt{}"
     (ps2, s)
   else
-    let (ps3, one) = parseStmt ps |> Cnv1 psSkipEOL
+    let (ps3, one) = parseStmt ps |> CnvL psSkipEOL
     let (ps4, rest) = parseStmts ps3
     let ss = slice.Prepend one rest
     (ps4, ss)

@@ -502,12 +502,12 @@ func Cnv2[T any, U any](fn func(U) U, prev frt.Tuple2[T, U]) frt.Tuple2[T, U] {
 }
 */
 
-func Cnv1[U any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
+func CnvL[U any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
 	t, u := frt.Destr(prev)
 	return frt.NewTuple2(fn(t), u)
 }
 
-func Cnv2[U any](fn func(U) U, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
+func CnvR[U any](fn func(U) U, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
 	t, u := frt.Destr(prev)
 	return frt.NewTuple2(t, fn(u))
 }
