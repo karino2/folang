@@ -335,7 +335,12 @@ let isEndOfTerm (ps:ParseState) =
   | EOL -> true
   | SEMICOLON -> true
   | RBRACE -> true
+  | RPAREN -> true
+  | RSBRACKET -> true
   | WITH -> true
+  | THEN -> true
+  | ELSE -> true
+  | COMMA -> true
   | _ -> false
 
 let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
@@ -396,11 +401,32 @@ let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Par
   else
     (ps2, [one])
 
+/*
+MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+
+*/
 let parseMatchExpr (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) =
   let (ps2, target) = psConsume MATCH ps |> pExpr |> CnvL (psConsume WITH) |> CnvL psSkipEOL
   let (ps3, rules) = parseMatchRules pBlock target ps2
   {target=target; rules=rules} |> withPs ps3
 
+// expr (; expr)*
+let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
+  let (ps2, one) = pExpr ps
+  if (psCurrentTT ps2) = SEMICOLON then
+    psConsume SEMICOLON ps2
+    |> parseSemiExprs pExpr
+    |> CnvR (slice.Prepend one)
+  else
+    (ps2, [one])
+
+/*
+SLICE_EXPR = '[' expr (; expr)* ']'
+*/
+let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+   psConsume LSBRACKET ps
+   |> parseSemiExprs pExpr
+   |> CnvL (psConsume RSBRACKET)
+   |> CnvR ESlice
 
 let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
   let pExpr = parseTerm pBlock
@@ -408,6 +434,7 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
   | MATCH ->
      parseMatchExpr pExpr pBlock ps
      |> CnvR MatchExpr |> CnvR EReturnableExpr
+  | LSBRACKET -> parseSliceExpr pExpr ps
   | _ ->
     let (ps2, es) = parseAtomList pExpr ps
     if (slice.Length es) = 1 then

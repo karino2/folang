@@ -31,9 +31,9 @@ func rgToGo(toGo func(Expr) string, rg RecordGen) string {
 func buildReturn(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(ReturnableExpr) string, stmts []Stmt, lastExpr Expr) string {
 	stmtGos := frt.Pipe(slice.Map(sToGo, stmts), (func(_r0 []string) string { return strings.Concat("\n", _r0) }))
 	lastGo := (func() string {
-		switch _v86 := (lastExpr).(type) {
+		switch _v98 := (lastExpr).(type) {
 		case Expr_EReturnableExpr:
-			re := _v86.Value
+			re := _v98.Value
 			return reToGoRet(re)
 		default:
 			mayReturn := frt.IfElse(frt.OpEqual(ExprToType(lastExpr), New_FType_FUnit), (func() string {
@@ -167,12 +167,12 @@ func meToGo(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) st
 func reToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr ReturnableExpr) string {
 	rtgr := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	btogoRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, rtgr, _r0) })
-	switch _v87 := (rexpr).(type) {
+	switch _v99 := (rexpr).(type) {
 	case ReturnableExpr_Block:
-		b := _v87.Value
+		b := _v99.Value
 		return blockToGoReturn(sToGo, eToGo, rtgr, b)
 	case ReturnableExpr_MatchExpr:
-		me := _v87.Value
+		me := _v99.Value
 		return meToGoReturn(eToGo, btogoRet, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -182,12 +182,12 @@ func reToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr Return
 func reToGo(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr ReturnableExpr) string {
 	rtgr := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	btogRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, rtgr, _r0) })
-	switch _v88 := (rexpr).(type) {
+	switch _v100 := (rexpr).(type) {
 	case ReturnableExpr_Block:
-		b := _v88.Value
+		b := _v100.Value
 		return blockToGo(sToGo, eToGo, rtgr, b)
 	case ReturnableExpr_MatchExpr:
-		me := _v88.Value
+		me := _v100.Value
 		return meToGo(eToGo, btogRet, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -267,37 +267,51 @@ func fcToGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall) string {
 	}))
 }
 
+func sliceToGo(tGo func(FType) string, eGo func(Expr) string, exprs []Expr) string {
+	b := buf.New()
+	buf.Write(b, "(")
+	frt.PipeUnit(frt.Pipe(frt.Pipe(New_Expr_ESlice(exprs), ExprToType), tGo), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "{")
+	frt.PipeUnit(frt.Pipe(slice.Map(eGo, exprs), (func(_r0 []string) string { return strings.Concat(",", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "}")
+	buf.Write(b, ")")
+	return buf.String(b)
+}
+
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
-	switch _v89 := (expr).(type) {
+	switch _v101 := (expr).(type) {
 	case Expr_BoolLiteral:
-		b := _v89.Value
+		b := _v101.Value
 		return frt.Sprintf1("%t", b)
 	case Expr_GoEvalExpr:
-		ge := _v89.Value
+		ge := _v101.Value
 		return reinterpretEscape(ge.goStmt)
 	case Expr_StringLiteral:
-		s := _v89.Value
+		s := _v101.Value
 		return frt.Sprintf1("\"%s\"", s)
 	case Expr_IntImm:
-		i := _v89.Value
+		i := _v101.Value
 		return frt.Sprintf1("%d", i)
 	case Expr_Unit:
 		return ""
 	case Expr_FieldAccess:
-		fa := _v89.Value
+		fa := _v101.Value
 		return ((fa.targetName + ".") + fa.fieldName)
 	case Expr_Var:
-		v := _v89.Value
+		v := _v101.Value
 		return v.name
+	case Expr_ESlice:
+		es := _v101.Value
+		return sliceToGo(FTypeToGo, eToGo, es)
 	case Expr_RecordGen:
-		rg := _v89.Value
+		rg := _v101.Value
 		return rgToGo(eToGo, rg)
 	case Expr_EReturnableExpr:
-		re := _v89.Value
+		re := _v101.Value
 		return reToGo(sToGo, eToGo, re)
 	case Expr_FunCall:
-		fc := _v89.Value
+		fc := _v101.Value
 		return fcToGo(FTypeToGo, eToGo, fc)
 	default:
 		panic("Union pattern fail. Never reached here.")

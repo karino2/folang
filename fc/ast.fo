@@ -35,6 +35,7 @@ type Expr =
 | FunCall of FunCall
 | FieldAccess of FieldAccess
 | Var of Var
+| ESlice of []Expr
 | RecordGen of RecordGen
 | LazyBlock of LazyBlock
 /*

@@ -242,12 +242,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v357 := (prm1).(type) {
+	switch _v380 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v357.Value
+		v := _v380.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -357,7 +357,17 @@ func isEndOfTerm(ps ParseState) bool {
 		return true
 	case TokenType_RBRACE:
 		return true
+	case TokenType_RPAREN:
+		return true
+	case TokenType_RSBRACKET:
+		return true
 	case TokenType_WITH:
+		return true
+	case TokenType_THEN:
+		return true
+	case TokenType_ELSE:
+		return true
+	case TokenType_COMMA:
 		return true
 	default:
 		return false
@@ -428,6 +438,25 @@ func parseMatchExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock 
 	return frt.Pipe(MatchExpr{target: target, rules: rules}, (func(_r0 MatchExpr) frt.Tuple2[ParseState, MatchExpr] { return withPs(ps3, _r0) }))
 }
 
+func parseSemiExprs(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Expr] {
+	ps2, one := frt.Destr(pExpr(ps))
+	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_SEMICOLON), (func() frt.Tuple2[ParseState, []Expr] {
+		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+			return CnvR((func(_r0 []Expr) []Expr { return slice.Prepend(one, _r0) }), _r0)
+		}))
+	}), (func() frt.Tuple2[ParseState, []Expr] {
+		return frt.NewTuple2(ps2, ([]Expr{one}))
+	}))
+}
+
+func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {
+	return frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LSBRACKET, ps), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RSBRACKET, _r0) }), _r0)
+	})), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, Expr] {
+		return CnvR(New_Expr_ESlice, _r0)
+	}))
+}
+
 func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, Expr] {
 	pExpr := (func(_r0 ParseState) frt.Tuple2[ParseState, Expr] { return parseTerm(pBlock, _r0) })
 	switch (psCurrentTT(ps)).(type) {
@@ -437,6 +466,8 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		})), (func(_r0 frt.Tuple2[ParseState, ReturnableExpr]) frt.Tuple2[ParseState, Expr] {
 			return CnvR(New_Expr_EReturnableExpr, _r0)
 		}))
+	case TokenType_LSBRACKET:
+		return parseSliceExpr(pExpr, ps)
 	default:
 		ps2, es := frt.Destr(parseAtomList(pExpr, ps))
 		return frt.IfElse(frt.OpEqual(slice.Length(es), 1), (func() frt.Tuple2[ParseState, Expr] {
@@ -444,9 +475,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v365 := (head).(type) {
+			switch _v388 := (head).(type) {
 			case Expr_Var:
-				v := _v365.Value
+				v := _v388.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_FunCall(fc))
 			default:
@@ -477,12 +508,12 @@ type StmtLike_SLLetStmt struct {
 func New_StmtLike_SLLetStmt(v LetVarDef) StmtLike { return StmtLike_SLLetStmt{v} }
 
 func slToStmt(sl StmtLike) Stmt {
-	switch _v366 := (sl).(type) {
+	switch _v389 := (sl).(type) {
 	case StmtLike_SLExpr:
-		e := _v366.Value
+		e := _v389.Value
 		return New_Stmt_ExprStmt(e)
 	case StmtLike_SLLetStmt:
-		l := _v366.Value
+		l := _v389.Value
 		return New_Stmt_LetVarDef(l)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -531,9 +562,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := frt.Pipe(slice.PopLast(sls), (func(_r0 []StmtLike) []Stmt { return slice.Map(slToStmt, _r0) }))
-	switch _v368 := (last).(type) {
+	switch _v391 := (last).(type) {
 	case StmtLike_SLExpr:
-		e := _v368.Value
+		e := _v391.Value
 		return frt.NewTuple2(ps2, Block{stmts: stmts, finalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")

@@ -63,6 +63,11 @@ let ExprToType (expr:Expr) : FType =
   | BoolLiteral _ -> FBool
   | FieldAccess fa -> faToType fa
   | Var v -> v.ftype
+  | ESlice s -> 
+    // slice must be all the same type, so use first elem type.
+    let etp = slice.Head s |> ExprToType
+    let st = {SliceType.elemType=etp}
+    FSlice st
   | RecordGen rg -> FRecord rg.recordType
   | LazyBlock lb -> lblockToType ExprToType lb
   | EReturnableExpr re -> returnableToType ExprToType re

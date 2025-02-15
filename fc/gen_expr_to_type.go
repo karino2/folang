@@ -37,12 +37,12 @@ func meToType(toT func(Expr) FType, me MatchExpr) FType {
 }
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
-	switch _v29 := (rexpr).(type) {
+	switch _v31 := (rexpr).(type) {
 	case ReturnableExpr_Block:
-		b := _v29.Value
+		b := _v31.Value
 		return blockToType(toT, b)
 	case ReturnableExpr_MatchExpr:
-		me := _v29.Value
+		me := _v31.Value
 		return meToType(toT, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -52,9 +52,9 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 func fcToFuncType(fc FunCall) FuncType {
 	tfv := fc.targetFunc
 	ft := tfv.ftype
-	switch _v30 := (ft).(type) {
+	switch _v32 := (ft).(type) {
 	case FType_FFunc:
-		ft := _v30.Value
+		ft := _v32.Value
 		return ft
 	default:
 		return FuncType{}
@@ -77,9 +77,9 @@ func fcToType(fc FunCall) FType {
 }
 
 func ExprToType(expr Expr) FType {
-	switch _v31 := (expr).(type) {
+	switch _v33 := (expr).(type) {
 	case Expr_GoEvalExpr:
-		ge := _v31.Value
+		ge := _v33.Value
 		return ge.typeArg
 	case Expr_StringLiteral:
 		return New_FType_FString
@@ -90,22 +90,27 @@ func ExprToType(expr Expr) FType {
 	case Expr_BoolLiteral:
 		return New_FType_FBool
 	case Expr_FieldAccess:
-		fa := _v31.Value
+		fa := _v33.Value
 		return faToType(fa)
 	case Expr_Var:
-		v := _v31.Value
+		v := _v33.Value
 		return v.ftype
+	case Expr_ESlice:
+		s := _v33.Value
+		etp := frt.Pipe(slice.Head(s), ExprToType)
+		st := SliceType{elemType: etp}
+		return New_FType_FSlice(st)
 	case Expr_RecordGen:
-		rg := _v31.Value
+		rg := _v33.Value
 		return New_FType_FRecord(rg.recordType)
 	case Expr_LazyBlock:
-		lb := _v31.Value
+		lb := _v33.Value
 		return lblockToType(ExprToType, lb)
 	case Expr_EReturnableExpr:
-		re := _v31.Value
+		re := _v33.Value
 		return returnableToType(ExprToType, re)
 	case Expr_FunCall:
-		fc := _v31.Value
+		fc := _v33.Value
 		return fcToType(fc)
 	default:
 		panic("Union pattern fail. Never reached here.")

@@ -263,6 +263,16 @@ let fcToGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   else
     fcFullApplyGo eGo fc
 
+let sliceToGo (tGo:FType->string) (eGo:Expr->string) (exprs: []Expr) =
+  let b = buf.New ()
+  buf.Write b "("
+  ESlice exprs |> ExprToType |> tGo |> buf.Write b
+  buf.Write b "{"
+  slice.Map eGo exprs |> strings.Concat "," |> buf.Write b
+  buf.Write b "}"
+  buf.Write b ")"
+  buf.String b
+
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   match expr with
@@ -273,6 +283,7 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | Unit -> ""
   | FieldAccess fa -> fa.targetName + "." + fa.fieldName
   | Var v -> v.name
+  | ESlice es -> sliceToGo FTypeToGo eToGo es
   | RecordGen rg -> rgToGo eToGo rg
   | EReturnableExpr re -> reToGo sToGo eToGo re
   | FunCall fc -> fcToGo FTypeToGo eToGo fc

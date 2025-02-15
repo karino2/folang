@@ -284,6 +284,15 @@ let ika () =
 `,
 			[]string{"i := _v1.Value", "switch _v1 :="},
 		},
+		{
+			`package main
+
+let ika () =
+  [1; 2; 3]
+
+`,
+			[]string{"return ([]int{1,2,3})", "ika() []int"},
+		},
 	}
 
 	for _, test := range tests {

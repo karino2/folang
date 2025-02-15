@@ -33,6 +33,7 @@ func (Expr_BoolLiteral) Expr_Union()     {}
 func (Expr_FunCall) Expr_Union()         {}
 func (Expr_FieldAccess) Expr_Union()     {}
 func (Expr_Var) Expr_Union()             {}
+func (Expr_ESlice) Expr_Union()          {}
 func (Expr_RecordGen) Expr_Union()       {}
 func (Expr_LazyBlock) Expr_Union()       {}
 func (Expr_EReturnableExpr) Expr_Union() {}
@@ -83,6 +84,12 @@ type Expr_Var struct {
 }
 
 func New_Expr_Var(v Var) Expr { return Expr_Var{v} }
+
+type Expr_ESlice struct {
+	Value []Expr
+}
+
+func New_Expr_ESlice(v []Expr) Expr { return Expr_ESlice{v} }
 
 type Expr_RecordGen struct {
 	Value RecordGen
