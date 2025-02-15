@@ -21,6 +21,11 @@ type MatchPattern struct {
 	varName string
 }
 
+type FuncFactory struct {
+	tparams []string
+	targets []FType
+}
+
 type Expr interface {
 	Expr_Union()
 }
@@ -228,7 +233,7 @@ type LetVarDef struct {
 }
 type PackageInfo struct {
 	name     string
-	funcInfo funcTypeDict
+	funcInfo funcFacDict
 	typeInfo extTypeDict
 }
 type RecordDef struct {
@@ -260,4 +265,10 @@ func New_DefStmt_DUnionDef(v UnionDef) DefStmt { return DefStmt_DUnionDef{v} }
 
 type MultipleDefs struct {
 	defs []DefStmt
+}
+
+func NewPackageInfo(name string) PackageInfo {
+	ffd := newFFD()
+	etd := newETD()
+	return PackageInfo{name: name, funcInfo: ffd, typeInfo: etd}
 }

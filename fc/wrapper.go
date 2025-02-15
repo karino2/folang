@@ -9,21 +9,27 @@ import (
 
 // currently, map is NYI  and generic exxt type is also NYI.
 // wrap to standard type for each.
-type funcTypeDict = map[string]FuncType
+type funcFacDict = map[string]FuncFactory
 type extTypeDict = map[string]string
 
-/*
-  let newFTD: ()->funcTypeDict
-  let newETD: ()->extTypeDict
-  let ftdPut: funcTypeDict->string->FuncType->()
-  let etdPut: extTypeDict->string->string->()
-  let ftdKVs: funcTypeDict->[]string*FuncType
-  let etdKVs: extTypeDict->[]string*string
+func newFFD() funcFacDict {
+	return make(map[string]FuncFactory)
+}
 
-*/
-/*
+func newETD() extTypeDict {
+	return make(map[string]string)
+}
+
 func dictPut[T any](dict map[string]T, key string, v T) {
 	dict[key] = v
+}
+
+func etdPut(dic extTypeDict, key string, v string) {
+	dictPut(dic, key, v)
+}
+
+func ffdPut(dic funcFacDict, key string, v FuncFactory) {
+	dictPut(dic, key, v)
 }
 
 func dictKeyValues[K comparable, V any](dict map[K]V) []frt.Tuple2[K, V] {
@@ -34,31 +40,13 @@ func dictKeyValues[K comparable, V any](dict map[K]V) []frt.Tuple2[K, V] {
 	return res
 }
 
-
-func newFTD() funcTypeDict {
-	return make(map[string]FuncType)
-}
-
-func newETD() extTypeDict {
-	return make(map[string]string)
-}
-
-func ftdPut(dic funcTypeDict, key string, v FuncType) {
-	dictPut(dic, key, v)
-}
-
-func ftdKVs(dic funcTypeDict) []frt.Tuple2[string, FuncType] {
+func ffdKVs(dic funcFacDict) []frt.Tuple2[string, FuncFactory] {
 	return dictKeyValues(dic)
-}
-
-func etdPut(dic extTypeDict, key string, v string) {
-	dictPut(dic, key, v)
 }
 
 func etdKVs(dic extTypeDict) []frt.Tuple2[string, string] {
 	return dictKeyValues(dic)
 }
-*/
 
 var uniqueId = 0
 
@@ -403,7 +391,7 @@ func reinterpretEscape(buf string) string {
 
 type scopeImpl struct {
 	// var factory Map
-	varFacMap map[string]func() Var
+	varFacMap map[string]func(tvgen func() TypeVar) Var
 	recordMap map[string]RecordType
 	typeMap   map[string]FType
 	parent    *scopeImpl
@@ -414,7 +402,7 @@ type Scope = *scopeImpl
 
 func newScope(parent *scopeImpl) *scopeImpl {
 	s := &scopeImpl{}
-	s.varFacMap = make(map[string]func() Var)
+	s.varFacMap = make(map[string]func(tvgen func() TypeVar) Var)
 	s.recordMap = make(map[string]RecordType)
 	s.typeMap = make(map[string]FType)
 	s.parent = parent
@@ -430,18 +418,19 @@ func NewScope() Scope {
 }
 
 func scDefVar(s Scope, name string, v Var) {
-	s.varFacMap[name] = func() Var { return v }
+	s.varFacMap[name] = func(_ func() TypeVar) Var { return v }
+}
+
+func scRegisterVarFac(s Scope, name string, fac func(func() TypeVar) Var) {
+	s.varFacMap[name] = fac
 }
 
 /*
-func scDefVarFac(s Scope, name string, fac func() Var) {
-	s.varFacMap[name] = fac
-}
-*/
+ */
 
 // currently, we can't support Result because of absence of generic type.
 // We use golang style convention though F# convention is bool is first.
-func scLookupVarFac(s Scope, name string) frt.Tuple2[func() Var, bool] {
+func scLookupVarFac(s Scope, name string) frt.Tuple2[func(func() TypeVar) Var, bool] {
 	cur := s
 	for cur != nil {
 		ret, ok := cur.varFacMap[name]
@@ -450,7 +439,7 @@ func scLookupVarFac(s Scope, name string) frt.Tuple2[func() Var, bool] {
 		}
 		cur = cur.parent
 	}
-	return frt.NewTuple2[func() Var](nil, false)
+	return frt.NewTuple2[func(func() TypeVar) Var](nil, false)
 }
 
 func scRegisterRecType(s Scope, recType RecordType) {
@@ -523,4 +512,60 @@ func CnvL[U any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, U])
 func CnvR[T any, U any](fn func(T) U, prev frt.Tuple2[ParseState, T]) frt.Tuple2[ParseState, U] {
 	t, u := frt.Destr(prev)
 	return frt.NewTuple2(t, fn(u))
+}
+
+/*
+  TypeVarAllocator
+*/
+
+type typeVarAllocator struct {
+	seqId     int
+	allocated []TypeVar
+}
+
+type TypeVarAllocator = *typeVarAllocator
+
+func NewTypeVarAllocator() TypeVarAllocator {
+	return &typeVarAllocator{0, []TypeVar{}}
+}
+
+func (tva *typeVarAllocator) Reset() {
+	tva.seqId = 0
+	tva.allocated = []TypeVar{}
+}
+
+func (tva *typeVarAllocator) genVarName() string {
+	vname := fmt.Sprintf("_T%d", tva.seqId)
+	tva.seqId++
+	return vname
+}
+
+func (tva *typeVarAllocator) Allocate() TypeVar {
+	tvar := TypeVar{tva.genVarName()}
+	tva.allocated = append(tva.allocated, tvar)
+	return tvar
+}
+
+func tvaAlloc(tva TypeVarAllocator) TypeVar {
+	return tva.Allocate()
+}
+
+func tvaToTypeVarGen(tva TypeVarAllocator) func() TypeVar {
+	return func() TypeVar { return tva.Allocate() }
+}
+
+type TypeVarDict = map[string]TypeVar
+
+func toTVDict(ps []frt.Tuple2[string, TypeVar]) TypeVarDict {
+	dic := make(map[string]TypeVar)
+	for _, tp := range ps {
+		pname, tvar := frt.Destr(tp)
+		dic[pname] = tvar
+	}
+	return dic
+}
+
+// NF: Never fail.
+func tvdLookupNF(tvd TypeVarDict, key string) TypeVar {
+	return tvd[key]
 }

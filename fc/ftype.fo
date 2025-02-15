@@ -5,6 +5,11 @@ import buf
 import slice
 import strings
 
+/*
+  Type variable, used for type inference and type parameter.
+*/
+type TypeVar = {name: string}
+
 type FType =
 | FInt
 | FString
@@ -16,7 +21,7 @@ type FType =
 | FExtType of string
 | FSlice of SliceType
 | FPreUsed of string
-| FParametrized of string
+| FTypeVar of TypeVar
 and SliceType = {elemType: FType}
 and FuncType = {targets: []FType}
 and NameTypePair = {name: string; ftype: FType}
@@ -99,4 +104,4 @@ let FTypeToGo (ft:FType) : string =
   | FExtType fe -> fe // for external type with typename fe, use that type name as is.
   | FSlice fs -> fSliceToGo fs FTypeToGo
   | FPreUsed fp -> fp
-  | FParametrized fp -> fp
+  | FTypeVar fp -> fp.name

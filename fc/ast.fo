@@ -2,8 +2,10 @@ package main
 
 // wrapper types.
 package_info _ =
-  type funcTypeDict
+  type funcFacDict
   type extTypeDict
+  let newFFD: ()->funcFacDict
+  let newETD: ()->extTypeDict
 
 type GoEvalExpr = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
@@ -18,6 +20,9 @@ Only support variable match for a while:
 | Record r -> ...
 */
 type MatchPattern = {caseId: string; varName: string}
+
+// external package func info.
+type FuncFactory = {tparams:[]string; targets:[]FType}
 
 type Expr =
 | EGoEvalExpr of GoEvalExpr
@@ -58,7 +63,7 @@ and Stmt =
 | SMultipleDefs of MultipleDefs
 and LetFuncDef = {name: string; params: []Var; body:Block}
 and LetVarDef = {name: string; rhs: Expr}
-and PackageInfo = {name: string; funcInfo: funcTypeDict; typeInfo: extTypeDict}
+and PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
 and RecordDef = {name: string; fields: []NameTypePair}
 and UnionDef = {name: string; cases: []NameTypePair}
 and DefStmt =
@@ -66,3 +71,7 @@ and DefStmt =
 | DUnionDef of UnionDef
 and MultipleDefs = {defs: []DefStmt}
 
+let NewPackageInfo (name:string) =
+  let ffd = newFFD ()
+  let etd = newETD ()
+  {name=name; funcInfo=ffd; typeInfo=etd}

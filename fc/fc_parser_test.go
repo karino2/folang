@@ -293,6 +293,20 @@ let ika () =
 `,
 			[]string{"return ([]int{1,2,3})", "ika() []int"},
 		},
+		{
+			`package main
+
+package_info buf =
+  type Buffer
+  let New: ()->Buffer
+  let Write: Buffer->string->()
+
+let hoge () =
+  buf.New ()
+
+`,
+			[]string{"buf.Buffer", "return buf.New()"},
+		},
 	}
 
 	for _, test := range tests {
@@ -308,8 +322,13 @@ let ika () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let ika() =
-  GoEval<int> "3+4"
+package_info buf =
+  type Buffer
+  let New: ()->Buffer
+  let Write: Buffer->string->()
+
+let hoge () =
+  buf.New ()
 
 `
 

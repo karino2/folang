@@ -8,21 +8,25 @@ import "github.com/karino2/folang/pkg/slice"
 
 import "github.com/karino2/folang/pkg/strings"
 
+type TypeVar struct {
+	name string
+}
+
 type FType interface {
 	FType_Union()
 }
 
-func (FType_FInt) FType_Union()          {}
-func (FType_FString) FType_Union()       {}
-func (FType_FBool) FType_Union()         {}
-func (FType_FUnit) FType_Union()         {}
-func (FType_FFunc) FType_Union()         {}
-func (FType_FRecord) FType_Union()       {}
-func (FType_FUnion) FType_Union()        {}
-func (FType_FExtType) FType_Union()      {}
-func (FType_FSlice) FType_Union()        {}
-func (FType_FPreUsed) FType_Union()      {}
-func (FType_FParametrized) FType_Union() {}
+func (FType_FInt) FType_Union()     {}
+func (FType_FString) FType_Union()  {}
+func (FType_FBool) FType_Union()    {}
+func (FType_FUnit) FType_Union()    {}
+func (FType_FFunc) FType_Union()    {}
+func (FType_FRecord) FType_Union()  {}
+func (FType_FUnion) FType_Union()   {}
+func (FType_FExtType) FType_Union() {}
+func (FType_FSlice) FType_Union()   {}
+func (FType_FPreUsed) FType_Union() {}
+func (FType_FTypeVar) FType_Union() {}
 
 type FType_FInt struct {
 }
@@ -80,11 +84,11 @@ type FType_FPreUsed struct {
 
 func New_FType_FPreUsed(v string) FType { return FType_FPreUsed{v} }
 
-type FType_FParametrized struct {
-	Value string
+type FType_FTypeVar struct {
+	Value TypeVar
 }
 
-func New_FType_FParametrized(v string) FType { return FType_FParametrized{v} }
+func New_FType_FTypeVar(v TypeVar) FType { return FType_FTypeVar{v} }
 
 type SliceType struct {
 	elemType FType
@@ -214,9 +218,9 @@ func FTypeToGo(ft FType) string {
 	case FType_FPreUsed:
 		fp := _v19.Value
 		return fp
-	case FType_FParametrized:
+	case FType_FTypeVar:
 		fp := _v19.Value
-		return fp
+		return fp.name
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
