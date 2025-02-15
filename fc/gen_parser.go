@@ -216,12 +216,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v318 := (prm1).(type) {
+	switch _v320 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v318.Value
+		v := _v320.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -237,9 +237,23 @@ func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 }
 
 func parseGoEval(ps ParseState) frt.Tuple2[ParseState, Expr] {
-	ps2, s := frt.Destr(frt.Pipe(psNext(ps), psStringValNx))
-	ge := GoEvalExpr{goStmt: s, typeArg: New_FType_FUnit}
-	return frt.NewTuple2(ps2, New_Expr_GoEvalExpr(ge))
+	ps2 := psNext(ps)
+	switch (psCurrentTT(ps2)).(type) {
+	case TokenType_LT:
+		ps3, ft := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LT, ps2), parseType), (func(_r0 frt.Tuple2[ParseState, FType]) frt.Tuple2[ParseState, FType] {
+			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_GT, _r0) }), _r0)
+		})))
+		ps4, s := frt.Destr(psStringValNx(ps3))
+		ge := GoEvalExpr{goStmt: s, typeArg: ft}
+		return frt.NewTuple2(ps4, New_Expr_GoEvalExpr(ge))
+	case TokenType_STRING:
+		ps3, s := frt.Destr(psStringValNx(ps2))
+		ge := GoEvalExpr{goStmt: s, typeArg: New_FType_FUnit}
+		return frt.NewTuple2(ps3, New_Expr_GoEvalExpr(ge))
+	default:
+		frt.Panic("Wrong arg for GoEval")
+		return frt.NewTuple2(ps2, New_Expr_Unit)
+	}
 }
 
 func parseFiIni(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, NEPair] {
@@ -400,9 +414,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v325 := (head).(type) {
+			switch _v328 := (head).(type) {
 			case Expr_Var:
-				v := _v325.Value
+				v := _v328.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_FunCall(fc))
 			default:

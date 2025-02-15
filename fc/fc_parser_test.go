@@ -221,6 +221,12 @@ let main () =
   | B -> GoEval "fmt.Println(\"B match\")"
 `, "switch (New_AorB_A).(type)",
 		},
+		{
+			`let ika() =
+  GoEval<int> "3+4"
+`,
+			"func ika() int{",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -267,14 +273,8 @@ let ika () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type IntOrString =
-  | I of int
-  | S of string
-
-let ika () =
-    match I 123 with
-    | I i -> i
-    | S _ -> 456
+let ika() =
+  GoEval<int> "3+4"
 
 `
 

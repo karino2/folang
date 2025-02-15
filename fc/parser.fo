@@ -224,11 +224,26 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
         |> CnvR (slice.Append v)
       | _ -> (ps2, [v])
 
+/*
+GO_EVAL = 'GoEval' string | 'GoEval' '<' TYPE '>' string
+
+It should not have space between 'GoEval' and '<' though currently we just don't care those differences.
+*/
 let parseGoEval (ps:ParseState) =
-  let (ps2, s) = psNext ps // consume "GoEval" token
-                  |> psStringValNx
-  let ge = {goStmt=s; typeArg=FUnit}
-  (ps2, GoEvalExpr ge)
+  let ps2 = psNext ps
+  match psCurrentTT ps2 with
+  | LT ->
+    let (ps3, ft) = psConsume LT ps2 |> parseType |> CnvL (psConsume GT)
+    let (ps4, s) = psStringValNx ps3
+    let ge = {goStmt=s; typeArg=ft}
+    (ps4, GoEvalExpr ge)
+  | STRING ->
+    let (ps3, s) = psStringValNx ps2
+    let ge = {goStmt=s; typeArg=FUnit}
+    (ps3, GoEvalExpr ge)
+  | _ ->
+    frt.Panic "Wrong arg for GoEval"
+    (ps2, Unit)
 
 
 // FIELD_INITIALIZER = IDENTIFIER '=' expr
