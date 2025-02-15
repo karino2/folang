@@ -1416,12 +1416,9 @@ TYPE =  TERM_TYPE | FUNC_TYPE
 func (p *Parser) parseType() FType {
 	if p.Current().ttype == LPAREN {
 		next := p.peekNext()
-		if next.ttype == RPAREN {
-			p.consume(LPAREN)
-			p.consume(RPAREN)
-			return FUnit
+		if next.ttype != RPAREN {
+			return p.parseFuncType()
 		}
-		return p.parseFuncType()
 	}
 	one := p.parseTermType()
 

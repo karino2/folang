@@ -693,18 +693,6 @@ let parseTypeDef (ps:ParseState) =
     frt.Panic "NYI"
     (ps2, SExprStmt EUnit)
 
-let dummyPBlock (ps:ParseState) =
-  frt.Panic "Should never called."
-  emptyBlock ()
-  |> withPs ps
-
-/*
-  no block expr. like rhs.
-*/
-let parseExprNoBlock (ps:ParseState) =
-  parseTerm dummyPBlock ps
-
-
 let parseStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps

@@ -939,6 +939,16 @@ let ika () =
 `,
 			"ika() frt.Tuple2[func () string, bool]{",
 		},
+		{
+			`package main
+
+let tpname2tvtp (tvgen: ()->string) (tpname:string) =
+  let tv = tvgen ()
+  (tpname, tv)
+
+`,
+			"tvgen func () string",
+		},
 	}
 
 	for _, test := range tests {
@@ -1128,13 +1138,9 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-package_info _=
-  let lookupFunc: string->(()->string)*bool
-	// test
-  let hoge: string->string
-
-let ika () =
-  lookupFunc "hoge"
+let tpname2tvtp (tvgen: ()->string) (tpname:string) =
+  let tv = tvgen ()
+  (tpname, tv)
 
 `
 
