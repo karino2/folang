@@ -227,6 +227,31 @@ let main () =
 `,
 			"func ika() int{",
 		},
+		{
+			`type IorS =
+  | IT of int
+  | ST of string
+
+  let ika () =
+  match IT 3 with
+  | IT _ -> "i match"
+  | _ -> "default"
+`,
+			"default:\nreturn \"default\"",
+		},
+		// bool test
+		{
+			`type IorS =
+  | IT of int
+  | ST of string
+
+  let ika () =
+  match IT 3 with
+  | IT _ -> true
+  | _ -> false
+`,
+			"func ika() bool{",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)

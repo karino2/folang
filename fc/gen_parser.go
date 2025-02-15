@@ -216,12 +216,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v320 := (prm1).(type) {
+	switch _v324 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v320.Value
+		v := _v324.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -298,6 +298,10 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 		return frt.Pipe(New_Expr_StringLiteral(cur.stringVal), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
 	case TokenType_INT_IMM:
 		return frt.Pipe(New_Expr_IntImm(cur.intVal), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
+	case TokenType_TRUE:
+		return frt.Pipe(New_Expr_BoolLiteral(true), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
+	case TokenType_FALSE:
+		return frt.Pipe(New_Expr_BoolLiteral(false), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
 	case TokenType_LBRACE:
 		return parseRecordGen(parseE, ps)
 	case TokenType_IDENTIFIER:
@@ -414,9 +418,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v328 := (head).(type) {
+			switch _v332 := (head).(type) {
 			case Expr_Var:
-				v := _v328.Value
+				v := _v332.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_FunCall(fc))
 			default:

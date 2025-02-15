@@ -290,6 +290,10 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     StringLiteral cur.stringVal |> withPs pn
   | INT_IMM ->
     IntImm cur.intVal |> withPs pn
+  | TRUE ->
+    BoolLiteral true |> withPs pn
+  | FALSE ->
+    BoolLiteral false |> withPs pn
   | LBRACE ->
     parseRecordGen parseE ps
   | IDENTIFIER ->
