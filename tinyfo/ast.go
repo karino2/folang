@@ -545,14 +545,10 @@ func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) Expr {
 	retType := rtype
 	// It's better those login in binOpInfo, but just handle here for a while.
 	switch btype {
-	case AMPAMP:
+	case AMPAMP, BARBAR:
 		// arg is also bool, Resolving with this info is NYI.
 		retType = FBool
-	case BARBAR:
-		retType = FBool
-	case GT:
-		retType = FBool
-	case LT:
+	case GT, LT, GE, LE:
 		retType = FBool
 	}
 	return &BinOpCall{binfo.goFuncName, retType, lhs, rhs}

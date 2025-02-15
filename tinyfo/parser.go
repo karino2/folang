@@ -27,6 +27,8 @@ const (
 	RSBRACKET
 	LT
 	GT
+	LE
+	GE
 	BRACKET // <>
 	PIPE
 	STRING
@@ -90,6 +92,8 @@ var binOpMap = map[TokenType]binOpInfo{
 	BARBAR:  {2, "||"},
 	GT:      {2, ">"},
 	LT:      {2, "<"},
+	GE:      {2, ">="},
+	LE:      {2, "<="},
 	EQ:      {3, "frt.OpEqual"}, // as a comparison operator
 	BRACKET: {3, "frt.OpNotEqual"},
 	PLUS:    {4, "+"},
@@ -358,8 +362,20 @@ func (tkz *Tokenizer) analyzeCur() {
 			cur.len = 2
 			return
 		}
+		if tkz.isCharAt(tkz.pos+1, '=') {
+			cur.ttype = LE
+			cur.stringVal = "<="
+			cur.len = 2
+			return
+		}
 		cur.setOneChar(LT, b)
 	case b == '>':
+		if tkz.isCharAt(tkz.pos+1, '=') {
+			cur.ttype = GE
+			cur.stringVal = ">="
+			cur.len = 2
+			return
+		}
 		cur.setOneChar(GT, b)
 	case b == '+':
 		cur.setOneChar(PLUS, b)
