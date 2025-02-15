@@ -8,6 +8,7 @@ import strings
 // wrapper types.
 package_info _ =
   let reinterpretEscape: string->string
+  let uniqueTmpVarName: ()->string
 
 
 let rgFVToGo  (toGo: Expr->string) (fvPair: NEPair) =

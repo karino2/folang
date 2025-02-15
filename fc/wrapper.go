@@ -7,6 +7,21 @@ import (
 	"github.com/karino2/folang/pkg/frt"
 )
 
+// currently, map is NYI  and generic exxt type is also NYI.
+// wrap to standard type for each.
+type funcTypeDict = map[string]FuncType
+type extTypeDict = map[string]string
+
+/*
+  let newFTD: ()->funcTypeDict
+  let newETD: ()->extTypeDict
+  let ftdPut: funcTypeDict->string->FuncType->()
+  let etdPut: extTypeDict->string->string->()
+  let ftdKVs: funcTypeDict->[]string*FuncType
+  let etdKVs: extTypeDict->[]string*string
+
+*/
+/*
 func dictPut[T any](dict map[string]T, key string, v T) {
 	dict[key] = v
 }
@@ -19,10 +34,6 @@ func dictKeyValues[K comparable, V any](dict map[K]V) []frt.Tuple2[K, V] {
 	return res
 }
 
-// currently, map is NYI  and generic exxt type is also NYI.
-// wrap to standard type for each.
-type funcTypeDict = map[string]FuncType
-type extTypeDict = map[string]string
 
 func newFTD() funcTypeDict {
 	return make(map[string]FuncType)
@@ -47,6 +58,7 @@ func etdPut(dic extTypeDict, key string, v string) {
 func etdKVs(dic extTypeDict) []frt.Tuple2[string, string] {
 	return dictKeyValues(dic)
 }
+*/
 
 var uniqueId = 0
 

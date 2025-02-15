@@ -4,13 +4,6 @@ package main
 package_info _ =
   type funcTypeDict
   type extTypeDict
-  let newFTD: ()->funcTypeDict
-  let newETD: ()->extTypeDict
-  let ftdPut: funcTypeDict->string->FuncType->()
-  let etdPut: extTypeDict->string->string->()
-  let ftdKVs: funcTypeDict->[]string*FuncType
-  let etdKVs: extTypeDict->[]string*string
-  let uniqueTmpVarName: ()->string
 
 type GoEvalExpr = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
