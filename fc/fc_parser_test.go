@@ -42,32 +42,24 @@ func TestParseParams(t *testing.T) {
 	}
 }
 
-func TestParseLetFuncDef(t *testing.T) {
-	src := `let hoge () =
-  123
-`
-	ps := initParse(src)
-	gotPair := parseLetFuncDef(ps)
-	_, stmt := frt.Destr(gotPair)
+/*
+Resolve mutual recursive in golang layer (NYI for and letfunc def).
+*/
+func parseLetFacade(ps ParseState) frt.Tuple2[ParseState, LetVarDef] {
+	return parseLetVarDef(parseExprFacade, ps)
+}
 
-	if lfdS, ok := stmt.(Stmt_LetFuncDef); ok {
-		lfd := lfdS.Value
-		if lfd.name != "hoge" {
-			t.Errorf("name is not hoge, %v", lfd)
-		}
-	} else {
-		t.Errorf("not stmt not lfd, %T", stmt)
-	}
+func parseBlockFacade(ps ParseState) frt.Tuple2[ParseState, Block] {
+	return parseBlock(parseLetFacade, ps)
+}
 
-	got := StmtToGo(stmt)
-	want := `func hoge() int{
-return 123
-}`
+func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
+	return parseTerm(parseBlockFacade, ps)
+}
 
-	if got != want {
-		t.Errorf("want %s, got %s", want, got)
-	}
-
+func parseAll(ps ParseState) (ParseState, []Stmt) {
+	res := parseStmts(parseExprFacade, ps)
+	return frt.Destr(res)
 }
 
 func TestParseTwoFunc(t *testing.T) {
@@ -82,8 +74,7 @@ let main () =
 
 `
 	ps := initParse(src)
-	gotPair := parseStmts(ps)
-	_, stmts := frt.Destr(gotPair)
+	_, stmts := parseAll(ps)
 	got := StmtsToGo(stmts)
 
 	want :=
@@ -106,8 +97,7 @@ hello("World")
 
 func transpile(src string) string {
 	ps := initParse(src)
-	gotPair := parseStmts(ps)
-	_, stmts := frt.Destr(gotPair)
+	_, stmts := parseAll(ps)
 	return StmtsToGo(stmts)
 }
 
@@ -251,6 +241,17 @@ let main () =
   | _ -> false
 `,
 			"func ika() bool{",
+		},
+		{
+			`let hoge () =
+  let a = "abc"
+  a
+`,
+			`func hoge() string{
+a := "abc"
+return a
+}
+`,
 		},
 	}
 	for _, test := range tests {

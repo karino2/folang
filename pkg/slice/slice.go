@@ -44,6 +44,10 @@ func Take[T any](num int, s []T) []T {
 	return res
 }
 
+func PopLast[T any](s []T) []T {
+	return s[0:(len(s) - 1)]
+}
+
 func Skip[T any](count int, s []T) []T {
 	var res []T
 

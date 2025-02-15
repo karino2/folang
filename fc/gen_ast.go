@@ -25,17 +25,17 @@ type Expr interface {
 	Expr_Union()
 }
 
-func (Expr_GoEvalExpr) Expr_Union()     {}
-func (Expr_StringLiteral) Expr_Union()  {}
-func (Expr_IntImm) Expr_Union()         {}
-func (Expr_Unit) Expr_Union()           {}
-func (Expr_BoolLiteral) Expr_Union()    {}
-func (Expr_FunCall) Expr_Union()        {}
-func (Expr_FieldAccess) Expr_Union()    {}
-func (Expr_Var) Expr_Union()            {}
-func (Expr_RecordGen) Expr_Union()      {}
-func (Expr_LazyBlock) Expr_Union()      {}
-func (Expr_ReturnableExpr) Expr_Union() {}
+func (Expr_GoEvalExpr) Expr_Union()      {}
+func (Expr_StringLiteral) Expr_Union()   {}
+func (Expr_IntImm) Expr_Union()          {}
+func (Expr_Unit) Expr_Union()            {}
+func (Expr_BoolLiteral) Expr_Union()     {}
+func (Expr_FunCall) Expr_Union()         {}
+func (Expr_FieldAccess) Expr_Union()     {}
+func (Expr_Var) Expr_Union()             {}
+func (Expr_RecordGen) Expr_Union()       {}
+func (Expr_LazyBlock) Expr_Union()       {}
+func (Expr_EReturnableExpr) Expr_Union() {}
 
 type Expr_GoEvalExpr struct {
 	Value GoEvalExpr
@@ -96,11 +96,11 @@ type Expr_LazyBlock struct {
 
 func New_Expr_LazyBlock(v LazyBlock) Expr { return Expr_LazyBlock{v} }
 
-type Expr_ReturnableExpr struct {
+type Expr_EReturnableExpr struct {
 	Value ReturnableExpr
 }
 
-func New_Expr_ReturnableExpr(v ReturnableExpr) Expr { return Expr_ReturnableExpr{v} }
+func New_Expr_EReturnableExpr(v ReturnableExpr) Expr { return Expr_EReturnableExpr{v} }
 
 type FunCall struct {
 	targetFunc Var

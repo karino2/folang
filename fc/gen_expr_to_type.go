@@ -28,7 +28,7 @@ func blockToType(toT func(Expr) FType, b Block) FType {
 }
 
 func blockToExpr(block Block) Expr {
-	return New_Expr_ReturnableExpr(New_ReturnableExpr_Block(block))
+	return New_Expr_EReturnableExpr(New_ReturnableExpr_Block(block))
 }
 
 func meToType(toT func(Expr) FType, me MatchExpr) FType {
@@ -101,7 +101,7 @@ func ExprToType(expr Expr) FType {
 	case Expr_LazyBlock:
 		lb := _v31.Value
 		return lblockToType(ExprToType, lb)
-	case Expr_ReturnableExpr:
+	case Expr_EReturnableExpr:
 		re := _v31.Value
 		return returnableToType(ExprToType, re)
 	case Expr_FunCall:

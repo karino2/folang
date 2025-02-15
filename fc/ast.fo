@@ -41,8 +41,10 @@ type Expr =
   For some expr, normally we need to wrap with func() to become expr in go stmt
   But in some case like final expr of block, just return is enough and do not need to wrap func().
   We use type ReturnableExpr for expr of which we can emit directlry return go code.
+
+  Avoid name conflict of ReturnableExpr by adding E.
 */
-| ReturnableExpr of ReturnableExpr
+| EReturnableExpr of ReturnableExpr
 and FunCall = {targetFunc: Var; args: []Expr}
 and NEPair = {name: string; expr: Expr}
 and RecordGen = {fieldsNV: []NEPair; recordType: RecordType}

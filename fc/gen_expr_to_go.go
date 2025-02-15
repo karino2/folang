@@ -32,7 +32,7 @@ func buildReturn(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet fun
 	stmtGos := frt.Pipe(slice.Map(sToGo, stmts), (func(_r0 []string) string { return strings.Concat("\n", _r0) }))
 	lastGo := (func() string {
 		switch _v86 := (lastExpr).(type) {
-		case Expr_ReturnableExpr:
+		case Expr_EReturnableExpr:
 			re := _v86.Value
 			return reToGoRet(re)
 		default:
@@ -155,7 +155,7 @@ func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchEx
 }
 
 func meToExpr(me MatchExpr) Expr {
-	return frt.Pipe(New_ReturnableExpr_MatchExpr(me), New_Expr_ReturnableExpr)
+	return frt.Pipe(New_ReturnableExpr_MatchExpr(me), New_Expr_EReturnableExpr)
 }
 
 func meToGo(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) string {
@@ -293,7 +293,7 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	case Expr_RecordGen:
 		rg := _v89.Value
 		return rgToGo(eToGo, rg)
-	case Expr_ReturnableExpr:
+	case Expr_EReturnableExpr:
 		re := _v89.Value
 		return reToGo(sToGo, eToGo, re)
 	case Expr_FunCall:

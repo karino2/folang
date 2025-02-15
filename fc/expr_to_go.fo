@@ -40,7 +40,7 @@ let rgToGo (toGo: Expr->string) (rg:RecordGen) =
 let buildReturn (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (stmts:[]Stmt) (lastExpr: Expr) =
   let stmtGos = slice.Map sToGo stmts |> strings.Concat "\n"
   let lastGo = match lastExpr with
-              | ReturnableExpr re -> reToGoRet re
+              | EReturnableExpr re -> reToGoRet re
               | _ ->
                 let mayReturn = if ExprToType lastExpr = FUnit then "" else "return "
                 let lg = eToGo lastExpr
@@ -168,7 +168,7 @@ let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   buf.String b
 
 let meToExpr (me:MatchExpr) =
-  MatchExpr me |> ReturnableExpr
+  MatchExpr me |> EReturnableExpr
 
 let meToGo (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   let goret = meToGoReturn toGo btogRet me
@@ -274,6 +274,6 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | FieldAccess fa -> fa.targetName + "." + fa.fieldName
   | Var v -> v.name
   | RecordGen rg -> rgToGo eToGo rg
-  | ReturnableExpr re -> reToGo sToGo eToGo re
+  | EReturnableExpr re -> reToGo sToGo eToGo re
   | FunCall fc -> fcToGo FTypeToGo eToGo fc
 

@@ -22,7 +22,7 @@ let blockToType (toT: Expr->FType)  (b:Block)=
   blockReturnType toT b
 
 let blockToExpr (block:Block) =
-  ReturnableExpr (Block block)
+  EReturnableExpr (Block block)
 
 let meToType (toT: Expr->FType) (me:MatchExpr) =
   let frule = me.rules |> slice.Head
@@ -65,5 +65,5 @@ let ExprToType (expr:Expr) : FType =
   | Var v -> v.ftype
   | RecordGen rg -> FRecord rg.recordType
   | LazyBlock lb -> lblockToType ExprToType lb
-  | ReturnableExpr re -> returnableToType ExprToType re
+  | EReturnableExpr re -> returnableToType ExprToType re
   | FunCall fc -> fcToType fc

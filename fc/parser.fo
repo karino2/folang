@@ -20,7 +20,7 @@ package_info _ =
 type ParseState = {
   tkz: Tokenizer;
   scope: Scope;
-  // offsideCol: []int;
+  offsideCol: []int;
   // typeDefCtx
 }
 
@@ -35,14 +35,18 @@ package_info _ =
   let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
 
 
-let newParse (tkz:Tokenizer) (scope:Scope) =
-  {tkz=tkz; scope=scope}
+let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) =
+  {tkz=tkz; scope=scope; offsideCol=offCols}
 
 let psWithTkz (org:ParseState) (tkz:Tokenizer) =
-  {tkz=tkz; scope=org.scope}
+  newParse tkz org.scope org.offsideCol
 
 let psWithScope (org:ParseState) (nsc:Scope) =
-  {tkz=org.tkz; scope=nsc}
+  newParse org.tkz nsc org.offsideCol
+
+let psWithOffside (org:ParseState) (offs:[]int) =
+  newParse org.tkz org.scope offs
+
 
 let psPushScope (org:ParseState) =
   newScope org.scope |> psWithScope org
@@ -50,12 +54,28 @@ let psPushScope (org:ParseState) =
 let psPopScope (org:ParseState) =
   popScope org.scope |> psWithScope org
 
+let psCurOffside (ps:ParseState) =
+  slice.Last ps.offsideCol
 
+let psCurCol (ps:ParseState) =
+  ps.tkz.col
+
+let psPushOffside (ps:ParseState) =
+  let curCol = psCurCol ps
+  if (psCurOffside ps) >= curCol then
+    frt.Panic "Overrun offside rule"
+  slice.Append curCol ps.offsideCol
+  |> psWithOffside ps
+
+let psPopOffside (ps:ParseState) =
+  slice.PopLast ps.offsideCol
+  |> psWithOffside ps
 
 let initParse (src: string) =
   let tkz = newTkz src
   let scope = NewScope ()
-  newParse tkz scope
+  let offside = [0]
+  newParse tkz scope offside
 
 let psCurrent (ps:ParseState) =
   ps.tkz.current
@@ -387,7 +407,7 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
   match psCurrentTT ps with
   | MATCH ->
      parseMatchExpr pExpr pBlock ps
-     |> CnvR MatchExpr |> CnvR ReturnableExpr
+     |> CnvR MatchExpr |> CnvR EReturnableExpr
   | _ ->
     let (ps2, es) = parseAtomList pExpr ps
     if (slice.Length es) = 1 then
@@ -404,16 +424,75 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
         frt.Panic "Funcall head is not var"
         (ps2, head)
 
-let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
-  let (ps2, expr) = pExpr ps |> CnvL psSkipEOL
-  let block = GoEval<Block> "Block{[]Stmt{}, expr}"
-  let ps3 = psPopScope ps2
-  (ps3, block)
+type StmtLike =
+| SLExpr of Expr
+| SLLetStmt of LetVarDef
+
+let slToStmt (sl:StmtLike) =
+  match sl with
+  | SLExpr e -> ExprStmt e
+  | SLLetStmt l -> LetVarDef l
+
+// STMT_LIKE = LET_STMT | EXPR
+let parseStmtLike (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+  match psCurrentTT ps with
+  | LET ->
+    pLet ps |> CnvR SLLetStmt
+  | _ ->
+    pExpr ps |> CnvR SLExpr
 
 
-let parseBlock (ps:ParseState) : ParseState*Block =
-  let pExpr = parseTerm parseBlock
-  psPushScope ps |> parseBlockAfterPushScope pExpr
+let isEndOfBlock (ps:ParseState) =
+  let isOffside = (psCurCol ps) < (psCurOffside ps)
+  let isEof = (psCurrentTT ps) = EOF
+  isOffside || isEof
+
+let parseStmtLikeList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : []StmtLike =
+  let (ps2, one) = parseStmtLike pExpr pLet ps |> CnvL psSkipEOL
+  if isEndOfBlock ps2 then
+    (ps2, [one])
+  else
+    parseStmtLikeList pExpr pLet ps2
+    |> CnvR (slice.Prepend one)
+
+// for dummy usage
+let emptyBlock () =
+  GoEval<Block> "Block{}"
+
+/*
+BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
+STMT_LIKE = LET_STMT | EXPR
+
+In some case, we wanto add local variables in block scope,
+in that case, it's handy to pushScope before calling this function.
+*/
+let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+  let (ps2, sls) = psPushOffside ps |> (parseStmtLikeList pExpr pLet) |> CnvL psPopOffside
+  let last = slice.Last sls
+  let stmts = slice.PopLast sls |> slice.Map slToStmt
+  match last with
+  | SLExpr e ->
+    (ps2, {Block.stmts=stmts; finalExpr=e})
+  | _ ->
+    frt.Panic "block of last is not expr"
+    // dummy
+    emptyBlock ()
+    |> withPs ps2
+
+let parseBlock (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : ParseState*Block =
+  let pExpr = parseTerm (parseBlock pLet)
+  psPushScope ps |> parseBlockAfterPushScope pExpr pLet
+
+/*
+LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+*/
+let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+  let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> CnvL (psConsume EQ)
+  let (ps3, rhs) = pExpr ps2
+  let v = {Var.name=vname; ftype=(ExprToType rhs)}
+  scDefVar ps3.scope vname v
+  {LetVarDef.name=vname; rhs=rhs}
+  |> withPs ps3
 
 let vToT (v:Var) =
   v.ftype
@@ -436,16 +515,40 @@ let lfdToFuncVar (lfd:LetFuncDef) =
 /*
 LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
 */
-let parseLetFuncDef (ps:ParseState) =
+let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let ps2 = psConsume LET ps
   let fname = psIdentName ps2
   let (ps3, params) = psNext ps2 |> parseParams
   // TODO: put current func for recursive call.
-  let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock
+  let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock pLet
   let lfd =  {LetFuncDef.name=fname; params=params; body=block}
   lfdToFuncVar lfd |> scDefVar ps4.scope fname 
-  let stmt = LetFuncDef lfd
-  (ps4, stmt)
+  (ps4, lfd)
+
+/*
+LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
+
+LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
+*/
+let parseLet (pExpr:ParseState->ParseState*Expr) (ps:ParseState) =
+  let pLet = parseLetVarDef pExpr
+  let psN = psNext ps
+  match psCurrentTT psN with
+  | LPAREN ->
+    parseLetFuncDef pLet ps
+    |> CnvR LetFuncDef
+  | _ ->
+    let psNN = psNext psN
+    match psCurrentTT psNN with
+    | EQ ->
+      pLet ps
+      |> CnvR LetVarDef
+    | _ ->
+      parseLetFuncDef pLet ps
+      |> CnvR LetFuncDef
+     
+
 
 // FIELD_DEF = ID ':' TYPE
 let parseFieldDef (ps:ParseState) =
@@ -563,30 +666,35 @@ let parseTypeDef (ps:ParseState) =
     frt.Panic "NYI"
     (ps2, ExprStmt Unit)
 
+let dummyPBlock (ps:ParseState) =
+  frt.Panic "Should never called."
+  emptyBlock ()
+  |> withPs ps
 
 /*
-  let (ps3, rd) = psConsume EQ ps2 |> parseRecordDef tname
-  let rdstmt = RecordDef rd |> DefStmt
-  (ps3, rdstmt)
+  no block expr. like rhs.
 */
+let parseExprNoBlock (ps:ParseState) =
+  parseTerm dummyPBlock ps
 
-let parseStmt (ps:ParseState) =
+
+let parseStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps
   | IMPORT -> parseImport ps
-  | LET -> parseLetFuncDef ps
+  | LET -> parseLet pExpr ps
   | TYPE -> parseTypeDef ps
   | _ ->
     frt.Panic "Unknown stmt"
     parsePackage ps // never reached this line.
 
-let parseStmts (ps:ParseState) : ParseState*[]Stmt =
+let parseStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Stmt =
   let ps2 = psSkipEOL ps
   if (psCurrentTT ps2) = EOF then
     let s = GoEval<[]Stmt> "[]Stmt{}"
     (ps2, s)
   else
-    let (ps3, one) = parseStmt ps |> CnvL psSkipEOL
-    let (ps4, rest) = parseStmts ps3
+    let (ps3, one) = parseStmt pExpr ps |> CnvL psSkipEOL
+    let (ps4, rest) = parseStmts pExpr ps3
     let ss = slice.Prepend one rest
     (ps4, ss)

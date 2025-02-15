@@ -3,6 +3,7 @@ package_info slice =
   let Last<T>: []T -> T
   let Head<T>: []T -> T
   let Tail<T>: []T -> []T
+  let PopLast<T>: []T -> []T
   let Append<T>: T->[]T->[]T
   let Prepend<T>: T->[]T->[]T
   let Take<T> : int->[]T->[]T
