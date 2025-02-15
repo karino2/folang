@@ -1278,7 +1278,7 @@ func (p *Parser) parseFullName() string {
 }
 
 /*
-ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TYPE
+ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
 */
 func (p *Parser) parseAtomType() FType {
 	if p.Current().ttype == LSBRACKET {
@@ -1290,8 +1290,13 @@ func (p *Parser) parseAtomType() FType {
 
 	if p.Current().ttype == LPAREN {
 		p.consume(LPAREN)
+		if p.currentIs(RPAREN) {
+			p.consume(RPAREN)
+			return FUnit
+		}
+		res := p.parseType()
 		p.consume(RPAREN)
-		return FUnit
+		return res
 	}
 
 	tname := p.identName()
@@ -1329,8 +1334,6 @@ func (p *Parser) parseAtomType() FType {
 TERM_TYPE = ATOM_TYPE | TUPLE_TYPE
 
 TUPLE_TYPE = ATOME_TYPE '*' ATOM_TYPE ('*' ATOME_TYPE)*
-
-TUPLE of func type is NYI.
 */
 func (p *Parser) parseTermType() FType {
 	one := p.parseAtomType()
@@ -1345,81 +1348,20 @@ func (p *Parser) parseTermType() FType {
 }
 
 /*
-NONE_COMPOUND_FUNC_TYPE = TERM_TYPE '->' TERM_TYPE ('->' TERM_TYPE)*
-
-Pass first TERM_TYPE as argument.
-*/
-func (p *Parser) parseNoneCompoundFuncType(first FType) FType {
-	types := []FType{first}
-	for p.Current().ttype == RARROW {
-		p.consume(RARROW)
-		types = append(types, p.parseTermType())
-	}
-	return NewFFunc(types...)
-}
-
-/*
-NON_TUPLE_FUNC_ELEM = TERM_TYPE | '(' NONE_COMPOUND_FUNC_TYPE ')'
-
-Only One nesting is supported like (a->b)->c->d resolved as func (arg1:func(a)b, arg2: c) d
-*/
-func (p *Parser) parseNonTupleFuncElemType() FType {
-	if p.Current().ttype == LPAREN {
-		next := p.peekNext()
-		if next.ttype == RPAREN {
-			p.consume(LPAREN)
-			p.consume(RPAREN)
-			return FUnit
-		}
-		p.consume(LPAREN)
-		first := p.parseTermType()
-		ft := p.parseNoneCompoundFuncType(first)
-		p.consume(RPAREN)
-		return ft
-	}
-	return p.parseTermType()
-}
-
-/*
-FUNC_ELEM = NON_TUPLE_FUNC_ELEM ('*' NON_TUPLE_FUNC_ELEM)*
-
-But support only pair for tuple.
-*/
-func (p *Parser) parseFuncElemType() FType {
-	first := p.parseNonTupleFuncElemType()
-	if p.currentIs(ASTER) {
-		p.consume(ASTER)
-		sec := p.parseNonTupleFuncElemType()
-		return NewFTuple(first, sec)
-	} else {
-		return first
-	}
-}
-
-/*
-FUNC_TYPE = FUNC_ELEM '->' FUNC_ELEM ('->' FUNC_ELEM)*
+For backward compat.
 */
 func (p *Parser) parseFuncType() *FFunc {
-	elem := p.parseFuncElemType()
-	types := []FType{elem}
-
-	for p.Current().ttype == RARROW {
-		p.consume(RARROW)
-		types = append(types, p.parseFuncElemType())
-	}
-	return NewFFunc(types...)
+	ft := p.parseType()
+	return ft.(*FFunc)
 }
 
 /*
 TYPE =  TERM_TYPE | FUNC_TYPE
+
+TERM_TYPE = ATOM_TYPE | TUPLE_TYPE | '(' TYPE ')'
+FUNC_TYPE = TERM_TYPE '->' TERM_TYPE ('->' TERM_TYPE)*
 */
 func (p *Parser) parseType() FType {
-	if p.Current().ttype == LPAREN {
-		next := p.peekNext()
-		if next.ttype != RPAREN {
-			return p.parseFuncType()
-		}
-	}
 	one := p.parseTermType()
 
 	if p.Current().ttype == RARROW {
@@ -1428,7 +1370,7 @@ func (p *Parser) parseType() FType {
 
 		for p.Current().ttype == RARROW {
 			p.consume(RARROW)
-			types = append(types, p.parseFuncElemType())
+			types = append(types, p.parseTermType())
 		}
 		return NewFFunc(types...)
 	} else {

@@ -949,6 +949,19 @@ let tpname2tvtp (tvgen: ()->string) (tpname:string) =
 `,
 			"tvgen func () string",
 		},
+		{
+			`package main
+
+package_info _ =
+  let lookupVarFac: string->((()->string)->string)*bool
+
+
+let hoge () =
+  lookupVarFac "abc"
+
+`,
+			"[func (func () string) string, bool]",
+		},
 	}
 
 	for _, test := range tests {
@@ -1138,9 +1151,12 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-let tpname2tvtp (tvgen: ()->string) (tpname:string) =
-  let tv = tvgen ()
-  (tpname, tv)
+package_info _ =
+  let lookupVarFac: string->((()->string)->string)*bool
+
+
+let hoge () =
+  lookupVarFac "abc"
 
 `
 
