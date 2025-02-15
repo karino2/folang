@@ -28,7 +28,7 @@ func blockToType(toT func(Expr) FType, b Block) FType {
 }
 
 func blockToExpr(block Block) Expr {
-	return New_Expr_EReturnableExpr(New_ReturnableExpr_Block(block))
+	return New_Expr_EReturnableExpr(New_ReturnableExpr_RBlock(block))
 }
 
 func meToType(toT func(Expr) FType, me MatchExpr) FType {
@@ -38,10 +38,10 @@ func meToType(toT func(Expr) FType, me MatchExpr) FType {
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 	switch _v31 := (rexpr).(type) {
-	case ReturnableExpr_Block:
+	case ReturnableExpr_RBlock:
 		b := _v31.Value
 		return blockToType(toT, b)
-	case ReturnableExpr_MatchExpr:
+	case ReturnableExpr_RMatchExpr:
 		me := _v31.Value
 		return meToType(toT, me)
 	default:
@@ -78,21 +78,21 @@ func fcToType(fc FunCall) FType {
 
 func ExprToType(expr Expr) FType {
 	switch _v33 := (expr).(type) {
-	case Expr_GoEvalExpr:
+	case Expr_EGoEvalExpr:
 		ge := _v33.Value
 		return ge.typeArg
-	case Expr_StringLiteral:
+	case Expr_EStringLiteral:
 		return New_FType_FString
-	case Expr_IntImm:
+	case Expr_EIntImm:
 		return New_FType_FInt
-	case Expr_Unit:
+	case Expr_EUnit:
 		return New_FType_FUnit
-	case Expr_BoolLiteral:
+	case Expr_EBoolLiteral:
 		return New_FType_FBool
-	case Expr_FieldAccess:
+	case Expr_EFieldAccess:
 		fa := _v33.Value
 		return faToType(fa)
-	case Expr_Var:
+	case Expr_EVar:
 		v := _v33.Value
 		return v.ftype
 	case Expr_ESlice:
@@ -100,16 +100,16 @@ func ExprToType(expr Expr) FType {
 		etp := frt.Pipe(slice.Head(s), ExprToType)
 		st := SliceType{elemType: etp}
 		return New_FType_FSlice(st)
-	case Expr_RecordGen:
+	case Expr_ERecordGen:
 		rg := _v33.Value
 		return New_FType_FRecord(rg.recordType)
-	case Expr_LazyBlock:
+	case Expr_ELazyBlock:
 		lb := _v33.Value
 		return lblockToType(ExprToType, lb)
 	case Expr_EReturnableExpr:
 		re := _v33.Value
 		return returnableToType(ExprToType, re)
-	case Expr_FunCall:
+	case Expr_EFunCall:
 		fc := _v33.Value
 		return fcToType(fc)
 	default:

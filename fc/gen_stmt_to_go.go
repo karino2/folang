@@ -154,10 +154,10 @@ func udfToGo(ud UnionDef) string {
 
 func dsToGo(ds DefStmt) string {
 	switch _v154 := (ds).(type) {
-	case DefStmt_RecordDef:
+	case DefStmt_DRecordDef:
 		rd := _v154.Value
 		return rdfToGo(rd)
-	case DefStmt_UnionDef:
+	case DefStmt_DUnionDef:
 		ud := _v154.Value
 		return udfToGo(ud)
 	default:
@@ -174,27 +174,27 @@ func StmtToGo(stmt Stmt) string {
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(StmtToGo, eToGo, _r0) })
 	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(StmtToGo, eToGo, reToGoRet, _r0) })
 	switch _v155 := (stmt).(type) {
-	case Stmt_Import:
+	case Stmt_SImport:
 		im := _v155.Value
 		return imToGo(im)
-	case Stmt_Package:
+	case Stmt_SPackage:
 		pn := _v155.Value
 		return pmToGo(pn)
-	case Stmt_PackageInfo:
+	case Stmt_SPackageInfo:
 		return ""
-	case Stmt_LetFuncDef:
+	case Stmt_SLetFuncDef:
 		lfd := _v155.Value
 		return lfdToGo(bToGoRet, lfd)
-	case Stmt_LetVarDef:
+	case Stmt_SLetVarDef:
 		lvd := _v155.Value
 		return lvdToGo(eToGo, lvd)
-	case Stmt_ExprStmt:
+	case Stmt_SExprStmt:
 		expr := _v155.Value
 		return eToGo(expr)
-	case Stmt_DefStmt:
+	case Stmt_SDefStmt:
 		ds := _v155.Value
 		return dsToGo(ds)
-	case Stmt_MultipleDefs:
+	case Stmt_SMultipleDefs:
 		md := _v155.Value
 		return mdToGo(md)
 	default:

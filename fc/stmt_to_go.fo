@@ -200,8 +200,8 @@ let udfToGo (ud:UnionDef) =
 
 let dsToGo (ds:DefStmt) =
    match ds with
-   | RecordDef rd -> rdfToGo rd
-   | UnionDef ud -> udfToGo ud
+   | DRecordDef rd -> rdfToGo rd
+   | DUnionDef ud -> udfToGo ud
 
 let mdToGo (md:MultipleDefs) =
   md.defs |>  slice.Map dsToGo |> strings.Concat "\n"
@@ -211,14 +211,14 @@ let StmtToGo (stmt:Stmt) : string=
   let reToGoRet = reToGoReturn StmtToGo eToGo
   let bToGoRet = blockToGoReturn StmtToGo eToGo reToGoRet
   match stmt with
-  | Import im -> imToGo im
-  | Package pn -> pmToGo pn
-  | PackageInfo -> ""
-  | LetFuncDef lfd -> lfdToGo bToGoRet lfd
-  | LetVarDef lvd -> lvdToGo eToGo lvd
-  | ExprStmt expr -> eToGo expr
-  | DefStmt ds -> dsToGo ds
-  | MultipleDefs md -> mdToGo md
+  | SImport im -> imToGo im
+  | SPackage pn -> pmToGo pn
+  | SPackageInfo -> ""
+  | SLetFuncDef lfd -> lfdToGo bToGoRet lfd
+  | SLetVarDef lvd -> lvdToGo eToGo lvd
+  | SExprStmt expr -> eToGo expr
+  | SDefStmt ds -> dsToGo ds
+  | SMultipleDefs md -> mdToGo md
 
 let StmtsToGo (stmts:[]Stmt) =
   slice.Map StmtToGo stmts |> strings.Concat "\n\n" |> strings.AppendTail "\n"

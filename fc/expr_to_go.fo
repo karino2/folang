@@ -168,7 +168,7 @@ let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   buf.String b
 
 let meToExpr (me:MatchExpr) =
-  MatchExpr me |> EReturnableExpr
+  RMatchExpr me |> EReturnableExpr
 
 let meToGo (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   let goret = meToGoReturn toGo btogRet me
@@ -185,15 +185,15 @@ let reToGoReturn (sToGo: Stmt->string) (eToGo: Expr->string) (rexpr:ReturnableEx
   let rtgr = reToGoReturn sToGo eToGo
   let btogoRet = blockToGoReturn sToGo eToGo rtgr
   match rexpr with
-  | Block b -> blockToGoReturn sToGo eToGo rtgr b
-  | MatchExpr me -> meToGoReturn eToGo btogoRet me
+  | RBlock b -> blockToGoReturn sToGo eToGo rtgr b
+  | RMatchExpr me -> meToGoReturn eToGo btogoRet me
 
 let reToGo (sToGo: Stmt->string) (eToGo: Expr->string) (rexpr:ReturnableExpr) : string=
   let rtgr = reToGoReturn sToGo eToGo
   let btogRet = blockToGoReturn sToGo eToGo rtgr
   match rexpr with
-  | Block b -> blockToGo sToGo eToGo rtgr b
-  | MatchExpr me -> meToGo eToGo btogRet me
+  | RBlock b -> blockToGo sToGo eToGo rtgr b
+  | RMatchExpr me -> meToGo eToGo btogRet me
 
 /*
 
@@ -239,7 +239,7 @@ let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
 let fcUnitArgOnly (fc:FunCall) =
   let al = slice.Length fc.args
   if al = 1 then
-    Unit = slice.Head fc.args 
+    EUnit = slice.Head fc.args 
   else
     false
 
@@ -276,15 +276,15 @@ let sliceToGo (tGo:FType->string) (eGo:Expr->string) (exprs: []Expr) =
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   match expr with
-  | BoolLiteral b -> frt.Sprintf1 "%t" b
-  | GoEvalExpr ge -> reinterpretEscape ge.goStmt
-  | StringLiteral s -> frt.Sprintf1 "\"%s\"" s
-  | IntImm i -> frt.Sprintf1 "%d" i
-  | Unit -> ""
-  | FieldAccess fa -> fa.targetName + "." + fa.fieldName
-  | Var v -> v.name
+  | EBoolLiteral b -> frt.Sprintf1 "%t" b
+  | EGoEvalExpr ge -> reinterpretEscape ge.goStmt
+  | EStringLiteral s -> frt.Sprintf1 "\"%s\"" s
+  | EIntImm i -> frt.Sprintf1 "%d" i
+  | EUnit -> ""
+  | EFieldAccess fa -> fa.targetName + "." + fa.fieldName
+  | EVar v -> v.name
   | ESlice es -> sliceToGo FTypeToGo eToGo es
-  | RecordGen rg -> rgToGo eToGo rg
+  | ERecordGen rg -> rgToGo eToGo rg
   | EReturnableExpr re -> reToGo sToGo eToGo re
-  | FunCall fc -> fcToGo FTypeToGo eToGo fc
+  | EFunCall fc -> fcToGo FTypeToGo eToGo fc
 

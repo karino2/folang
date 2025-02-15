@@ -17,17 +17,17 @@ func TestExprToGo(t *testing.T) {
 		want  string
 	}{
 		{
-			New_Expr_StringLiteral("abc"),
+			New_Expr_EStringLiteral("abc"),
 			`"abc"`,
 		},
 		{
-			New_Expr_FieldAccess(FieldAccess{"rec", RecordType{"MyRec", []NameTypePair{{"field1", New_FType_FInt}}}, "field1"}),
+			New_Expr_EFieldAccess(FieldAccess{"rec", RecordType{"MyRec", []NameTypePair{{"field1", New_FType_FInt}}}, "field1"}),
 			"rec.field1",
 		},
 		{
-			New_Expr_RecordGen(
-				RecordGen{[]NEPair{{"hoge", New_Expr_StringLiteral("sval")},
-					{"ika", New_Expr_IntImm(123)}},
+			New_Expr_ERecordGen(
+				RecordGen{[]NEPair{{"hoge", New_Expr_EStringLiteral("sval")},
+					{"ika", New_Expr_EIntImm(123)}},
 					RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}}),
 			"MyRec{hoge: \"sval\", ika: 123}",
 		},
@@ -49,17 +49,17 @@ func TestMatchExprToGo(t *testing.T) {
 	resetUniqueTmpCounter()
 	defer resetUniqueTmpCounter()
 	unionType := UnionType{"IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}}}
-	target := New_Expr_Var(Var{"udata", New_FType_FUnion(unionType)})
+	target := New_Expr_EVar(Var{"udata", New_FType_FUnion(unionType)})
 	matchExpr := MatchExpr{
 		target,
 		[]MatchRule{
 			{
 				MatchPattern{"I", "ival"},
-				newBlock(New_Expr_StringLiteral("I match")),
+				newBlock(New_Expr_EStringLiteral("I match")),
 			},
 			{
 				MatchPattern{"S", "sval"},
-				newBlock(New_Expr_StringLiteral("S match")),
+				newBlock(New_Expr_EStringLiteral("S match")),
 			},
 		},
 	}

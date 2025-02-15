@@ -161,12 +161,12 @@ let psCurrentTTNxL (ps:ParseState) =
 let parsePackage (ps:ParseState) =
   psConsume PACKAGE ps
   |> psIdentNameNxL
-  |> CnvR Package
+  |> CnvR SPackage
 
 let parseImport (ps:ParseState) =
   psConsume IMPORT ps
   |> psStringValNxL
-  |> CnvR Import
+  |> CnvR SImport
 
 /*
 TYPE = ATOM_TYPE
@@ -256,14 +256,14 @@ let parseGoEval (ps:ParseState) =
     let (ps3, ft) = psConsume LT ps2 |> parseType |> CnvL (psConsume GT)
     let (ps4, s) = psStringValNx ps3
     let ge = {goStmt=s; typeArg=ft}
-    (ps4, GoEvalExpr ge)
+    (ps4, EGoEvalExpr ge)
   | STRING ->
     let (ps3, s) = psStringValNx ps2
     let ge = {goStmt=s; typeArg=FUnit}
-    (ps3, GoEvalExpr ge)
+    (ps3, EGoEvalExpr ge)
   | _ ->
     frt.Panic "Wrong arg for GoEval"
-    (ps2, Unit)
+    (ps2, EUnit)
 
 
 // FIELD_INITIALIZER = IDENTIFIER '=' expr
@@ -297,23 +297,23 @@ let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let (rtype, ok) = slice.Map NVPToName neps |> scLookupRecord ps2.scope
   if ok then
     {fieldsNV=neps; recordType=rtype}
-    |> RecordGen |> withPs ps2
+    |> ERecordGen |> withPs ps2
   else
     frt.Panic "record field name match to no record type."
-    (ps2, Unit)
+    (ps2, EUnit)
 
 let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let cur = psCurrent ps
   let pn = psNext ps
   match cur.ttype with
   | STRING ->
-    StringLiteral cur.stringVal |> withPs pn
+    EStringLiteral cur.stringVal |> withPs pn
   | INT_IMM ->
-    IntImm cur.intVal |> withPs pn
+    EIntImm cur.intVal |> withPs pn
   | TRUE ->
-    BoolLiteral true |> withPs pn
+    EBoolLiteral true |> withPs pn
   | FALSE ->
-    BoolLiteral false |> withPs pn
+    EBoolLiteral false |> withPs pn
   | LBRACE ->
     parseRecordGen parseE ps
   | IDENTIFIER ->
@@ -322,11 +322,11 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     else
       let (vfac, ok) = scLookupVarFac ps.scope cur.stringVal
       if ok then
-        vfac () |> Var |> withPs pn
+        vfac () |> EVar |> withPs pn
       else
         frt.Panic "Unknown var ref"
-        (ps, Unit)
-  | _ -> (ps, Unit)
+        (ps, EUnit)
+  | _ -> (ps, EUnit)
 
 
 let isEndOfTerm (ps:ParseState) =
@@ -433,7 +433,7 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
   match psCurrentTT ps with
   | MATCH ->
      parseMatchExpr pExpr pBlock ps
-     |> CnvR MatchExpr |> CnvR EReturnableExpr
+     |> CnvR RMatchExpr |> CnvR EReturnableExpr
   | LSBRACKET -> parseSliceExpr pExpr ps
   | _ ->
     let (ps2, es) = parseAtomList pExpr ps
@@ -444,9 +444,9 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
       let head = slice.Head es
       let tail = slice.Tail es
       match head with
-      | Var v ->
+      | EVar v ->
         let fc = {targetFunc=v; args=tail}
-        (ps2, FunCall fc)
+        (ps2, EFunCall fc)
       | _ ->
         frt.Panic "Funcall head is not var"
         (ps2, head)
@@ -457,8 +457,8 @@ type StmtLike =
 
 let slToStmt (sl:StmtLike) =
   match sl with
-  | SLExpr e -> ExprStmt e
-  | SLLetStmt l -> LetVarDef l
+  | SLExpr e -> SExprStmt e
+  | SLLetStmt l -> SLetVarDef l
 
 // STMT_LIKE = LET_STMT | EXPR
 let parseStmtLike (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
@@ -564,16 +564,16 @@ let parseLet (pExpr:ParseState->ParseState*Expr) (ps:ParseState) =
   match psCurrentTT psN with
   | LPAREN ->
     parseLetFuncDef pLet ps
-    |> CnvR LetFuncDef
+    |> CnvR SLetFuncDef
   | _ ->
     let psNN = psNext psN
     match psCurrentTT psNN with
     | EQ ->
       pLet ps
-      |> CnvR LetVarDef
+      |> CnvR SLetVarDef
     | _ ->
       parseLetFuncDef pLet ps
-      |> CnvR LetFuncDef
+      |> CnvR SLetFuncDef
      
 
 
@@ -686,12 +686,12 @@ let parseTypeDef (ps:ParseState) =
   let (ps2, tname) = psConsume TYPE ps |> psIdentNameNxL |> CnvL (psConsume EQ) |> CnvL psSkipEOL
   match psCurrentTT ps2 with
   | LBRACE ->
-    parseRecordDef tname ps2 |> CnvR RecordDef |> CnvR DefStmt
+    parseRecordDef tname ps2 |> CnvR DRecordDef |> CnvR SDefStmt
   | BAR ->
-    parseUnionDef tname ps2  |> CnvR UnionDef |> CnvR DefStmt
+    parseUnionDef tname ps2  |> CnvR DUnionDef |> CnvR SDefStmt
   | _ ->
     frt.Panic "NYI"
-    (ps2, ExprStmt Unit)
+    (ps2, SExprStmt EUnit)
 
 let dummyPBlock (ps:ParseState) =
   frt.Panic "Should never called."

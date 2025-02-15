@@ -15,7 +15,7 @@ func TestParsePackage(t *testing.T) {
 	got := gotPair.E1
 
 	switch tgot := got.(type) {
-	case Stmt_Package:
+	case Stmt_SPackage:
 		if tgot.Value != "main" {
 			t.Errorf("expect main, got %s", tgot.Value)
 		}

@@ -155,7 +155,7 @@ func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchEx
 }
 
 func meToExpr(me MatchExpr) Expr {
-	return frt.Pipe(New_ReturnableExpr_MatchExpr(me), New_Expr_EReturnableExpr)
+	return frt.Pipe(New_ReturnableExpr_RMatchExpr(me), New_Expr_EReturnableExpr)
 }
 
 func meToGo(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) string {
@@ -168,10 +168,10 @@ func reToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr Return
 	rtgr := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	btogoRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, rtgr, _r0) })
 	switch _v99 := (rexpr).(type) {
-	case ReturnableExpr_Block:
+	case ReturnableExpr_RBlock:
 		b := _v99.Value
 		return blockToGoReturn(sToGo, eToGo, rtgr, b)
-	case ReturnableExpr_MatchExpr:
+	case ReturnableExpr_RMatchExpr:
 		me := _v99.Value
 		return meToGoReturn(eToGo, btogoRet, me)
 	default:
@@ -183,10 +183,10 @@ func reToGo(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr ReturnableEx
 	rtgr := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	btogRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, rtgr, _r0) })
 	switch _v100 := (rexpr).(type) {
-	case ReturnableExpr_Block:
+	case ReturnableExpr_RBlock:
 		b := _v100.Value
 		return blockToGo(sToGo, eToGo, rtgr, b)
-	case ReturnableExpr_MatchExpr:
+	case ReturnableExpr_RMatchExpr:
 		me := _v100.Value
 		return meToGo(eToGo, btogRet, me)
 	default:
@@ -235,7 +235,7 @@ func fcPartialApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall)
 func fcUnitArgOnly(fc FunCall) bool {
 	al := slice.Length(fc.args)
 	return frt.IfElse(frt.OpEqual(al, 1), (func() bool {
-		return frt.OpEqual(New_Expr_Unit, slice.Head(fc.args))
+		return frt.OpEqual(New_Expr_EUnit, slice.Head(fc.args))
 	}), (func() bool {
 		return false
 	}))
@@ -281,36 +281,36 @@ func sliceToGo(tGo func(FType) string, eGo func(Expr) string, exprs []Expr) stri
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
 	switch _v101 := (expr).(type) {
-	case Expr_BoolLiteral:
+	case Expr_EBoolLiteral:
 		b := _v101.Value
 		return frt.Sprintf1("%t", b)
-	case Expr_GoEvalExpr:
+	case Expr_EGoEvalExpr:
 		ge := _v101.Value
 		return reinterpretEscape(ge.goStmt)
-	case Expr_StringLiteral:
+	case Expr_EStringLiteral:
 		s := _v101.Value
 		return frt.Sprintf1("\"%s\"", s)
-	case Expr_IntImm:
+	case Expr_EIntImm:
 		i := _v101.Value
 		return frt.Sprintf1("%d", i)
-	case Expr_Unit:
+	case Expr_EUnit:
 		return ""
-	case Expr_FieldAccess:
+	case Expr_EFieldAccess:
 		fa := _v101.Value
 		return ((fa.targetName + ".") + fa.fieldName)
-	case Expr_Var:
+	case Expr_EVar:
 		v := _v101.Value
 		return v.name
 	case Expr_ESlice:
 		es := _v101.Value
 		return sliceToGo(FTypeToGo, eToGo, es)
-	case Expr_RecordGen:
+	case Expr_ERecordGen:
 		rg := _v101.Value
 		return rgToGo(eToGo, rg)
 	case Expr_EReturnableExpr:
 		re := _v101.Value
 		return reToGo(sToGo, eToGo, re)
-	case Expr_FunCall:
+	case Expr_EFunCall:
 		fc := _v101.Value
 		return fcToGo(FTypeToGo, eToGo, fc)
 	default:

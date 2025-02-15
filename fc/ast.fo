@@ -27,23 +27,21 @@ Only support variable match for a while:
 type MatchPattern = {caseId: string; varName: string}
 
 type Expr =
-| GoEvalExpr of GoEvalExpr
-| StringLiteral of string
-| IntImm of int
-| Unit
-| BoolLiteral of bool
-| FunCall of FunCall
-| FieldAccess of FieldAccess
-| Var of Var
+| EGoEvalExpr of GoEvalExpr
+| EStringLiteral of string
+| EIntImm of int
+| EUnit
+| EBoolLiteral of bool
+| EFunCall of FunCall
+| EFieldAccess of FieldAccess
+| EVar of Var
 | ESlice of []Expr
-| RecordGen of RecordGen
-| LazyBlock of LazyBlock
+| ERecordGen of RecordGen
+| ELazyBlock of LazyBlock
 /*
   For some expr, normally we need to wrap with func() to become expr in go stmt
   But in some case like final expr of block, just return is enough and do not need to wrap func().
   We use type ReturnableExpr for expr of which we can emit directlry return go code.
-
-  Avoid name conflict of ReturnableExpr by adding E.
 */
 | EReturnableExpr of ReturnableExpr
 and FunCall = {targetFunc: Var; args: []Expr}
@@ -54,24 +52,24 @@ and LazyBlock = {stmts: []Stmt; finalExpr: Expr}
 and MatchRule = {pattern: MatchPattern; body: Block}
 and MatchExpr = {target: Expr; rules: []MatchRule}
 and ReturnableExpr =
-| Block of Block
-| MatchExpr of MatchExpr
+| RBlock of Block
+| RMatchExpr of MatchExpr
 and Stmt =
-| Import of string
-| Package of string
-| PackageInfo of PackageInfo
-| LetFuncDef of LetFuncDef
-| LetVarDef of LetVarDef
-| ExprStmt of Expr
-| DefStmt of DefStmt
-| MultipleDefs of MultipleDefs
+| SImport of string
+| SPackage of string
+| SPackageInfo of PackageInfo
+| SLetFuncDef of LetFuncDef
+| SLetVarDef of LetVarDef
+| SExprStmt of Expr
+| SDefStmt of DefStmt
+| SMultipleDefs of MultipleDefs
 and LetFuncDef = {name: string; params: []Var; body:Block}
 and LetVarDef = {name: string; rhs: Expr}
 and PackageInfo = {name: string; funcInfo: funcTypeDict; typeInfo: extTypeDict}
 and RecordDef = {name: string; fields: []NameTypePair}
 and UnionDef = {name: string; cases: []NameTypePair}
 and DefStmt =
-| RecordDef of RecordDef
-| UnionDef of UnionDef
+| DRecordDef of RecordDef
+| DUnionDef of UnionDef
 and MultipleDefs = {defs: []DefStmt}
 

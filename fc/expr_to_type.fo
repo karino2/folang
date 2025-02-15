@@ -22,7 +22,7 @@ let blockToType (toT: Expr->FType)  (b:Block)=
   blockReturnType toT b
 
 let blockToExpr (block:Block) =
-  EReturnableExpr (Block block)
+  EReturnableExpr (RBlock block)
 
 let meToType (toT: Expr->FType) (me:MatchExpr) =
   let frule = me.rules |> slice.Head
@@ -30,8 +30,8 @@ let meToType (toT: Expr->FType) (me:MatchExpr) =
 
 let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
   match rexpr with
-  | Block b -> blockToType toT b
-  | MatchExpr me -> meToType toT me
+  | RBlock b -> blockToType toT b
+  | RMatchExpr me -> meToType toT me
 
 let fcToFuncType (fc:FunCall) =
   // double field access like fc.targetFunc.ftype is NYI.
@@ -56,19 +56,19 @@ let fcToType (fc:FunCall) =
 
 let ExprToType (expr:Expr) : FType =
   match expr with
-  | GoEvalExpr ge -> ge.typeArg
-  | StringLiteral _ -> FString
-  | IntImm _ -> FInt
-  | Unit -> FUnit
-  | BoolLiteral _ -> FBool
-  | FieldAccess fa -> faToType fa
-  | Var v -> v.ftype
+  | EGoEvalExpr ge -> ge.typeArg
+  | EStringLiteral _ -> FString
+  | EIntImm _ -> FInt
+  | EUnit -> FUnit
+  | EBoolLiteral _ -> FBool
+  | EFieldAccess fa -> faToType fa
+  | EVar v -> v.ftype
   | ESlice s -> 
     // slice must be all the same type, so use first elem type.
     let etp = slice.Head s |> ExprToType
     let st = {SliceType.elemType=etp}
     FSlice st
-  | RecordGen rg -> FRecord rg.recordType
-  | LazyBlock lb -> lblockToType ExprToType lb
+  | ERecordGen rg -> FRecord rg.recordType
+  | ELazyBlock lb -> lblockToType ExprToType lb
   | EReturnableExpr re -> returnableToType ExprToType re
-  | FunCall fc -> fcToType fc
+  | EFunCall fc -> fcToType fc

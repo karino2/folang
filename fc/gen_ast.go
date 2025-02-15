@@ -25,65 +25,65 @@ type Expr interface {
 	Expr_Union()
 }
 
-func (Expr_GoEvalExpr) Expr_Union()      {}
-func (Expr_StringLiteral) Expr_Union()   {}
-func (Expr_IntImm) Expr_Union()          {}
-func (Expr_Unit) Expr_Union()            {}
-func (Expr_BoolLiteral) Expr_Union()     {}
-func (Expr_FunCall) Expr_Union()         {}
-func (Expr_FieldAccess) Expr_Union()     {}
-func (Expr_Var) Expr_Union()             {}
+func (Expr_EGoEvalExpr) Expr_Union()     {}
+func (Expr_EStringLiteral) Expr_Union()  {}
+func (Expr_EIntImm) Expr_Union()         {}
+func (Expr_EUnit) Expr_Union()           {}
+func (Expr_EBoolLiteral) Expr_Union()    {}
+func (Expr_EFunCall) Expr_Union()        {}
+func (Expr_EFieldAccess) Expr_Union()    {}
+func (Expr_EVar) Expr_Union()            {}
 func (Expr_ESlice) Expr_Union()          {}
-func (Expr_RecordGen) Expr_Union()       {}
-func (Expr_LazyBlock) Expr_Union()       {}
+func (Expr_ERecordGen) Expr_Union()      {}
+func (Expr_ELazyBlock) Expr_Union()      {}
 func (Expr_EReturnableExpr) Expr_Union() {}
 
-type Expr_GoEvalExpr struct {
+type Expr_EGoEvalExpr struct {
 	Value GoEvalExpr
 }
 
-func New_Expr_GoEvalExpr(v GoEvalExpr) Expr { return Expr_GoEvalExpr{v} }
+func New_Expr_EGoEvalExpr(v GoEvalExpr) Expr { return Expr_EGoEvalExpr{v} }
 
-type Expr_StringLiteral struct {
+type Expr_EStringLiteral struct {
 	Value string
 }
 
-func New_Expr_StringLiteral(v string) Expr { return Expr_StringLiteral{v} }
+func New_Expr_EStringLiteral(v string) Expr { return Expr_EStringLiteral{v} }
 
-type Expr_IntImm struct {
+type Expr_EIntImm struct {
 	Value int
 }
 
-func New_Expr_IntImm(v int) Expr { return Expr_IntImm{v} }
+func New_Expr_EIntImm(v int) Expr { return Expr_EIntImm{v} }
 
-type Expr_Unit struct {
+type Expr_EUnit struct {
 }
 
-var New_Expr_Unit Expr = Expr_Unit{}
+var New_Expr_EUnit Expr = Expr_EUnit{}
 
-type Expr_BoolLiteral struct {
+type Expr_EBoolLiteral struct {
 	Value bool
 }
 
-func New_Expr_BoolLiteral(v bool) Expr { return Expr_BoolLiteral{v} }
+func New_Expr_EBoolLiteral(v bool) Expr { return Expr_EBoolLiteral{v} }
 
-type Expr_FunCall struct {
+type Expr_EFunCall struct {
 	Value FunCall
 }
 
-func New_Expr_FunCall(v FunCall) Expr { return Expr_FunCall{v} }
+func New_Expr_EFunCall(v FunCall) Expr { return Expr_EFunCall{v} }
 
-type Expr_FieldAccess struct {
+type Expr_EFieldAccess struct {
 	Value FieldAccess
 }
 
-func New_Expr_FieldAccess(v FieldAccess) Expr { return Expr_FieldAccess{v} }
+func New_Expr_EFieldAccess(v FieldAccess) Expr { return Expr_EFieldAccess{v} }
 
-type Expr_Var struct {
+type Expr_EVar struct {
 	Value Var
 }
 
-func New_Expr_Var(v Var) Expr { return Expr_Var{v} }
+func New_Expr_EVar(v Var) Expr { return Expr_EVar{v} }
 
 type Expr_ESlice struct {
 	Value []Expr
@@ -91,17 +91,17 @@ type Expr_ESlice struct {
 
 func New_Expr_ESlice(v []Expr) Expr { return Expr_ESlice{v} }
 
-type Expr_RecordGen struct {
+type Expr_ERecordGen struct {
 	Value RecordGen
 }
 
-func New_Expr_RecordGen(v RecordGen) Expr { return Expr_RecordGen{v} }
+func New_Expr_ERecordGen(v RecordGen) Expr { return Expr_ERecordGen{v} }
 
-type Expr_LazyBlock struct {
+type Expr_ELazyBlock struct {
 	Value LazyBlock
 }
 
-func New_Expr_LazyBlock(v LazyBlock) Expr { return Expr_LazyBlock{v} }
+func New_Expr_ELazyBlock(v LazyBlock) Expr { return Expr_ELazyBlock{v} }
 
 type Expr_EReturnableExpr struct {
 	Value ReturnableExpr
@@ -141,81 +141,81 @@ type ReturnableExpr interface {
 	ReturnableExpr_Union()
 }
 
-func (ReturnableExpr_Block) ReturnableExpr_Union()     {}
-func (ReturnableExpr_MatchExpr) ReturnableExpr_Union() {}
+func (ReturnableExpr_RBlock) ReturnableExpr_Union()     {}
+func (ReturnableExpr_RMatchExpr) ReturnableExpr_Union() {}
 
-type ReturnableExpr_Block struct {
+type ReturnableExpr_RBlock struct {
 	Value Block
 }
 
-func New_ReturnableExpr_Block(v Block) ReturnableExpr { return ReturnableExpr_Block{v} }
+func New_ReturnableExpr_RBlock(v Block) ReturnableExpr { return ReturnableExpr_RBlock{v} }
 
-type ReturnableExpr_MatchExpr struct {
+type ReturnableExpr_RMatchExpr struct {
 	Value MatchExpr
 }
 
-func New_ReturnableExpr_MatchExpr(v MatchExpr) ReturnableExpr { return ReturnableExpr_MatchExpr{v} }
+func New_ReturnableExpr_RMatchExpr(v MatchExpr) ReturnableExpr { return ReturnableExpr_RMatchExpr{v} }
 
 type Stmt interface {
 	Stmt_Union()
 }
 
-func (Stmt_Import) Stmt_Union()       {}
-func (Stmt_Package) Stmt_Union()      {}
-func (Stmt_PackageInfo) Stmt_Union()  {}
-func (Stmt_LetFuncDef) Stmt_Union()   {}
-func (Stmt_LetVarDef) Stmt_Union()    {}
-func (Stmt_ExprStmt) Stmt_Union()     {}
-func (Stmt_DefStmt) Stmt_Union()      {}
-func (Stmt_MultipleDefs) Stmt_Union() {}
+func (Stmt_SImport) Stmt_Union()       {}
+func (Stmt_SPackage) Stmt_Union()      {}
+func (Stmt_SPackageInfo) Stmt_Union()  {}
+func (Stmt_SLetFuncDef) Stmt_Union()   {}
+func (Stmt_SLetVarDef) Stmt_Union()    {}
+func (Stmt_SExprStmt) Stmt_Union()     {}
+func (Stmt_SDefStmt) Stmt_Union()      {}
+func (Stmt_SMultipleDefs) Stmt_Union() {}
 
-type Stmt_Import struct {
+type Stmt_SImport struct {
 	Value string
 }
 
-func New_Stmt_Import(v string) Stmt { return Stmt_Import{v} }
+func New_Stmt_SImport(v string) Stmt { return Stmt_SImport{v} }
 
-type Stmt_Package struct {
+type Stmt_SPackage struct {
 	Value string
 }
 
-func New_Stmt_Package(v string) Stmt { return Stmt_Package{v} }
+func New_Stmt_SPackage(v string) Stmt { return Stmt_SPackage{v} }
 
-type Stmt_PackageInfo struct {
+type Stmt_SPackageInfo struct {
 	Value PackageInfo
 }
 
-func New_Stmt_PackageInfo(v PackageInfo) Stmt { return Stmt_PackageInfo{v} }
+func New_Stmt_SPackageInfo(v PackageInfo) Stmt { return Stmt_SPackageInfo{v} }
 
-type Stmt_LetFuncDef struct {
+type Stmt_SLetFuncDef struct {
 	Value LetFuncDef
 }
 
-func New_Stmt_LetFuncDef(v LetFuncDef) Stmt { return Stmt_LetFuncDef{v} }
+func New_Stmt_SLetFuncDef(v LetFuncDef) Stmt { return Stmt_SLetFuncDef{v} }
 
-type Stmt_LetVarDef struct {
+type Stmt_SLetVarDef struct {
 	Value LetVarDef
 }
 
-func New_Stmt_LetVarDef(v LetVarDef) Stmt { return Stmt_LetVarDef{v} }
+func New_Stmt_SLetVarDef(v LetVarDef) Stmt { return Stmt_SLetVarDef{v} }
 
-type Stmt_ExprStmt struct {
+type Stmt_SExprStmt struct {
 	Value Expr
 }
 
-func New_Stmt_ExprStmt(v Expr) Stmt { return Stmt_ExprStmt{v} }
+func New_Stmt_SExprStmt(v Expr) Stmt { return Stmt_SExprStmt{v} }
 
-type Stmt_DefStmt struct {
+type Stmt_SDefStmt struct {
 	Value DefStmt
 }
 
-func New_Stmt_DefStmt(v DefStmt) Stmt { return Stmt_DefStmt{v} }
+func New_Stmt_SDefStmt(v DefStmt) Stmt { return Stmt_SDefStmt{v} }
 
-type Stmt_MultipleDefs struct {
+type Stmt_SMultipleDefs struct {
 	Value MultipleDefs
 }
 
-func New_Stmt_MultipleDefs(v MultipleDefs) Stmt { return Stmt_MultipleDefs{v} }
+func New_Stmt_SMultipleDefs(v MultipleDefs) Stmt { return Stmt_SMultipleDefs{v} }
 
 type LetFuncDef struct {
 	name   string
@@ -243,20 +243,20 @@ type DefStmt interface {
 	DefStmt_Union()
 }
 
-func (DefStmt_RecordDef) DefStmt_Union() {}
-func (DefStmt_UnionDef) DefStmt_Union()  {}
+func (DefStmt_DRecordDef) DefStmt_Union() {}
+func (DefStmt_DUnionDef) DefStmt_Union()  {}
 
-type DefStmt_RecordDef struct {
+type DefStmt_DRecordDef struct {
 	Value RecordDef
 }
 
-func New_DefStmt_RecordDef(v RecordDef) DefStmt { return DefStmt_RecordDef{v} }
+func New_DefStmt_DRecordDef(v RecordDef) DefStmt { return DefStmt_DRecordDef{v} }
 
-type DefStmt_UnionDef struct {
+type DefStmt_DUnionDef struct {
 	Value UnionDef
 }
 
-func New_DefStmt_UnionDef(v UnionDef) DefStmt { return DefStmt_UnionDef{v} }
+func New_DefStmt_DUnionDef(v UnionDef) DefStmt { return DefStmt_DUnionDef{v} }
 
 type MultipleDefs struct {
 	defs []DefStmt
