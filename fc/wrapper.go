@@ -55,13 +55,6 @@ func uniqueTmpVarName() string {
 	return fmt.Sprintf("_v%d", uniqueId)
 }
 
-/*
-func uniqueTmpTypeParamName() string {
-	uniqueId++
-	return fmt.Sprintf("_T%d", uniqueId)
-}
-*/
-
 func resetUniqueTmpCounter() {
 	uniqueId = 0
 }
@@ -546,8 +539,8 @@ func (tva *typeVarAllocator) Allocate() TypeVar {
 	return tvar
 }
 
-func tvaAlloc(tva TypeVarAllocator) TypeVar {
-	return tva.Allocate()
+func tvaReset(tva TypeVarAllocator) {
+	tva.Reset()
 }
 
 func tvaToTypeVarGen(tva TypeVarAllocator) func() TypeVar {

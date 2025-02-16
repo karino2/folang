@@ -48,7 +48,8 @@ package_info _ =
   type TypeVarAllocator
   let NewTypeVarAllocator: ()->TypeVarAllocator
   let tvaToTypeVarGen: TypeVarAllocator->(()->TypeVar)
-
+  let tvaReset: TypeVarAllocator->()
+  let resetUniqueTmpCounter: ()->()
 
 type ParseState = {
   tkz: Tokenizer;
@@ -674,18 +675,30 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   lfdToFuncVar lfd |> scDefVar ps4.scope fname 
   (ps4, lfd)
 
+let parseRootLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+  let (ps2, lfd) = parseLetFuncDef pLet ps
+  // resolve lfd here.
+  (ps2, lfd)
+
+let psResetTmpCtx (ps:ParseState) =
+  resetUniqueTmpCounter ()
+  tvaReset ps.tva
+  ps
+
+
 /*
 LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
 
 LET_VAR_DEF = 'let' IDENTIFIER '=' expr
 LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
 */
-let parseLet (pExpr:ParseState->ParseState*Expr) (ps:ParseState) =
+let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
+  let ps = psResetTmpCtx ps0
   let pLet = parseLetVarDef pExpr
   let psN = psNext ps
   match psCurrentTT psN with
   | LPAREN ->
-    parseLetFuncDef pLet ps
+    parseRootLetFuncDef pLet ps
     |> CnvR SLetFuncDef
   | _ ->
     let psNN = psNext psN
@@ -694,7 +707,7 @@ let parseLet (pExpr:ParseState->ParseState*Expr) (ps:ParseState) =
       pLet ps
       |> CnvR SLetVarDef
     | _ ->
-      parseLetFuncDef pLet ps
+      parseRootLetFuncDef pLet ps
       |> CnvR SLetFuncDef
      
 
@@ -950,7 +963,7 @@ let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps
   | IMPORT -> parseImport ps
-  | LET -> parseLet pExpr ps
+  | LET -> parseRootLet pExpr ps
   | TYPE -> parseTypeDef ps
   | PACKAGE_INFO -> parsePackageInfo ps
   | _ ->

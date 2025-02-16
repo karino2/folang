@@ -724,12 +724,24 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LetVarDef], ps
 	return frt.NewTuple2(ps4, lfd)
 }
 
-func parseLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Stmt] {
+func parseRootLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LetVarDef], ps ParseState) frt.Tuple2[ParseState, LetFuncDef] {
+	ps2, lfd := frt.Destr(parseLetFuncDef(pLet, ps))
+	return frt.NewTuple2(ps2, lfd)
+}
+
+func psResetTmpCtx(ps ParseState) ParseState {
+	resetUniqueTmpCounter()
+	tvaReset(ps.tva)
+	return ps
+}
+
+func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 ParseState) frt.Tuple2[ParseState, Stmt] {
+	ps := psResetTmpCtx(ps0)
 	pLet := (func(_r0 ParseState) frt.Tuple2[ParseState, LetVarDef] { return parseLetVarDef(pExpr, _r0) })
 	psN := psNext(ps)
 	switch (psCurrentTT(psN)).(type) {
 	case TokenType_LPAREN:
-		return frt.Pipe(parseLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, LetFuncDef]) frt.Tuple2[ParseState, Stmt] {
+		return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, LetFuncDef]) frt.Tuple2[ParseState, Stmt] {
 			return CnvR(New_Stmt_SLetFuncDef, _r0)
 		}))
 	default:
@@ -740,7 +752,7 @@ func parseLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState
 				return CnvR(New_Stmt_SLetVarDef, _r0)
 			}))
 		default:
-			return frt.Pipe(parseLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, LetFuncDef]) frt.Tuple2[ParseState, Stmt] {
+			return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, LetFuncDef]) frt.Tuple2[ParseState, Stmt] {
 				return CnvR(New_Stmt_SLetFuncDef, _r0)
 			}))
 		}
@@ -991,7 +1003,7 @@ func parseRootOneStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pa
 	case TokenType_IMPORT:
 		return parseImport(ps)
 	case TokenType_LET:
-		return parseLet(pExpr, ps)
+		return parseRootLet(pExpr, ps)
 	case TokenType_TYPE:
 		return parseTypeDef(ps)
 	case TokenType_PACKAGE_INFO:
