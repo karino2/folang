@@ -58,7 +58,7 @@ func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
 }
 
 func parseAll(ps ParseState) (ParseState, []Stmt) {
-	res := parseStmts(parseExprFacade, ps)
+	res := parseRootStmts(parseExprFacade, ps)
 	return frt.Destr(res)
 }
 

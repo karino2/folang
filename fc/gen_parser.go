@@ -984,7 +984,7 @@ func parsePackageInfo(ps ParseState) frt.Tuple2[ParseState, Stmt] {
 	return frt.NewTuple2(ps5, New_Stmt_SPackageInfo(pi))
 }
 
-func parseStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Stmt] {
+func parseRootOneStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Stmt] {
 	switch (psCurrentTT(ps)).(type) {
 	case TokenType_PACKAGE:
 		return parsePackage(ps)
@@ -1002,14 +1002,14 @@ func parseStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseStat
 	}
 }
 
-func parseStmts(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Stmt] {
+func parseRootStmts(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Stmt] {
 	ps2 := psSkipEOL(ps)
 	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_EOF), (func() frt.Tuple2[ParseState, []Stmt] {
 		s := []Stmt{}
 		return frt.NewTuple2(ps2, s)
 	}), (func() frt.Tuple2[ParseState, []Stmt] {
-		ps3, one := frt.Destr(frt.Pipe(parseStmt(pExpr, ps2), (func(_r0 frt.Tuple2[ParseState, Stmt]) frt.Tuple2[ParseState, Stmt] { return CnvL(psSkipEOL, _r0) })))
-		ps4, rest := frt.Destr(parseStmts(pExpr, ps3))
+		ps3, one := frt.Destr(frt.Pipe(parseRootOneStmt(pExpr, ps2), (func(_r0 frt.Tuple2[ParseState, Stmt]) frt.Tuple2[ParseState, Stmt] { return CnvL(psSkipEOL, _r0) })))
+		ps4, rest := frt.Destr(parseRootStmts(pExpr, ps3))
 		ss := slice.Prepend(one, rest)
 		return frt.NewTuple2(ps4, ss)
 	}))
