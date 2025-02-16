@@ -997,6 +997,21 @@ let hoge () =
 `,
 			"hoge() []int{",
 		},
+		{
+			`package main
+
+package_info _ =
+  let Concat<T>: [][]T -> []T
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+	let s2 = GoEval<[]int> "[]int{3, 4}"
+	[s1; s2]
+	|> Concat
+
+`,
+			"hoge() []int{",
+		},
 	}
 
 	for _, test := range tests {
@@ -1192,8 +1207,8 @@ package_info _ =
 let hoge () =
   let s1 = GoEval<[]int> "[]int{1, 2}"
 	let s2 = GoEval<[]int> "[]int{3, 4}"
-	let s3 = [s1; s2]
-	Concat s3
+	[s1; s2]
+	|> Concat
 
 `
 

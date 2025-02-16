@@ -280,15 +280,12 @@ func resolveOneType(target FType, exprType FType, paramInfo map[string]FType) {
 			}
 		}
 	case *FFunc:
-		// only check one level of T->U
 		eft, ok := exprType.(*FFunc)
 		if !ok {
 			panic("can't infer from argtype to expr, NYI.")
 		}
 		for i, tt := range gt.Targets {
-			if ptt, ok := tt.(*FParametrized); ok {
-				paramInfo[ptt.name] = eft.Targets[i]
-			}
+			resolveOneType(tt, eft.Targets[i], paramInfo)
 		}
 	default:
 		return
@@ -323,8 +320,13 @@ func updateType(old FType, tinfo map[string]FType) FType {
 			newEts = append(newEts, nt)
 		}
 		return &FTuple{newEts}
-
-		// TODO: *FFunc support.
+	case *FFunc:
+		var newTargets []FType
+		for _, tt := range grt.Targets {
+			nt := updateType(tt, tinfo)
+			newTargets = append(newTargets, nt)
+		}
+		return NewFFunc(newTargets...)
 	default:
 		return old
 	}
@@ -384,13 +386,9 @@ func matchTypeParam(target FType, realType FType) (paramName string, matchType F
 		matched = true
 		return
 	case *FSlice:
-		if elemPt, ok := tt.elemType.(*FParametrized); ok {
-			realSlice := realType.(*FSlice)
-			paramName = elemPt.name
-			matchType = realSlice.elemType
-			matched = true
-			return
-		}
+		rst := realType.(*FSlice)
+		paramName, matchType, matched = matchTypeParam(tt.elemType, rst.elemType)
+		return
 	case *FTuple:
 		// NYI: support both match case.
 		for i, targetElemType := range tt.Elems {
