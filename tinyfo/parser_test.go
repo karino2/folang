@@ -962,6 +962,26 @@ let hoge () =
 `,
 			"[func (func () string) string, bool]",
 		},
+		{
+			`package main
+
+type IorS =
+  | IT of int
+  | ST of string
+
+let nestMatch (lhs:IorS) (rhs:IorS) =
+  match lhs with
+  | IT ival ->
+    match rhs with
+    | IT i2 ->
+      ival+i2
+    | _ ->
+      ival+456
+  | _ ->
+    123
+`,
+			"return (ival+456)\n}",
+		},
 	}
 
 	for _, test := range tests {
@@ -1015,8 +1035,8 @@ type IorRec =
 let hoge () =
   let rec = Rec {name="hoge"; ival=123}
   match rec with
-	| Int i -> i
-	| Rec r-> r.ival
+  | Int i -> i
+  | Rec r-> r.ival
 `,
 			[]string{"hoge() int", "r.ival"},
 		},
@@ -1031,8 +1051,8 @@ and SliceType = {elemType: FType}
 let hoge () =
   let rec = FSlice {elemType=FInt}
   match rec with
-	| FSlice s-> s.elemType
-	| _ -> FInt
+  | FSlice s-> s.elemType
+  | _ -> FInt
 `,
 			[]string{"Value SliceType", "elemType FType", "hoge() FType", "s.elemType"},
 		},
@@ -1151,13 +1171,20 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let lookupVarFac: string->((()->string)->string)*bool
-
-
-let hoge () =
-  lookupVarFac "abc"
-
+  type IorS =
+    | IT of int
+    | ST of string
+	
+  let nestMatch (lhs:IorS) (rhs:IorS) =
+    match lhs with
+    | IT ival ->
+      match rhs with
+      | IT i2 ->
+        ival+i2
+      | _ ->
+        ival+456
+    | _ ->
+      123
 `
 
 	got := transpile(src)

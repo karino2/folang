@@ -999,6 +999,17 @@ func (p *Parser) parseMatchRule(target Expr) *MatchRule {
 	return &MatchRule{&MatchPattern{caseName, varName}, block}
 }
 
+func (p *Parser) nextIsBarInsideOffside() bool {
+	tk := p.Current()
+	defer p.tokenizer.RevertTo(tk)
+
+	p.skipEOL()
+	if !p.currentIs(BAR) {
+		return false
+	}
+	return p.currentCol() >= p.currentOffside()
+}
+
 /*
 MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+
 */
@@ -1008,7 +1019,7 @@ func (p *Parser) parseMatchExpr() Expr {
 	p.consume(WITH)
 
 	var rules []*MatchRule
-	for p.currentIs(EOL) && p.peekNextNonEOLToken().ttype == BAR {
+	for p.currentIs(EOL) && p.nextIsBarInsideOffside() {
 		p.skipEOL()
 		one := p.parseMatchRule(target)
 		rules = append(rules, one)
