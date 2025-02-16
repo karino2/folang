@@ -100,7 +100,7 @@ let psPushOffside (ps:ParseState) =
   let curCol = psCurCol ps
   if (psCurOffside ps) >= curCol then
     frt.Panic "Overrun offside rule"
-  slice.Append curCol ps.offsideCol
+  slice.PushLast curCol ps.offsideCol
   |> psWithOffside ps
 
 let psPopOffside (ps:ParseState) =
@@ -263,7 +263,7 @@ let parseTypeArrows (pType:ParseState->ParseState*FType) (ps:ParseState) : Parse
   if (psCurrentTT ps2) = RARROW then
     psConsume RARROW ps2
     |> parseTypeArrows pType
-    |> CnvR (slice.Prepend one)
+    |> CnvR (slice.PushHead one)
   else
     (ps2, [one])
 
@@ -315,7 +315,7 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
       match tt with
       | LPAREN ->
         parseParams ps2
-        |> CnvR (slice.Append v)
+        |> CnvR (slice.PushLast v)
       | _ -> (ps2, [v])
 
 /*
@@ -354,7 +354,7 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
   else
     psConsume SEMICOLON ps2
     |> parseFieldInitializers parseE
-    |> CnvR (slice.Prepend nep)
+    |> CnvR (slice.PushHead nep)
 
 let NVPToName (nvp:NEPair) =
   nvp.name
@@ -471,7 +471,7 @@ let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
     (ps2, [one])
   else
     parseAtomList parseE ps2
-    |> CnvR (slice.Prepend one)
+    |> CnvR (slice.PushHead one)
 
 
 /*
@@ -519,7 +519,7 @@ let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Pars
 let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : []MatchRule =
   let (ps2, one) = parseMatchRule pBlock target ps |> CnvL psSkipEOL
   if (psCurrentTT ps2) = BAR then
-    parseMatchRules pBlock target ps2 |> CnvR (slice.Prepend one)
+    parseMatchRules pBlock target ps2 |> CnvR (slice.PushHead one)
   else
     (ps2, [one])
 
@@ -537,7 +537,7 @@ let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
   if (psCurrentTT ps2) = SEMICOLON then
     psConsume SEMICOLON ps2
     |> parseSemiExprs pExpr
-    |> CnvR (slice.Prepend one)
+    |> CnvR (slice.PushHead one)
   else
     (ps2, [one])
 
@@ -602,7 +602,7 @@ let parseStmtLikeList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->Pa
     (ps2, [one])
   else
     parseStmtLikeList pExpr pLet ps2
-    |> CnvR (slice.Prepend one)
+    |> CnvR (slice.PushHead one)
 
 // for dummy usage
 let emptyBlock () =
@@ -651,7 +651,7 @@ let vToT (v:Var) =
 // LetFuncDef = {name: string; params: []Var; body:Block}
 let lfdToFuncType (lfd:LetFuncDef) =
   let rtype = blockToExpr lfd.body |> ExprToType
-  let targets = slice.Map vToT lfd.params |> slice.Append rtype
+  let targets = slice.Map vToT lfd.params |> slice.PushLast rtype
   {FuncType.targets=targets}
 
 // I want to make this func as factory.
@@ -714,7 +714,7 @@ let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
   else
     psConsume SEMICOLON ps2
     |> parseFieldDefs
-    |> CnvR (slice.Prepend ntp)
+    |> CnvR (slice.PushHead ntp)
 
 let rdToRecType (rd:RecordDef) =
   // golang complaint:
@@ -752,7 +752,7 @@ let parseCaseDefs (ps:ParseState) : []NameTypePair =
   let (ps2, cs) = parseOneCaseDef ps
   let ps3 = psSkipEOL ps2
   if (psCurrentTT ps3) = BAR then
-    parseCaseDefs ps3 |> CnvR (slice.Prepend cs)
+    parseCaseDefs ps3 |> CnvR (slice.PushHead cs)
   else
     (ps2, [cs])
 
@@ -856,7 +856,7 @@ let parseTypeParams (ps:ParseState) : ParseState*[]string =
   if (psCurrentTT ps2) = COMMA then
     psConsume COMMA ps2
     |> parseTypeParams
-    |> CnvR (slice.Prepend tname)
+    |> CnvR (slice.PushHead tname)
   else
     (ps2, [tname])
 
@@ -946,7 +946,6 @@ let parsePackageInfo (ps:ParseState) =
 
 
 
-
 let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps
@@ -966,5 +965,5 @@ let parseRootStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
   else
     let (ps3, one) = parseRootOneStmt pExpr ps2 |> CnvL psSkipEOL
     let (ps4, rest) = parseRootStmts pExpr ps3
-    let ss = slice.Prepend one rest
+    let ss = slice.PushHead one rest
     (ps4, ss)
