@@ -28,7 +28,7 @@ func lfdParamsToGo(lfd LetFuncDef) string {
 func lfdToGo(bToGoRet func(Block) string, lfd LetFuncDef) string {
 	b := buf.New()
 	buf.Write(b, "func ")
-	buf.Write(b, lfd.name)
+	buf.Write(b, lfd.fvar.name)
 	buf.Write(b, "(")
 	frt.PipeUnit(lfdParamsToGo(lfd), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ") ")

@@ -235,7 +235,7 @@ type RootStmt_RSLetFuncDef struct {
 func New_RootStmt_RSLetFuncDef(v LetFuncDef) RootStmt { return RootStmt_RSLetFuncDef{v} }
 
 type LetFuncDef struct {
-	name   string
+	fvar   Var
 	params []Var
 	body   Block
 }

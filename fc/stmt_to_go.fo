@@ -30,7 +30,7 @@ let lfdParamsToGo (lfd:LetFuncDef) =
 let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
   let b = buf.New ()
   buf.Write b "func "
-  buf.Write b lfd.name
+  buf.Write b lfd.fvar.name
   buf.Write b "("
   lfdParamsToGo lfd |> buf.Write b
   buf.Write b ") "

@@ -63,7 +63,7 @@ and RootStmt =
 | RSMultipleDefs of MultipleDefs
 | RSRootFuncDef of RootFuncDef
 | RSLetFuncDef of LetFuncDef
-and LetFuncDef = {name: string; params: []Var; body:Block}
+and LetFuncDef = {fvar: Var; params: []Var; body:Block}
 and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
 and LetVarDef = {lvar: Var; rhs: Expr}
 and PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}

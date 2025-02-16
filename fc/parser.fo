@@ -442,20 +442,11 @@ let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
 let vToT (v:Var) =
   v.ftype
 
-// FFunc of FuncType
-// FuncType = {targets: []FType}
-// LetFuncDef = {name: string; params: []Var; body:Block}
-let lfdToFuncType (lfd:LetFuncDef) =
-  let rtype = blockToExpr lfd.body |> ExprToType
-  let targets = slice.Map vToT lfd.params |> slice.PushLast rtype
-  {FuncType.targets=targets}
-
 // I want to make this func as factory.
 // But currently, last arg () is not supported.
 // So I return Var here and handle in wrapper.go for a while.
 let lfdToFuncVar (lfd:LetFuncDef) =
-  let ft = lfdToFuncType lfd |> FFunc
-  {Var.name=lfd.name; ftype=ft}
+  lfd.fvar
 
 /*
   LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
@@ -466,13 +457,18 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps3, params) = psNext ps2 |> parseParams
   // TODO: put current func for recursive call.
   let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock pLet
-  {LetFuncDef.name=fname; params=params; body=block}
+  // build lfd func var here for a while.
+  let rtype = blockToExpr block |> ExprToType
+  let targets = slice.Map vToT params |> slice.PushLast rtype
+  let ft = {FuncType.targets=targets} |> FFunc
+  let fnvar = {Var.name=fname; ftype=ft}
+  {fvar=fnvar; params=params; body=block}
   |> withPs ps4
 
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
   // resolve lfd here.
-  lfdToFuncVar lfd |> scDefVar ps.scope lfd.name 
+  lfdToFuncVar lfd |> scDefVar ps.scope lfd.fvar.name 
   (ps2, lfd)
 
 /*
