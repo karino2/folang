@@ -14,9 +14,12 @@ let tpname2tvtp (tvgen: ()->TypeVar) (tpname:string) =
   let tv = tvgen ()
   (tpname, tv)
 
-let tpreplace (tvd:TypeVarDict) (ft:FType) =
+let tpreplace (tvd:TypeVarDict) (ft:FType) : FType =
   match ft with
   | FTypeVar tv -> tvdLookupNF tvd tv.name |> FTypeVar
+  | FSlice st -> 
+    let et = tpreplace tvd st.elemType
+    {SliceType.elemType=et} |> FSlice
   | _ -> ft
 
 let GenFunc (ff:FuncFactory) (tvgen: ()->TypeVar) =
@@ -206,12 +209,9 @@ let parseImport (ps:ParseState) =
   |> CnvR SImport
 
 /*
-ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '(' TYPE ')'
-
-TODO:
-ATOM_TYPE = '[' ']' TYPE
+ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
 */
-let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
+let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseState*FType) (ps:ParseState) =
   let tk = psCurrent ps
   match tk.ttype with
   | LPAREN ->
@@ -222,6 +222,13 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
     else
       pType ps2
       |> CnvL (psConsume RPAREN)
+  | LSBRACKET ->
+    let (ps2, et) = psConsume LSBRACKET ps
+                    |> psConsume RSBRACKET
+                    |> pTerm
+    {SliceType.elemType=et}
+    |> FSlice
+    |> withPs ps2
   | IDENTIFIER ->
     let tname = tk.stringVal
     let ps3 = psNext ps
@@ -243,8 +250,8 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
     frt.Panic("Unknown type")
     (ps, FUnit)
 
-let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) =
-  parseAtomType pType ps
+let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
+  parseAtomType pType (parseTermType pType) ps
 
 /*
 TYPE_ARROWS = TERM_TYPE ('->' TERM_TYPE)*
@@ -957,7 +964,7 @@ let parseStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState
     let s = GoEval<[]Stmt> "[]Stmt{}"
     (ps2, s)
   else
-    let (ps3, one) = parseStmt pExpr ps |> CnvL psSkipEOL
+    let (ps3, one) = parseStmt pExpr ps2 |> CnvL psSkipEOL
     let (ps4, rest) = parseStmts pExpr ps3
     let ss = slice.Prepend one rest
     (ps4, ss)

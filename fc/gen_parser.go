@@ -10,10 +10,14 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 }
 
 func tpreplace(tvd TypeVarDict, ft FType) FType {
-	switch _v446 := (ft).(type) {
+	switch _v456 := (ft).(type) {
 	case FType_FTypeVar:
-		tv := _v446.Value
+		tv := _v456.Value
 		return frt.Pipe(tvdLookupNF(tvd, tv.name), New_FType_FTypeVar)
+	case FType_FSlice:
+		st := _v456.Value
+		et := tpreplace(tvd, st.elemType)
+		return frt.Pipe(SliceType{elemType: et}, New_FType_FSlice)
 	default:
 		return ft
 	}
@@ -206,7 +210,7 @@ func parseImport(ps ParseState) frt.Tuple2[ParseState, Stmt] {
 	}))
 }
 
-func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
+func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], pTerm func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
 	tk := psCurrent(ps)
 	switch (tk.ttype).(type) {
 	case TokenType_LPAREN:
@@ -219,6 +223,9 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 				return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
 			}))
 		}))
+	case TokenType_LSBRACKET:
+		ps2, et := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LSBRACKET, ps), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RSBRACKET, _r0) })), pTerm))
+		return frt.Pipe(frt.Pipe(SliceType{elemType: et}, New_FType_FSlice), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps2, _r0) }))
 	case TokenType_IDENTIFIER:
 		tname := tk.stringVal
 		ps3 := psNext(ps)
@@ -249,7 +256,7 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 }
 
 func parseTermType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
-	return parseAtomType(pType, ps)
+	return parseAtomType(pType, (func(_r0 ParseState) frt.Tuple2[ParseState, FType] { return parseTermType(pType, _r0) }), ps)
 }
 
 func parseTypeArrows(pType func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, []FType] {
@@ -310,12 +317,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v449 := (prm1).(type) {
+	switch _v459 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v449.Value
+		v := _v459.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -578,9 +585,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v457 := (head).(type) {
+			switch _v467 := (head).(type) {
 			case Expr_EVar:
-				v := _v457.Value
+				v := _v467.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
@@ -611,12 +618,12 @@ type StmtLike_SLLetStmt struct {
 func New_StmtLike_SLLetStmt(v LetVarDef) StmtLike { return StmtLike_SLLetStmt{v} }
 
 func slToStmt(sl StmtLike) Stmt {
-	switch _v458 := (sl).(type) {
+	switch _v468 := (sl).(type) {
 	case StmtLike_SLExpr:
-		e := _v458.Value
+		e := _v468.Value
 		return New_Stmt_SExprStmt(e)
 	case StmtLike_SLLetStmt:
-		l := _v458.Value
+		l := _v468.Value
 		return New_Stmt_SLetVarDef(l)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -665,9 +672,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := frt.Pipe(slice.PopLast(sls), (func(_r0 []StmtLike) []Stmt { return slice.Map(slToStmt, _r0) }))
-	switch _v460 := (last).(type) {
+	switch _v470 := (last).(type) {
 	case StmtLike_SLExpr:
-		e := _v460.Value
+		e := _v470.Value
 		return frt.NewTuple2(ps2, Block{stmts: stmts, finalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")
@@ -1001,7 +1008,7 @@ func parseStmts(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 		s := []Stmt{}
 		return frt.NewTuple2(ps2, s)
 	}), (func() frt.Tuple2[ParseState, []Stmt] {
-		ps3, one := frt.Destr(frt.Pipe(parseStmt(pExpr, ps), (func(_r0 frt.Tuple2[ParseState, Stmt]) frt.Tuple2[ParseState, Stmt] { return CnvL(psSkipEOL, _r0) })))
+		ps3, one := frt.Destr(frt.Pipe(parseStmt(pExpr, ps2), (func(_r0 frt.Tuple2[ParseState, Stmt]) frt.Tuple2[ParseState, Stmt] { return CnvL(psSkipEOL, _r0) })))
 		ps4, rest := frt.Destr(parseStmts(pExpr, ps3))
 		ss := slice.Prepend(one, rest)
 		return frt.NewTuple2(ps4, ss)

@@ -253,6 +253,14 @@ return a
 }
 `,
 		},
+		{
+			`
+type NameTypePair = {Name: string; Type: string}
+
+type RecordType = {name: string; fiedls: []NameTypePair}
+`,
+			"fiedls []NameTypePair",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -320,16 +328,13 @@ let hoge () =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	src := `package main
+	src := `package_info slice =
+  let Length<T>: []T -> int
+  let Take<T> : int->[]T->[]T
 
-package_info buf =
-  type Buffer
-  let New: ()->Buffer
-  let Write: Buffer->string->()
-
-let hoge () =
-  buf.New ()
-
+let ika () =
+  let s = GoEval<[]int> "int[]{1, 2}"
+  slice.Take 2 s
 `
 
 	got := transpile(src)
