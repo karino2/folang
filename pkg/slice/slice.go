@@ -141,3 +141,18 @@ func PushHead[T any](elem T, s []T) []T {
 	ret := []T{elem}
 	return append(ret, s...)
 }
+
+func Concat[T any](ss [][]T) []T {
+	var res []T
+	for _, s := range ss {
+		res = append(res, s...)
+	}
+	return res
+}
+
+func Append[T any](s1 []T, s2 []T) []T {
+	var res []T
+	res = append(res, s1...)
+	res = append(res, s2...)
+	return res
+}

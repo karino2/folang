@@ -261,6 +261,17 @@ type RecordType = {name: string; fiedls: []NameTypePair}
 `,
 			"fiedls []NameTypePair",
 		},
+		{
+			`package_info slice =
+  let Length<T>: []T -> int
+  let Take<T> : int->[]T->[]T
+
+let ika () =
+  let s = GoEval<[]int> "int[]{1, 2}"
+  slice.Take 2 s
+`,
+			"ika() []int{",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)

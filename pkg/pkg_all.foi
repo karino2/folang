@@ -1,6 +1,7 @@
 package_info frt =
   let Println: string->()
   let Sprintf1<T>: string->T->string
+  let Printf1<T>: string->T->()
   let Fst<T, U> : T*U->T
   let Snd<T, U> : T*U->U
   let Assert : bool->string->()
@@ -20,6 +21,8 @@ package_info slice =
   let PopLast<T>: []T -> []T
   let PushLast<T>: T->[]T->[]T
   let PushHead<T>: T->[]T->[]T
+  let Concat<T>: [][]T->[]T
+  let Append<T>: []T->[]T->[]T
   let Take<T> : int->[]T->[]T
   let Map<T, U> : (T->U)->[]T->[]U
   let Mapi<T, U> : (int->T->U)->[]T->[]U

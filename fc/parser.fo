@@ -459,17 +459,26 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock pLet
   // build lfd func var here for a while.
   let rtype = blockToExpr block |> ExprToType
-  let targets = slice.Map vToT params |> slice.PushLast rtype
+  let targets = if (slice.Length params) = 0 then
+                  [FUnit; rtype]
+                else
+                  slice.Map vToT params
+                  |> slice.PushLast rtype
   let ft = {FuncType.targets=targets} |> FFunc
   let fnvar = {Var.name=fname; ftype=ft}
   {fvar=fnvar; params=params; body=block}
   |> withPs ps4
 
+let tvToN (tv:TypeVar) =
+  tv.name
+
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
   // resolve lfd here.
   lfdToFuncVar lfd |> scDefVar ps.scope lfd.fvar.name 
-  (ps2, lfd)
+  let tnames = tvaListAlloced ps.tva |> slice.Map tvToN
+  let rfd = Infer tnames lfd
+  (ps2, rfd)
 
 /*
   LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
@@ -484,7 +493,7 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
   match psCurrentTT psN with
   | LPAREN ->
     parseRootLetFuncDef pLet ps
-    |> CnvR RSLetFuncDef
+    |> CnvR RSRootFuncDef
   | _ ->
     let psNN = psNext psN
     match psCurrentTT psNN with
@@ -493,7 +502,7 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
       (ps, (RSImport "dummy"))
     | _ ->
       parseRootLetFuncDef pLet ps
-      |> CnvR RSLetFuncDef
+      |> CnvR RSRootFuncDef
      
 /*
   parse RecordDef related.

@@ -123,12 +123,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v466 := (prm1).(type) {
+	switch _v527 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v466.Value
+		v := _v527.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -391,9 +391,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v474 := (head).(type) {
+			switch _v535 := (head).(type) {
 			case Expr_EVar:
-				v := _v474.Value
+				v := _v535.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
@@ -444,9 +444,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v476 := (last).(type) {
+	switch _v537 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v476.Value
+		e := _v537.Value
 		return frt.NewTuple2(ps2, Block{stmts: stmts, finalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")
@@ -485,16 +485,26 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LetVarDef], ps
 	ps3, params := frt.Destr(frt.Pipe(psNext(ps2), parseParams))
 	ps4, block := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_EQ, ps3), psSkipEOL), (func(_r0 ParseState) frt.Tuple2[ParseState, Block] { return parseBlock(pLet, _r0) })))
 	rtype := frt.Pipe(blockToExpr(block), ExprToType)
-	targets := frt.Pipe(slice.Map(vToT, params), (func(_r0 []FType) []FType { return slice.PushLast(rtype, _r0) }))
+	targets := frt.IfElse(frt.OpEqual(slice.Length(params), 0), (func() []FType {
+		return ([]FType{New_FType_FUnit, rtype})
+	}), (func() []FType {
+		return frt.Pipe(slice.Map(vToT, params), (func(_r0 []FType) []FType { return slice.PushLast(rtype, _r0) }))
+	}))
 	ft := frt.Pipe(FuncType{targets: targets}, New_FType_FFunc)
 	fnvar := Var{name: fname, ftype: ft}
 	return frt.Pipe(LetFuncDef{fvar: fnvar, params: params, body: block}, (func(_r0 LetFuncDef) frt.Tuple2[ParseState, LetFuncDef] { return withPs(ps4, _r0) }))
 }
 
-func parseRootLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LetVarDef], ps ParseState) frt.Tuple2[ParseState, LetFuncDef] {
+func tvToN(tv TypeVar) string {
+	return tv.name
+}
+
+func parseRootLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LetVarDef], ps ParseState) frt.Tuple2[ParseState, RootFuncDef] {
 	ps2, lfd := frt.Destr(parseLetFuncDef(pLet, ps))
 	frt.PipeUnit(lfdToFuncVar(lfd), (func(_r0 Var) { scDefVar(ps.scope, lfd.fvar.name, _r0) }))
-	return frt.NewTuple2(ps2, lfd)
+	tnames := frt.Pipe(tvaListAlloced(ps.tva), (func(_r0 []TypeVar) []string { return slice.Map(tvToN, _r0) }))
+	rfd := Infer(tnames, lfd)
+	return frt.NewTuple2(ps2, rfd)
 }
 
 func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 ParseState) frt.Tuple2[ParseState, RootStmt] {
@@ -503,8 +513,8 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 	psN := psNext(ps)
 	switch (psCurrentTT(psN)).(type) {
 	case TokenType_LPAREN:
-		return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, LetFuncDef]) frt.Tuple2[ParseState, RootStmt] {
-			return CnvR(New_RootStmt_RSLetFuncDef, _r0)
+		return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, RootFuncDef]) frt.Tuple2[ParseState, RootStmt] {
+			return CnvR(New_RootStmt_RSRootFuncDef, _r0)
 		}))
 	default:
 		psNN := psNext(psN)
@@ -513,8 +523,8 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 			frt.Panic("Root let var def, NYI")
 			return frt.NewTuple2(ps, New_RootStmt_RSImport("dummy"))
 		default:
-			return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, LetFuncDef]) frt.Tuple2[ParseState, RootStmt] {
-				return CnvR(New_RootStmt_RSLetFuncDef, _r0)
+			return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, RootFuncDef]) frt.Tuple2[ParseState, RootStmt] {
+				return CnvR(New_RootStmt_RSRootFuncDef, _r0)
 			}))
 		}
 	}

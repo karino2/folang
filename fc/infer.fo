@@ -1,0 +1,214 @@
+package main
+
+import frt
+import slice
+
+package_info _ =
+  type TypeDict
+  let toTDict: []string*FType->TypeDict
+  let tdLookup: TypeDict->string->FType*bool
+  let tdPut: TypeDict->string->FType->()
+  let tdLookupNF: TypeDict->string->FType
+
+
+// src VarType and dest FType has unique constraints.
+// If both are VarType, src is alphabetically later order (to avoid cyclic reference to later stage).
+type UniRel = {srcV:string; dest: FType}
+
+let emptyRels () =
+  GoEval<[]UniRel> "[]UniRel{}"
+
+let relToTp (rel:UniRel) =
+  (rel.srcV, rel.dest)
+
+let relsToTDict (rels: []UniRel) =
+  slice.Map relToTp rels
+  |> toTDict
+
+let tupApply (f:FType->FType->[]UniRel) (tup:FType*FType) =
+  let (lhs, rhs) = tup
+  f lhs rhs
+
+let unifyType (lhs:FType) (rhs:FType) : []UniRel =
+  match lhs with
+  | FTypeVar tv ->
+    match rhs with
+    | FTypeVar tv2 ->
+      // same typevar
+      if tv.name = tv2.name then
+        emptyRels ()
+      elif tv.name > tv2.name then
+        // keep alphabetically later one to src.
+        [{srcV=tv.name; dest=rhs}]
+      else
+        [{srcV=tv2.name;dest=lhs}]
+    | _ ->
+      [{srcV=tv.name; dest=rhs}]
+  | _ ->
+    match rhs with
+    | FTypeVar tv2 ->
+      [{srcV=tv2.name; dest=lhs}]
+    // Both are not FTypeVar, drill down.
+    // Both type must be equal for this layer.
+    | FSlice ts2 ->
+      let ts1 = GoEval<SliceType> "lhs.(FType_FSlice).Value"
+      unifyType ts1.elemType ts2.elemType
+    | FFunc tf2 ->
+      let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
+      slice.Zip tf1.targets tf2.targets
+      |> slice.Map (tupApply unifyType)
+      |> slice.Concat 
+    | _ -> emptyRels () // both type is concrete.
+
+let unifyTupArg (tup:FType*FType) =
+  let (lhs, rhs) = tup
+  unifyType lhs rhs
+
+
+let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
+  match stmt with
+  | SExprStmt se -> ec se
+  | SLetVarDef lvd ->
+    let inside = ec lvd.rhs
+    let one = unifyType lvd.lvar.ftype (ExprToType lvd.rhs)
+    slice.Append one inside
+
+let collectExprRel (expr:Expr) : []UniRel =
+  match expr with
+  | EFunCall fc ->
+    let inside = slice.Map collectExprRel fc.args |> slice.Concat
+    let tftype = fc.targetFunc.ftype
+    match tftype with
+    | FFunc fft ->
+      slice.Map ExprToType fc.args
+      |> slice.Zip (fargs fft) 
+      |> slice.Map unifyTupArg
+      |> slice.Concat
+      |> slice.Append inside
+    | _ ->
+      frt.Panic "funcall with non func first arg, possibly TypeVar, NYI."
+      emptyRels ()
+  | ESlice es ->
+    let inside = slice.Map collectExprRel es |> slice.Concat
+    if (slice.Length es) <= 1 then
+      inside
+    else
+      let headT = slice.Head es |> ExprToType
+      slice.Tail es
+      |> slice.Map ExprToType
+      |> slice.Map (unifyType headT)
+      |> slice.Concat
+      |> slice.Append inside
+  | ERecordGen _ ->
+    // field type and initializer unify
+    emptyRels ()
+  | ELazyBlock lb ->
+    slice.Map (collectStmtRel collectExprRel) lb.stmts
+    |> slice.Concat
+    |> slice.Append (collectExprRel lb.finalExpr)
+  | EReturnableExpr re ->
+    match re with
+    | RBlock bl ->
+      slice.Map (collectStmtRel collectExprRel) bl.stmts
+      |> slice.Concat
+      |> slice.Append (collectExprRel bl.finalExpr)
+    | RMatchExpr _ ->
+      // unify rules expr.
+      // unify body of MatchRule.      
+      emptyRels ()
+  | _ -> emptyRels()
+
+let lfdRetType (lfd:LetFuncDef) =
+  match lfd.fvar.ftype with
+  | FFunc ft -> freturn ft
+  | _ ->
+    frt.Panic "LetFuncDef's fvar is not FFunc type."
+    FUnit
+
+let collectLfdRels (lfd:LetFuncDef) =
+  let brels = blockToExpr lfd.body
+              |> collectExprRel
+  let lastExprType = lfd.body.finalExpr |> ExprToType
+  unifyType (lfdRetType lfd) lastExprType
+  |> slice.Append brels
+
+let notFound (dic:TypeDict) (key:string) =
+  let (_, ok) = tdLookup dic key
+  not ok
+
+let resolveType (tdict: TypeDict) (ftp:FType) : FType =
+  match ftp with
+  | FTypeVar tv -> tdLookupNF tdict tv.name
+  | FSlice ts ->
+    let et = resolveType tdict ts.elemType
+    FSlice {SliceType.elemType = et}
+  | FFunc fnt ->
+    let nts = slice.Map (resolveType tdict) fnt.targets
+    {FuncType.targets=nts}
+    |> FFunc
+  | _ -> ftp
+
+let resolveVarType (tdict: TypeDict) (v:Var) =
+  {Var.name=v.name; ftype=resolveType tdict v.ftype}
+
+let resolveStmtType (resExpr: Expr->Expr) (tdict: TypeDict) (stmt:Stmt) : Stmt =
+  match stmt with
+  | SLetVarDef lvd ->
+    let nvar = resolveVarType tdict lvd.lvar
+    let nrhs = resExpr lvd.rhs
+    {lvar=nvar; rhs=nrhs}
+    |> SLetVarDef
+  | SExprStmt e ->
+    resExpr e
+    |> SExprStmt
+
+let resolveBlockType (resExpr: Expr->Expr) (tdict: TypeDict) (bl:Block) : Block =
+  let nstmts = slice.Map (resolveStmtType resExpr tdict) bl.stmts
+  let nfexpr = resExpr bl.finalExpr
+  {Block.stmts=nstmts; finalExpr=nfexpr}
+  
+let resolveExprType (tdict: TypeDict) (expr:Expr) : Expr =
+  match expr with
+  | EVar v ->
+    resolveVarType tdict v
+    |> EVar
+  | EFunCall fc ->
+    let ntf = resolveVarType tdict fc.targetFunc
+    let nargs = slice.Map (resolveExprType tdict) fc.args
+    EFunCall {targetFunc=ntf; args=nargs}
+  | EReturnableExpr re ->
+    match re with
+    | RBlock bl -> 
+      resolveBlockType (resolveExprType tdict) tdict bl
+      |> blockToExpr
+    | _ -> expr
+  | _ -> expr
+
+
+/*
+and LetFuncDef = {fvar: Var; params: []Var; body:Block}
+and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
+*/
+
+let resolveLfd (tdict: TypeDict) (lfd:LetFuncDef) =
+   let nfvar = resolveVarType tdict lfd.fvar
+   let nparams = slice.Map (resolveVarType tdict) lfd.params
+   let nbody = resolveBlockType (resolveExprType tdict) tdict lfd.body
+   {fvar=nfvar; params=nparams; body=nbody}
+
+/*
+  Infer TypeVar's and promote as TypeParameters if necessary, then return RootFuncDef.
+*/
+let Infer (tvnames:[]string) (lfd:LetFuncDef) =
+  let rels = collectLfdRels lfd
+  // frt.Printf1 "%v\n" rels
+  // this is not enough.
+  // merge and select most concrete type.
+  let rdict = relsToTDict rels
+  // let unresTvs = slice.Filter (notFound rdict) tvnames
+  // frt.Printf1 "unres: %v\n" unresTvs
+  // assign formal type parameter
+  // NYI.
+  let tps = GoEval<[]string> "[]string{}"
+  let nlfd = resolveLfd rdict lfd
+  {tparams=tps; lfd=nlfd}

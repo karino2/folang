@@ -9,6 +9,32 @@ import (
 
 // currently, map is NYI  and generic exxt type is also NYI.
 // wrap to standard type for each.
+func dictLookup[T any](dict map[string]T, key string) frt.Tuple2[T, bool] {
+	e, ok := dict[key]
+	return frt.NewTuple2(e, ok)
+}
+
+func dictPut[T any](dict map[string]T, key string, v T) {
+	dict[key] = v
+}
+
+func dictKeyValues[K comparable, V any](dict map[K]V) []frt.Tuple2[K, V] {
+	var res []frt.Tuple2[K, V]
+	for k, v := range dict {
+		res = append(res, frt.NewTuple2(k, v))
+	}
+	return res
+}
+
+func toDict[V any](ps []frt.Tuple2[string, V]) map[string]V {
+	dic := make(map[string]V)
+	for _, tp := range ps {
+		pname, v := frt.Destr(tp)
+		dic[pname] = v
+	}
+	return dic
+}
+
 type funcFacDict = map[string]FuncFactory
 type extTypeDict = map[string]string
 
@@ -20,24 +46,12 @@ func newETD() extTypeDict {
 	return make(map[string]string)
 }
 
-func dictPut[T any](dict map[string]T, key string, v T) {
-	dict[key] = v
-}
-
 func etdPut(dic extTypeDict, key string, v string) {
 	dictPut(dic, key, v)
 }
 
 func ffdPut(dic funcFacDict, key string, v FuncFactory) {
 	dictPut(dic, key, v)
-}
-
-func dictKeyValues[K comparable, V any](dict map[K]V) []frt.Tuple2[K, V] {
-	var res []frt.Tuple2[K, V]
-	for k, v := range dict {
-		res = append(res, frt.NewTuple2(k, v))
-	}
-	return res
 }
 
 func ffdKVs(dic funcFacDict) []frt.Tuple2[string, FuncFactory] {
@@ -47,6 +61,10 @@ func ffdKVs(dic funcFacDict) []frt.Tuple2[string, FuncFactory] {
 func etdKVs(dic extTypeDict) []frt.Tuple2[string, string] {
 	return dictKeyValues(dic)
 }
+
+/*
+  uniqueTmpVarName related.
+*/
 
 var uniqueId = 0
 
@@ -547,18 +565,44 @@ func tvaToTypeVarGen(tva TypeVarAllocator) func() TypeVar {
 	return func() TypeVar { return tva.Allocate() }
 }
 
+func tvaListAlloced(tva TypeVarAllocator) []TypeVar {
+	return tva.allocated
+}
+
+/*
+  TypeVarDict related.
+*/
+
 type TypeVarDict = map[string]TypeVar
 
 func toTVDict(ps []frt.Tuple2[string, TypeVar]) TypeVarDict {
-	dic := make(map[string]TypeVar)
-	for _, tp := range ps {
-		pname, tvar := frt.Destr(tp)
-		dic[pname] = tvar
-	}
-	return dic
+	return toDict(ps)
 }
 
 // NF: Never fail.
 func tvdLookupNF(tvd TypeVarDict, key string) TypeVar {
 	return tvd[key]
+}
+
+/*
+  TypeDict related.
+*/
+
+type TypeDict = map[string]FType
+
+func toTDict(ps []frt.Tuple2[string, FType]) TypeDict {
+	return toDict(ps)
+}
+
+func tdLookup(dict TypeDict, key string) frt.Tuple2[FType, bool] {
+	return dictLookup(dict, key)
+}
+
+func tdLookupNF(dict TypeDict, key string) FType {
+	res, _ := frt.Destr(dictLookup(dict, key))
+	return res
+}
+
+func tdPut(dic TypeDict, key string, v FType) {
+	dictPut(dic, key, v)
 }

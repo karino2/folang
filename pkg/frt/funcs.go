@@ -23,6 +23,10 @@ func Sprintf1[T any](fmtstr string, arg T) string {
 	return fmt.Sprintf(fmtstr, arg)
 }
 
+func Printf1[T any](fmtstr string, arg T) {
+	fmt.Printf(fmtstr, arg)
+}
+
 func OpEqual[T any](e1 T, e2 T) bool {
 	return gcmp.Equal(e1, e2)
 }
