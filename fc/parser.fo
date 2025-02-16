@@ -14,7 +14,7 @@ let parseImport (ps:ParseState) =
   |> CnvR SImport
 
 /*
-ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
+  ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
 */
 let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseState*FType) (ps:ParseState) =
   let tk = psCurrent ps
@@ -59,9 +59,9 @@ let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseSt
   parseAtomType pType (parseTermType pType) ps
 
 /*
-TYPE_ARROWS = TERM_TYPE ('->' TERM_TYPE)*
+  TYPE_ARROWS = TERM_TYPE ('->' TERM_TYPE)*
 
-return []FType
+  return []FType
 */
 let parseTypeArrows (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseState*[]FType =
   let (ps2, one) = parseTermType pType ps
@@ -73,7 +73,7 @@ let parseTypeArrows (pType:ParseState->ParseState*FType) (ps:ParseState) : Parse
     (ps2, [one])
 
 /*
-TYPE =  TERM_TYPE | FUNC_TYPE
+  TYPE =  TERM_TYPE | FUNC_TYPE
 */
 let parseType (ps:ParseState) : ParseState*FType =
   let (ps2, tps) = parseTypeArrows parseType ps
@@ -90,7 +90,6 @@ type Param =
 /*
 	PARAM = '(' ')'
 				|	'(' IDENTIFIER : TYPE ')'
-
 */
 let parseParam (ps:ParseState) =
   let ps2 = psConsume LPAREN ps
@@ -124,9 +123,9 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
       | _ -> (ps2, [v])
 
 /*
-GO_EVAL = 'GoEval' string | 'GoEval' '<' TYPE '>' string
+  GO_EVAL = 'GoEval' string | 'GoEval' '<' TYPE '>' string
 
-It should not have space between 'GoEval' and '<' though currently we just don't care those differences.
+  It should not have space between 'GoEval' and '<' though currently we just don't care those differences.
 */
 let parseGoEval (ps:ParseState) =
   let ps2 = psNext ps
@@ -165,11 +164,9 @@ let NVPToName (nvp:NEPair) =
   nvp.name
 
 /*
-RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
-
-FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
-
-FIELD_INITIALIZER = IDENTIFIER '=' expr
+  RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
+  FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
+  FIELD_INITIALIZER = IDENTIFIER '=' expr
 */
 let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, neps) = psConsume LBRACE ps |> parseFieldInitializers parseE |> CnvL (psConsume RBRACE)
@@ -198,13 +195,12 @@ let parseFullName (ps:ParseState) : ParseState*string =
      (ps2, one)
 
 /*
-VARIABLE_REF = IDENTIFIER | IDENTIFER '.' IDENTIFIER
+  VARIABLE_REF = IDENTIFIER | IDENTIFER '.' IDENTIFIER
 
-For first case, IDENTIFIER must be in scope.
-For later case, there are 2 types:
-
-  - external pkg access: slice.Take
-  - record field access: rec.Person
+  For first case, IDENTIFIER must be in scope.
+  For later case, there are 2 types:
+    - external pkg access: slice.Take
+    - record field access: rec.Person
 */
 let parseVarRef (ps:ParseState) =
   let (ps2, firstId) = psIdentNameNx ps
@@ -280,8 +276,8 @@ let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
 
 
 /*
-MATCH_RULE = '|' IDENTIFIER IDENTIFIER '->' BLOCK
-           | '|' '_' '->' BLOCK
+  MATCH_RULE = '|' IDENTIFIER IDENTIFIER '->' BLOCK
+            |  '|' '_' '->' BLOCK
 
 ex:
 	| Record r -> hoge r
@@ -329,7 +325,7 @@ let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Par
     (ps2, [one])
 
 /*
-MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+
+  MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+
 */
 let parseMatchExpr (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) =
   let (ps2, target) = psConsume MATCH ps |> pExpr |> CnvL (psConsume WITH) |> CnvL psSkipEOL
@@ -347,7 +343,7 @@ let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
     (ps2, [one])
 
 /*
-SLICE_EXPR = '[' expr (; expr)* ']'
+  SLICE_EXPR = '[' expr (; expr)* ']'
 */
 let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
    psConsume LSBRACKET ps
@@ -377,6 +373,10 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
       | _ ->
         frt.Panic "Funcall head is not var"
         (ps2, head)
+
+/*
+  parseBlock related.
+*/
 
 type StmtLike =
 | SLExpr of Expr
@@ -414,11 +414,11 @@ let emptyBlock () =
   GoEval<Block> "Block{}"
 
 /*
-BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
-STMT_LIKE = LET_STMT | EXPR
+  BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
+  STMT_LIKE = LET_STMT | EXPR
 
-In some case, we wanto add local variables in block scope,
-in that case, it's handy to pushScope before calling this function.
+  In some case, we wanto add local variables in block scope,
+  in that case, it's handy to pushScope before calling this function.
 */
 let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps2, sls) = psPushOffside ps |> (parseStmtLikeList pExpr pLet) |> CnvL psPopOffside
@@ -438,7 +438,7 @@ let parseBlock (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : ParseS
   psPushScope ps |> parseBlockAfterPushScope pExpr pLet
 
 /*
-LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+  LET_VAR_DEF = 'let' IDENTIFIER '=' expr
 */
 let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> CnvL (psConsume EQ)
@@ -467,7 +467,7 @@ let lfdToFuncVar (lfd:LetFuncDef) =
   {Var.name=lfd.name; ftype=ft}
 
 /*
-LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
+  LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
 */
 let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let ps2 = psConsume LET ps
@@ -485,10 +485,10 @@ let parseRootLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState)
   (ps2, lfd)
 
 /*
-LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
+  LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
 
-LET_VAR_DEF = 'let' IDENTIFIER '=' expr
-LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
+  LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+  LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
 */
 let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
   let ps = psResetTmpCtx ps0
@@ -508,7 +508,9 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
       parseRootLetFuncDef pLet ps
       |> CnvR SLetFuncDef
      
-
+/*
+  parse RecordDef related.
+*/
 
 // FIELD_DEF = ID ':' TYPE
 let parseFieldDef (ps:ParseState) =
@@ -533,9 +535,10 @@ let rdToRecType (rd:RecordDef) =
   // {RecordType.name=rd.name; fields=rd.fields}
   GoEval<RecordType> "RecordType(rd)"
 
-// RECORD_DEF = '{' FIELD_DEFS '}'
-//
-// FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
+/*
+  RECORD_DEF = '{' FIELD_DEFS '}'
+  FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
+*/
 let parseRecordDef (tname:string) (ps:ParseState) =
   let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE)
   let rd = {RecordDef.name=tname; fields=ntps}
@@ -543,6 +546,9 @@ let parseRecordDef (tname:string) (ps:ParseState) =
   rdToRecType rd |> scRegisterRecType ps2.scope
   (ps2, rd)
 
+/*
+  parse UnionDef related.
+*/
 
 // CASE_DEF = '|' IDENIFIER OF TYPE
 let parseOneCaseDef (ps:ParseState) =
@@ -567,9 +573,8 @@ let parseCaseDefs (ps:ParseState) : []NameTypePair =
     (ps2, [cs])
 
 /*
-UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
-
-CASE_DEF = '|' IDENIFIER OF TYPE
+  UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
+  CASE_DEF = '|' IDENIFIER OF TYPE
 */
 let parseUnionDef (tname:string) (ps:ParseState) =
   let (ps2, css) = parseCaseDefs ps
@@ -599,7 +604,7 @@ let parseTypeDef (ps:ParseState) =
 */
 
 /*
-EXT_TYPE_DEF = 'type' IDENTIFIER
+  EXT_TYPE_DEF = 'type' IDENTIFIER
 */
 let parseExtTypeDef (pi:PackageInfo) (ps:ParseState) =
   let (ps2, tname) = psConsume TYPE ps |> psIdentNameNx
@@ -608,9 +613,9 @@ let parseExtTypeDef (pi:PackageInfo) (ps:ParseState) =
   ps2
 
 /*
-TYPE_PARAMS = '<' IDENTIFIER (',' IDENTIFIER)* '>'
+  TYPE_PARAMS = '<' IDENTIFIER (',' IDENTIFIER)* '>'
 
-call this function after consume '<'
+  call this function after consume '<'
 */
 let parseTypeParams (ps:ParseState) : ParseState*[]string =
   let (ps2, tname) = psIdentNameNx ps
@@ -629,7 +634,7 @@ let psRegTypeVars (ps:ParseState) (tnames:[]string) =
   slice.Iter (regTypeVar ps) tnames
 
 /*
-EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' FUNC_TYPE
+  EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' FUNC_TYPE
 */
 let parseExtFuncDef (pi:PackageInfo) (ps:ParseState) =
   let (ps2, fname) = psConsume LET ps |> psIdentNameNx
@@ -663,8 +668,8 @@ let parseExtDefs (pi:PackageInfo) (ps:ParseState) : ParseState =
      parseExtDefs pi ps2
 
 /*
-PACKAGE_INFO = 'package_info' IDENTIFIER '=' EOL (OFFSIDE EXT_DEF EOL)*
-EXT_DEF = (EXT_TYPE_DEF|EXT_FUNC_DEF)
+  PACKAGE_INFO = 'package_info' IDENTIFIER '=' EOL (OFFSIDE EXT_DEF EOL)*
+  EXT_DEF = (EXT_TYPE_DEF|EXT_FUNC_DEF)
 */
 let parsePackageInfo (ps:ParseState) =
   let ps2 = psConsume PACKAGE_INFO ps
@@ -685,7 +690,7 @@ let parsePackageInfo (ps:ParseState) =
   (ps5, (SPackageInfo pi))
 
 /*
-parse Stmt related.
+  parse Stmt related.
 */
 
 let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
