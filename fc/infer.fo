@@ -73,49 +73,75 @@ let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
     let one = unifyType lvd.lvar.ftype (ExprToType lvd.rhs)
     slice.Append one inside
 
+/*
+  collectXXX is subfunction for collectExprRel.
+
+  collectXXX is called after inside of collection is done.
+  So just check current layer for each node.
+*/
+let collectFunCall (fc: FunCall) =
+  let tftype = fc.targetFunc.ftype
+  match tftype with
+  | FFunc fft ->
+    slice.Map ExprToType fc.args
+    |> slice.Zip (fargs fft) 
+    |> slice.Map unifyTupArg
+    |> slice.Concat
+  | _ ->
+    frt.Panic "funcall with non func first arg, possibly TypeVar, NYI."
+    emptyRels ()
+
+let collectSlice (es: []Expr) =
+  if (slice.Length es) <= 1 then
+    emptyRels ()
+  else
+    let headT = slice.Head es |> ExprToType
+    slice.Tail es
+    |> slice.Map ExprToType
+    |> slice.Map (unifyType headT)
+    |> slice.Concat
+
+// This is exception for collectXXX.
+// collect inside here.
+let collectBlock (colE:Expr->[]UniRel) (colS:Stmt->[]UniRel) (block:Block) =
+    slice.Map colS block.stmts
+    |> slice.Concat
+    |> slice.Append (colE block.finalExpr)
+
+let mrToBlock (mr:MatchRule) =
+  mr.body
+
+let NEPToExpr (nep:NEPair) =
+  nep.expr
+
+
 let collectExprRel (expr:Expr) : []UniRel =
+  let colB = collectBlock collectExprRel (collectStmtRel collectExprRel)
   match expr with
   | EFunCall fc ->
     let inside = slice.Map collectExprRel fc.args |> slice.Concat
-    let tftype = fc.targetFunc.ftype
-    match tftype with
-    | FFunc fft ->
-      slice.Map ExprToType fc.args
-      |> slice.Zip (fargs fft) 
-      |> slice.Map unifyTupArg
-      |> slice.Concat
-      |> slice.Append inside
-    | _ ->
-      frt.Panic "funcall with non func first arg, possibly TypeVar, NYI."
-      emptyRels ()
+    collectFunCall fc
+    |> slice.Append inside
   | ESlice es ->
     let inside = slice.Map collectExprRel es |> slice.Concat
-    if (slice.Length es) <= 1 then
-      inside
-    else
-      let headT = slice.Head es |> ExprToType
-      slice.Tail es
-      |> slice.Map ExprToType
-      |> slice.Map (unifyType headT)
-      |> slice.Concat
-      |> slice.Append inside
-  | ERecordGen _ ->
-    // field type and initializer unify
-    emptyRels ()
+    collectSlice es
+    |> slice.Append inside
+  | ERecordGen rg ->
+    // NYI: unify to recordType.  
+    slice.Map NEPToExpr rg.fieldsNV
+    |> slice.Map collectExprRel
+    |> slice.Concat 
   | ELazyBlock lb ->
-    slice.Map (collectStmtRel collectExprRel) lb.stmts
-    |> slice.Concat
-    |> slice.Append (collectExprRel lb.finalExpr)
+    colB lb.block
   | EReturnableExpr re ->
     match re with
     | RBlock bl ->
-      slice.Map (collectStmtRel collectExprRel) bl.stmts
+      colB bl
+    | RMatchExpr me ->
+      slice.Map mrToBlock me.rules
+      |> slice.Map colB
       |> slice.Concat
-      |> slice.Append (collectExprRel bl.finalExpr)
-    | RMatchExpr _ ->
-      // unify rules expr.
-      // unify body of MatchRule.      
-      emptyRels ()
+      |> slice.Append (collectExprRel me.target)
   | _ -> emptyRels()
 
 let lfdRetType (lfd:LetFuncDef) =
@@ -132,21 +158,28 @@ let collectLfdRels (lfd:LetFuncDef) =
   unifyType (lfdRetType lfd) lastExprType
   |> slice.Append brels
 
-let notFound (dic:TypeDict) (key:string) =
-  let (_, ok) = tdLookup dic key
-  not ok
-
-let resolveType (tdict: TypeDict) (ftp:FType) : FType =
+/*
+  TransformT FTypeVar and recomposite.
+*/
+let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
+  let recurse = transTypeVarFType transTV
   match ftp with
-  | FTypeVar tv -> tdLookupNF tdict tv.name
+  | FTypeVar tv -> transTV tv
   | FSlice ts ->
-    let et = resolveType tdict ts.elemType
+    let et = recurse ts.elemType
     FSlice {SliceType.elemType = et}
   | FFunc fnt ->
-    let nts = slice.Map (resolveType tdict) fnt.targets
+    let nts = slice.Map recurse fnt.targets
     {FuncType.targets=nts}
     |> FFunc
   | _ -> ftp
+
+
+let transOneTypeVar (tdict: TypeDict) (tv:TypeVar) =
+  tdLookupNF tdict tv.name
+
+let resolveType (tdict: TypeDict) (ftp:FType) =
+  transTypeVarFType (transOneTypeVar tdict) ftp
 
 /*
   Self transform utility.
@@ -233,6 +266,10 @@ let resolveLfd (tdict: TypeDict) (lfd:LetFuncDef) =
    let nparams = slice.Map (resolveVarType tdict) lfd.params
    let nbody = resolveBlockType tdict lfd.body
    {fvar=nfvar; params=nparams; body=nbody}
+
+let notFound (dic:TypeDict) (key:string) =
+  let (_, ok) = tdLookup dic key
+  not ok
 
 /*
   Infer TypeVar's and promote as TypeParameters if necessary, then return RootFuncDef.

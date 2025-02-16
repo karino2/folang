@@ -11,7 +11,7 @@ func faToType(fa FieldAccess) FType {
 }
 
 func lblockReturnType(toT func(Expr) FType, lb LazyBlock) FType {
-	return toT(lb.finalExpr)
+	return toT(lb.block.finalExpr)
 }
 
 func lblockToType(toT func(Expr) FType, lb LazyBlock) FType {

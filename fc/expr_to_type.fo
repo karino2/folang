@@ -9,7 +9,7 @@ let faToType (fa:FieldAccess) =
   field.ftype
 
 let lblockReturnType (toT: Expr->FType) (lb:LazyBlock) =
-  toT lb.finalExpr
+  toT lb.block.finalExpr
 
 let lblockToType (toT: Expr->FType)  (lb:LazyBlock)=
   let rtype = lblockReturnType toT lb

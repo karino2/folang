@@ -67,12 +67,6 @@ func wrapFunCall(toGo func(FType) string, rtype FType, goReturnBody string) stri
 	return (wf + "()")
 }
 
-func lbToGo(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(ReturnableExpr) string, lb LazyBlock) string {
-	returnBody := buildReturn(sToGo, eToGo, reToGoRet, lb.stmts, lb.finalExpr)
-	rtype := ExprToType(lb.finalExpr)
-	return wrapFunc(FTypeToGo, rtype, returnBody)
-}
-
 func blockToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(ReturnableExpr) string, block Block) string {
 	return buildReturn(sToGo, eToGo, reToGoRet, block.stmts, block.finalExpr)
 }
@@ -81,6 +75,12 @@ func blockToGo(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(
 	goRet := blockToGoReturn(sToGo, eToGo, reToGoRet, block)
 	rtype := ExprToType(block.finalExpr)
 	return wrapFunCall(FTypeToGo, rtype, goRet)
+}
+
+func lbToGo(bToRet func(Block) string, lb LazyBlock) string {
+	returnBody := bToRet(lb.block)
+	rtype := ExprToType(lb.block.finalExpr)
+	return wrapFunc(FTypeToGo, rtype, returnBody)
 }
 
 func mpToCaseHeader(uname string, mp MatchPattern, tmpVarName string) string {
@@ -280,6 +280,7 @@ func sliceToGo(tGo func(FType) string, eGo func(Expr) string, exprs []Expr) stri
 
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
+	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	switch _v103 := (expr).(type) {
 	case Expr_EBoolLiteral:
 		b := _v103.Value
@@ -313,6 +314,9 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	case Expr_EFunCall:
 		fc := _v103.Value
 		return fcToGo(FTypeToGo, eToGo, fc)
+	case Expr_ELazyBlock:
+		lb := _v103.Value
+		return lbToGo((func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, reToGoRet, _r0) }), lb)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

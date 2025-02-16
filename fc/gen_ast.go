@@ -131,8 +131,7 @@ type Block struct {
 	finalExpr Expr
 }
 type LazyBlock struct {
-	stmts     []Stmt
-	finalExpr Expr
+	block Block
 }
 type MatchRule struct {
 	pattern MatchPattern

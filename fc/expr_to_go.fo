@@ -65,11 +65,6 @@ let wrapFunCall (toGo: FType->string) (rtype:FType) (goReturnBody:string) =
   let wf = wrapFunc toGo rtype goReturnBody
   wf + "()"
 
-let lbToGo (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (lb:LazyBlock) =
-  let returnBody = buildReturn sToGo eToGo reToGoRet lb.stmts lb.finalExpr
-  let rtype = ExprToType lb.finalExpr
-  wrapFunc FTypeToGo rtype returnBody
-
 let blockToGoReturn (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (block:Block) =
   buildReturn sToGo eToGo reToGoRet block.stmts block.finalExpr
 
@@ -77,6 +72,12 @@ let blockToGo (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: Returnable
   let goRet = blockToGoReturn sToGo eToGo reToGoRet block
   let rtype = ExprToType block.finalExpr
   wrapFunCall FTypeToGo rtype goRet 
+
+let lbToGo (bToRet: Block->string) (lb:LazyBlock) =
+  let returnBody = bToRet lb.block
+  let rtype = ExprToType lb.block.finalExpr
+  wrapFunc FTypeToGo rtype returnBody
+
 
 /*
 
@@ -276,6 +277,7 @@ let sliceToGo (tGo:FType->string) (eGo:Expr->string) (exprs: []Expr) =
 
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
+  let reToGoRet = reToGoReturn sToGo eToGo 
   match expr with
   | EBoolLiteral b -> frt.Sprintf1 "%t" b
   | EGoEvalExpr ge -> reinterpretEscape ge.goStmt
@@ -288,4 +290,6 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | ERecordGen rg -> rgToGo eToGo rg
   | EReturnableExpr re -> reToGo sToGo eToGo re
   | EFunCall fc -> fcToGo FTypeToGo eToGo fc
+  | ELazyBlock lb ->
+    lbToGo (blockToGoReturn sToGo eToGo reToGoRet) lb
 

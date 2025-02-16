@@ -160,7 +160,7 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
     |> parseFieldInitializers parseE
     |> CnvR (slice.PushHead nep)
 
-let NVPToName (nvp:NEPair) =
+let NEPToName (nvp:NEPair) =
   nvp.name
 
 /*
@@ -170,7 +170,7 @@ let NVPToName (nvp:NEPair) =
 */
 let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, neps) = psConsume LBRACE ps |> parseFieldInitializers parseE |> CnvL (psConsume RBRACE)
-  let (rtype, ok) = slice.Map NVPToName neps |> scLookupRecord ps2.scope
+  let (rtype, ok) = slice.Map NEPToName neps |> scLookupRecord ps2.scope
   if ok then
     {fieldsNV=neps; recordType=rtype}
     |> ERecordGen |> withPs ps2
