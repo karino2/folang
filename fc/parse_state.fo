@@ -1,0 +1,286 @@
+package main
+
+import frt
+import slice
+
+// wrapper types.
+package_info _ =
+  type TypeVarDict
+  let toTVDict: []string*TypeVar->TypeVarDict
+  let tvdLookupNF: TypeVarDict->string->TypeVar
+
+
+let tpname2tvtp (tvgen: ()->TypeVar) (tpname:string) =
+  let tv = tvgen ()
+  (tpname, tv)
+
+let tpreplace (tvd:TypeVarDict) (ft:FType) : FType =
+  match ft with
+  | FTypeVar tv -> tvdLookupNF tvd tv.name |> FTypeVar
+  | FSlice st -> 
+    let et = tpreplace tvd st.elemType
+    {SliceType.elemType=et} |> FSlice
+  | _ -> ft
+
+let GenFunc (ff:FuncFactory) (tvgen: ()->TypeVar) =
+  let tvd = slice.Map (tpname2tvtp tvgen) ff.tparams |> toTVDict
+  let ntargets = slice.Map (tpreplace tvd) ff.targets
+  {FuncType.targets=ntargets}
+
+let GenFuncVar (vname:string) (ff:FuncFactory) (tvgen: ()->TypeVar) =
+  let funct = GenFunc ff tvgen
+  let ft = FFunc funct
+  {Var.name=vname; ftype=ft}
+
+// wrapper types.
+package_info _ =
+  type Scope
+  let NewScope: ()->Scope
+  let newScope: Scope->Scope
+  let popScope: Scope->Scope
+  let scDefVar: Scope->string->Var->()
+  let scLookupVarFac: Scope->string->((()->TypeVar)->Var)*bool
+  let scRegisterRecType: Scope->RecordType->()
+  let scLookupRecord: Scope->[]string->RecordType*bool
+  let scRegisterType: Scope->string->FType->()
+  let scRegisterVarFac: Scope->string->((()->TypeVar)->Var)->()
+  let scLookupType: Scope->string->FType*bool
+  type TypeVarAllocator
+  let NewTypeVarAllocator: ()->TypeVarAllocator
+  let tvaToTypeVarGen: TypeVarAllocator->(()->TypeVar)
+  let tvaReset: TypeVarAllocator->()
+  let resetUniqueTmpCounter: ()->()
+
+type ParseState = {
+  tkz: Tokenizer;
+  scope: Scope;
+  offsideCol: []int;
+  tva: TypeVarAllocator;
+  // typeDefCtx
+}
+
+
+// wrapper types. Use ParseState
+package_info _ =
+  let withPs<T>: ParseState->T->ParseState*T
+  // inference from funcall to arg side is NYI.
+  // let CnvL<T, U>: (T->T)->T*U->T*U
+  // let CnvR<T, U>: (U->U)->T*U->T*U
+  let CnvL<U>: (ParseState->ParseState)->ParseState*U->ParseState*U
+  let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
+
+
+let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tva:TypeVarAllocator) =
+  {tkz=tkz; scope=scope; offsideCol=offCols; tva=tva}
+
+let psWithTkz (org:ParseState) (tkz:Tokenizer) =
+  newParse tkz org.scope org.offsideCol org.tva
+
+let psWithScope (org:ParseState) (nsc:Scope) =
+  newParse org.tkz nsc org.offsideCol org.tva
+
+let psWithOffside (org:ParseState) (offs:[]int) =
+  newParse org.tkz org.scope offs org.tva
+
+let psTypeVarGen (ps:ParseState) =
+  tvaToTypeVarGen ps.tva
+
+let psPushScope (org:ParseState) =
+  newScope org.scope |> psWithScope org
+
+let psPopScope (org:ParseState) =
+  popScope org.scope |> psWithScope org
+
+let psCurOffside (ps:ParseState) =
+  slice.Last ps.offsideCol
+
+let psCurCol (ps:ParseState) =
+  ps.tkz.col
+
+let psPushOffside (ps:ParseState) =
+  let curCol = psCurCol ps
+  if (psCurOffside ps) >= curCol then
+    frt.Panic "Overrun offside rule"
+  slice.PushLast curCol ps.offsideCol
+  |> psWithOffside ps
+
+let psPopOffside (ps:ParseState) =
+  slice.PopLast ps.offsideCol
+  |> psWithOffside ps
+
+let initParse (src: string) =
+  let tkz = newTkz src
+  let scope = NewScope ()
+  let offside = [0]
+  let tva = NewTypeVarAllocator ()
+  newParse tkz scope offside tva
+
+let psCurrent (ps:ParseState) =
+  ps.tkz.current
+
+let psCurrentTT (ps:ParseState) =
+  let tk = psCurrent ps
+  tk.ttype
+
+let psNext (ps:ParseState) =
+  let ntk = tkzNext ps.tkz
+  psWithTkz ps ntk
+
+let psNextTT (ps:ParseState) =
+  psNext ps |> psCurrentTT
+
+let psNextNOL (ps:ParseState) =
+  let ntk = tkzNextNOL ps.tkz
+  psWithTkz ps ntk
+
+let psSkipEOL (ps:ParseState) =
+  if (psCurrentTT ps) = EOL then
+    psNextNOL ps
+  else
+    ps
+
+
+let psExpect (ttype:TokenType) (ps:ParseState) =
+  let cur = psCurrent ps
+  if cur.ttype <> ttype then
+    frt.Panic("non expected token")
+  ()
+
+let psConsume (ttype:TokenType) (ps:ParseState) =
+  psExpect ttype ps
+  psNext ps
+
+
+let psIdentName (ps:ParseState) =
+  psExpect IDENTIFIER ps
+  let cur = psCurrent ps
+  cur.stringVal
+
+let psStringVal (ps:ParseState) =
+  psExpect STRING ps
+  let cur = psCurrent ps
+  cur.stringVal
+
+let psStrNx (f: ParseState->string) (ps:ParseState) =
+  let s = f ps
+  let ps2 = psNext ps
+  (ps2, s)
+
+
+// psIdentName and Next
+let psIdentNameNx (ps:ParseState) =
+  psStrNx psIdentName ps
+
+let psStringValNx (ps:ParseState) =
+  psStrNx psStringVal ps
+
+
+let psCurrentNx (ps:ParseState) =
+  let tk = psCurrent ps
+  let ps2 = psNext ps
+  (ps2, tk)
+
+let psCurrentTTNx (ps:ParseState) =
+  let tt = psCurrentTT ps
+  let ps2 = psNext ps
+  (ps2, tt)
+
+// NxL means NextNOL
+let psIdentNameNxL (ps:ParseState) =
+  psIdentNameNx ps |> CnvL psSkipEOL
+
+let psStringValNxL (ps:ParseState) =
+  psStringValNx ps |> CnvL psSkipEOL
+
+let psCurrentNxL (ps:ParseState) =
+  psCurrentNx ps |> CnvL psSkipEOL
+
+let psCurrentTTNxL (ps:ParseState) =
+  psCurrentTTNx ps |> CnvL psSkipEOL
+
+let psResetTmpCtx (ps:ParseState) =
+  resetUniqueTmpCounter ()
+  tvaReset ps.tva
+  ps
+
+
+/*
+UnionDef related utility.
+*/
+
+let udToUt (ud:UnionDef) =
+  GoEval<UnionType> "UnionType(ud)"
+
+let udToFUt (ud:UnionDef) =
+  udToUt ud |> FUnion
+
+/*
+// New_IntOrString_I
+let csConstructorName  (unionName: string) (cas: NameTypePair) =
+*/
+let csRegisterCtor (sc:Scope) (ud: UnionDef) (cas: NameTypePair) =
+  let ctorName = csConstructorName ud.name cas
+  let ut = udToFUt ud
+  let v = match cas.ftype with
+          | FUnit ->
+            {Var.name=ctorName; ftype=ut}
+          | _ ->
+            let tps = [cas.ftype; ut]
+            let funcTp = FFunc {targets=tps}
+            {Var.name=ctorName; ftype=funcTp}
+  scDefVar sc cas.name v
+
+let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
+  ud.cases |> slice.Iter (csRegisterCtor sc ud)
+
+let udRegisterToScope (sc:Scope) (ud:UnionDef) =
+  udRegisterCsCtors sc ud
+  udToFUt ud |> scRegisterType sc ud.name
+
+/*
+PackageInfo related utility.
+*/
+
+package_info _ =
+  let etdPut: extTypeDict->string->string->()
+  let ffdPut: funcFacDict->string->FuncFactory->()
+  let ffdKVs: funcFacDict->[]string*FuncFactory
+  let etdKVs: extTypeDict->[]string*string
+
+let piFullName (pi:PackageInfo) (name:string) =
+  if pi.name = "_" then
+    name
+  else
+    pi.name + "." + name
+
+let piRegEType (pi:PackageInfo) (tname:string) =
+  let fullName = piFullName pi tname
+  let etype = FExtType fullName
+  etdPut pi.typeInfo tname fullName
+  etype
+
+// register function factory
+let piRegFF (pi:PackageInfo) (fname:string) (ff:FuncFactory) (ps:ParseState) =
+  ffdPut pi.funcInfo fname ff
+  scRegisterVarFac ps.scope fname (GenFuncVar fname ff)
+  ps
+
+let regFF (pi:PackageInfo) (sc:Scope) (sff:string*FuncFactory) =
+  let (ffname, ff) = sff
+  let fullName = piFullName pi ffname 
+  scRegisterVarFac sc fullName (GenFuncVar fullName ff)
+
+let regET (sc:Scope) (etp:string*string) =
+   let fullName = frt.Snd etp
+   FExtType fullName
+   |> scRegisterType sc fullName
+
+/*
+  PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
+*/
+let piRegAll (pi:PackageInfo) (sc:Scope) =
+  ffdKVs pi.funcInfo
+  |> slice.Iter (regFF pi sc)
+  etdKVs pi.typeInfo
+  |> slice.Iter (regET sc)
+

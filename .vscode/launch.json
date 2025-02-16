@@ -11,7 +11,7 @@
       "mode": "auto",
       "program": "${fileDirname}",
       // "args": ["../pkg/pkg_all.foi", "../samples/tuple.fo"]
-      "args": ["../pkg/pkg_all.foi", "../fc/ftype.fo", "../fc/ast.fo", "../fc/expr_to_type.fo", "../fc/expr_to_go.fo", "../fc/stmt_to_go.fo", "../fc/tokenizer.fo", "../fc/parser.fo"]
+      "args": ["../pkg/pkg_all.foi", "../fc/ftype.fo", "../fc/ast.fo", "../fc/expr_to_type.fo", "../fc/expr_to_go.fo", "../fc/stmt_to_go.fo", "../fc/tokenizer.fo",  "../fc/parse_state.fo", "../fc/parser.fo"]
     }
   ]
 }
