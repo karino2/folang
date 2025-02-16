@@ -436,7 +436,7 @@ let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps3, rhs) = pExpr ps2
   let v = {Var.name=vname; ftype=(ExprToType rhs)}
   scDefVar ps3.scope vname v
-  {LetVarDef.name=vname; rhs=rhs}
+  {LetVarDef.lvar=v; rhs=rhs}
   |> withPs ps3
 
 let vToT (v:Var) =

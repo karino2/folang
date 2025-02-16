@@ -468,7 +468,7 @@ func parseLetVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pars
 	ps3, rhs := frt.Destr(pExpr(ps2))
 	v := Var{name: vname, ftype: ExprToType(rhs)}
 	scDefVar(ps3.scope, vname, v)
-	return frt.Pipe(LetVarDef{name: vname, rhs: rhs}, (func(_r0 LetVarDef) frt.Tuple2[ParseState, LetVarDef] { return withPs(ps3, _r0) }))
+	return frt.Pipe(LetVarDef{lvar: v, rhs: rhs}, (func(_r0 LetVarDef) frt.Tuple2[ParseState, LetVarDef] { return withPs(ps3, _r0) }))
 }
 
 func vToT(v Var) FType {

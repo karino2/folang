@@ -65,7 +65,7 @@ and RootStmt =
 | RSLetFuncDef of LetFuncDef
 and LetFuncDef = {name: string; params: []Var; body:Block}
 and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
-and LetVarDef = {name: string; rhs: Expr}
+and LetVarDef = {lvar: Var; rhs: Expr}
 and PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
 and RecordDef = {name: string; fields: []NameTypePair}
 and UnionDef = {name: string; cases: []NameTypePair}

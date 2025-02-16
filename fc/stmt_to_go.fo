@@ -46,7 +46,7 @@ let rfdToGo (bToGoRet: Block->string) (rfd:RootFuncDef) =
 
 let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =
   let rhs = eToGo lvd.rhs
-  lvd.name + " := " + rhs
+  lvd.lvar.name + " := " + rhs
 
 /*
   RecordDef to Go implementation.

@@ -45,7 +45,7 @@ func rfdToGo(bToGoRet func(Block) string, rfd RootFuncDef) string {
 
 func lvdToGo(eToGo func(Expr) string, lvd LetVarDef) string {
 	rhs := eToGo(lvd.rhs)
-	return ((lvd.name + " := ") + rhs)
+	return ((lvd.lvar.name + " := ") + rhs)
 }
 
 func rdffieldToGo(field NameTypePair) string {

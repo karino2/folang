@@ -244,7 +244,7 @@ type RootFuncDef struct {
 	lfd     LetFuncDef
 }
 type LetVarDef struct {
-	name string
+	lvar Var
 	rhs  Expr
 }
 type PackageInfo struct {
