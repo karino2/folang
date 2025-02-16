@@ -39,6 +39,10 @@ func lfdToGo(bToGoRet func(Block) string, lfd LetFuncDef) string {
 	return buf.String(b)
 }
 
+func rfdToGo(bToGoRet func(Block) string, rfd RootFuncDef) string {
+	return lfdToGo(bToGoRet, rfd.lfd)
+}
+
 func lvdToGo(eToGo func(Expr) string, lvd LetVarDef) string {
 	rhs := eToGo(lvd.rhs)
 	return ((lvd.name + " := ") + rhs)
@@ -171,37 +175,48 @@ func mdToGo(md MultipleDefs) string {
 
 func StmtToGo(stmt Stmt) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(StmtToGo, _r0) })
-	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(StmtToGo, eToGo, _r0) })
-	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(StmtToGo, eToGo, reToGoRet, _r0) })
 	switch _v155 := (stmt).(type) {
-	case Stmt_SImport:
-		im := _v155.Value
-		return imToGo(im)
-	case Stmt_SPackage:
-		pn := _v155.Value
-		return pmToGo(pn)
-	case Stmt_SPackageInfo:
-		return ""
-	case Stmt_SLetFuncDef:
-		lfd := _v155.Value
-		return lfdToGo(bToGoRet, lfd)
 	case Stmt_SLetVarDef:
 		lvd := _v155.Value
 		return lvdToGo(eToGo, lvd)
 	case Stmt_SExprStmt:
 		expr := _v155.Value
 		return eToGo(expr)
-	case Stmt_SDefStmt:
-		ds := _v155.Value
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func RootStmtToGo(rstmt RootStmt) string {
+	eToGo := (func(_r0 Expr) string { return ExprToGo(StmtToGo, _r0) })
+	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(StmtToGo, eToGo, _r0) })
+	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(StmtToGo, eToGo, reToGoRet, _r0) })
+	switch _v156 := (rstmt).(type) {
+	case RootStmt_RSImport:
+		im := _v156.Value
+		return imToGo(im)
+	case RootStmt_RSPackage:
+		pn := _v156.Value
+		return pmToGo(pn)
+	case RootStmt_RSPackageInfo:
+		return ""
+	case RootStmt_RSLetFuncDef:
+		lfd := _v156.Value
+		return lfdToGo(bToGoRet, lfd)
+	case RootStmt_RSRootFuncDef:
+		rfd := _v156.Value
+		return rfdToGo(bToGoRet, rfd)
+	case RootStmt_RSDefStmt:
+		ds := _v156.Value
 		return dsToGo(ds)
-	case Stmt_SMultipleDefs:
-		md := _v155.Value
+	case RootStmt_RSMultipleDefs:
+		md := _v156.Value
 		return mdToGo(md)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
 }
 
-func StmtsToGo(stmts []Stmt) string {
-	return frt.Pipe(frt.Pipe(slice.Map(StmtToGo, stmts), (func(_r0 []string) string { return strings.Concat("\n\n", _r0) })), (func(_r0 string) string { return strings.AppendTail("\n", _r0) }))
+func RootStmtsToGo(rstmts []RootStmt) string {
+	return frt.Pipe(frt.Pipe(slice.Map(RootStmtToGo, rstmts), (func(_r0 []string) string { return strings.Concat("\n\n", _r0) })), (func(_r0 string) string { return strings.AppendTail("\n", _r0) }))
 }

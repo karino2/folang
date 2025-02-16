@@ -40,6 +40,8 @@ let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
   buf.Write b "\n}"
   buf.String b
 
+let rfdToGo (bToGoRet: Block->string) (rfd:RootFuncDef) =
+  lfdToGo bToGoRet rfd.lfd
 
 
 let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =
@@ -208,17 +210,24 @@ let mdToGo (md:MultipleDefs) =
 
 let StmtToGo (stmt:Stmt) : string=
   let eToGo = ExprToGo StmtToGo
-  let reToGoRet = reToGoReturn StmtToGo eToGo
-  let bToGoRet = blockToGoReturn StmtToGo eToGo reToGoRet
   match stmt with
-  | SImport im -> imToGo im
-  | SPackage pn -> pmToGo pn
-  | SPackageInfo -> ""
-  | SLetFuncDef lfd -> lfdToGo bToGoRet lfd
   | SLetVarDef lvd -> lvdToGo eToGo lvd
   | SExprStmt expr -> eToGo expr
-  | SDefStmt ds -> dsToGo ds
-  | SMultipleDefs md -> mdToGo md
 
-let StmtsToGo (stmts:[]Stmt) =
-  slice.Map StmtToGo stmts |> strings.Concat "\n\n" |> strings.AppendTail "\n"
+let RootStmtToGo (rstmt:RootStmt) : string=
+  let eToGo = ExprToGo StmtToGo
+  let reToGoRet = reToGoReturn StmtToGo eToGo
+  let bToGoRet = blockToGoReturn StmtToGo eToGo reToGoRet
+  match rstmt with
+  | RSImport im -> imToGo im
+  | RSPackage pn -> pmToGo pn
+  | RSPackageInfo -> ""
+  | RSLetFuncDef lfd -> lfdToGo bToGoRet lfd
+  | RSRootFuncDef rfd -> rfdToGo bToGoRet rfd
+  | RSDefStmt ds -> dsToGo ds
+  | RSMultipleDefs md -> mdToGo md
+
+
+
+let RootStmtsToGo (rstmts:[]RootStmt) =
+  slice.Map RootStmtToGo rstmts |> strings.Concat "\n\n" |> strings.AppendTail "\n"

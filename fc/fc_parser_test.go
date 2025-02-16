@@ -15,7 +15,7 @@ func TestParsePackage(t *testing.T) {
 	got := gotPair.E1
 
 	switch tgot := got.(type) {
-	case Stmt_SPackage:
+	case RootStmt_RSPackage:
 		if tgot.Value != "main" {
 			t.Errorf("expect main, got %s", tgot.Value)
 		}
@@ -57,7 +57,7 @@ func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	return parseTerm(parseBlockFacade, ps)
 }
 
-func parseAll(ps ParseState) (ParseState, []Stmt) {
+func parseAll(ps ParseState) (ParseState, []RootStmt) {
 	res := parseRootStmts(parseExprFacade, ps)
 	return frt.Destr(res)
 }
@@ -75,7 +75,7 @@ let main () =
 `
 	ps := initParse(src)
 	_, stmts := parseAll(ps)
-	got := StmtsToGo(stmts)
+	got := RootStmtsToGo(stmts)
 
 	want :=
 		`package main
@@ -98,7 +98,7 @@ hello("World")
 func transpile(src string) string {
 	ps := initParse(src)
 	_, stmts := parseAll(ps)
-	return StmtsToGo(stmts)
+	return RootStmtsToGo(stmts)
 }
 
 func TestTranspileContain(t *testing.T) {

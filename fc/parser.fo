@@ -6,12 +6,12 @@ import slice
 let parsePackage (ps:ParseState) =
   psConsume PACKAGE ps
   |> psIdentNameNxL
-  |> CnvR SPackage
+  |> CnvR RSPackage
 
 let parseImport (ps:ParseState) =
   psConsume IMPORT ps
   |> psStringValNxL
-  |> CnvR SImport
+  |> CnvR RSImport
 
 /*
   ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
@@ -378,22 +378,13 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
   parseBlock related.
 */
 
-type StmtLike =
-| SLExpr of Expr
-| SLLetStmt of LetVarDef
-
-let slToStmt (sl:StmtLike) =
-  match sl with
-  | SLExpr e -> SExprStmt e
-  | SLLetStmt l -> SLetVarDef l
-
-// STMT_LIKE = LET_STMT | EXPR
-let parseStmtLike (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+// STMT = LET_STMT | EXPR
+let parseStmt (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   match psCurrentTT ps with
   | LET ->
-    pLet ps |> CnvR SLLetStmt
+    pLet ps |> CnvR SLetVarDef
   | _ ->
-    pExpr ps |> CnvR SLExpr
+    pExpr ps |> CnvR SExprStmt
 
 
 let isEndOfBlock (ps:ParseState) =
@@ -401,12 +392,12 @@ let isEndOfBlock (ps:ParseState) =
   let isEof = (psCurrentTT ps) = EOF
   isOffside || isEof
 
-let parseStmtLikeList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : []StmtLike =
-  let (ps2, one) = parseStmtLike pExpr pLet ps |> CnvL psSkipEOL
+let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : []Stmt =
+  let (ps2, one) = parseStmt pExpr pLet ps |> CnvL psSkipEOL
   if isEndOfBlock ps2 then
     (ps2, [one])
   else
-    parseStmtLikeList pExpr pLet ps2
+    parseStmtList pExpr pLet ps2
     |> CnvR (slice.PushHead one)
 
 // for dummy usage
@@ -421,11 +412,11 @@ let emptyBlock () =
   in that case, it's handy to pushScope before calling this function.
 */
 let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
-  let (ps2, sls) = psPushOffside ps |> (parseStmtLikeList pExpr pLet) |> CnvL psPopOffside
+  let (ps2, sls) = psPushOffside ps |> (parseStmtList pExpr pLet) |> CnvL psPopOffside
   let last = slice.Last sls
-  let stmts = slice.PopLast sls |> slice.Map slToStmt
+  let stmts = slice.PopLast sls
   match last with
-  | SLExpr e ->
+  | SExprStmt e ->
     (ps2, {Block.stmts=stmts; finalExpr=e})
   | _ ->
     frt.Panic "block of last is not expr"
@@ -475,13 +466,13 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps3, params) = psNext ps2 |> parseParams
   // TODO: put current func for recursive call.
   let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock pLet
-  let lfd =  {LetFuncDef.name=fname; params=params; body=block}
-  lfdToFuncVar lfd |> scDefVar ps4.scope fname 
-  (ps4, lfd)
+  {LetFuncDef.name=fname; params=params; body=block}
+  |> withPs ps4
 
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
   // resolve lfd here.
+  lfdToFuncVar lfd |> scDefVar ps.scope lfd.name 
   (ps2, lfd)
 
 /*
@@ -497,16 +488,16 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
   match psCurrentTT psN with
   | LPAREN ->
     parseRootLetFuncDef pLet ps
-    |> CnvR SLetFuncDef
+    |> CnvR RSLetFuncDef
   | _ ->
     let psNN = psNext psN
     match psCurrentTT psNN with
     | EQ ->
-      pLet ps
-      |> CnvR SLetVarDef
+      frt.Panic "Root let var def, NYI"
+      (ps, (RSImport "dummy"))
     | _ ->
       parseRootLetFuncDef pLet ps
-      |> CnvR SLetFuncDef
+      |> CnvR RSLetFuncDef
      
 /*
   parse RecordDef related.
@@ -592,12 +583,12 @@ let parseTypeDef (ps:ParseState) =
   let (ps2, tname) = psConsume TYPE ps |> psIdentNameNxL |> CnvL (psConsume EQ) |> CnvL psSkipEOL
   match psCurrentTT ps2 with
   | LBRACE ->
-    parseRecordDef tname ps2 |> CnvR DRecordDef |> CnvR SDefStmt
+    parseRecordDef tname ps2 |> CnvR DRecordDef |> CnvR RSDefStmt
   | BAR ->
-    parseUnionDef tname ps2  |> CnvR DUnionDef |> CnvR SDefStmt
+    parseUnionDef tname ps2  |> CnvR DUnionDef |> CnvR RSDefStmt
   | _ ->
     frt.Panic "NYI"
-    (ps2, SExprStmt EUnit)
+    (ps2, (RSImport "dummy"))
 
 /*
   PackageInfo related:
@@ -687,7 +678,7 @@ let parsePackageInfo (ps:ParseState) =
             |> psPopScope
             |> psPopOffside
   piRegAll pi ps5.scope
-  (ps5, (SPackageInfo pi))
+  (ps5, (RSPackageInfo pi))
 
 /*
   parse Stmt related.
@@ -704,10 +695,10 @@ let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     frt.Panic "Unknown stmt"
     parsePackage ps // never reached this line.
 
-let parseRootStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Stmt =
+let parseRootStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]RootStmt =
   let ps2 = psSkipEOL ps
   if (psCurrentTT ps2) = EOF then
-    let s = GoEval<[]Stmt> "[]Stmt{}"
+    let s = GoEval<[]RootStmt> "[]RootStmt{}"
     (ps2, s)
   else
     let (ps3, one) = parseRootOneStmt pExpr ps2 |> CnvL psSkipEOL

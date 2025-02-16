@@ -165,38 +165,8 @@ type Stmt interface {
 	Stmt_Union()
 }
 
-func (Stmt_SImport) Stmt_Union()       {}
-func (Stmt_SPackage) Stmt_Union()      {}
-func (Stmt_SPackageInfo) Stmt_Union()  {}
-func (Stmt_SLetFuncDef) Stmt_Union()   {}
-func (Stmt_SLetVarDef) Stmt_Union()    {}
-func (Stmt_SExprStmt) Stmt_Union()     {}
-func (Stmt_SDefStmt) Stmt_Union()      {}
-func (Stmt_SMultipleDefs) Stmt_Union() {}
-
-type Stmt_SImport struct {
-	Value string
-}
-
-func New_Stmt_SImport(v string) Stmt { return Stmt_SImport{v} }
-
-type Stmt_SPackage struct {
-	Value string
-}
-
-func New_Stmt_SPackage(v string) Stmt { return Stmt_SPackage{v} }
-
-type Stmt_SPackageInfo struct {
-	Value PackageInfo
-}
-
-func New_Stmt_SPackageInfo(v PackageInfo) Stmt { return Stmt_SPackageInfo{v} }
-
-type Stmt_SLetFuncDef struct {
-	Value LetFuncDef
-}
-
-func New_Stmt_SLetFuncDef(v LetFuncDef) Stmt { return Stmt_SLetFuncDef{v} }
+func (Stmt_SLetVarDef) Stmt_Union() {}
+func (Stmt_SExprStmt) Stmt_Union()  {}
 
 type Stmt_SLetVarDef struct {
 	Value LetVarDef
@@ -210,22 +180,68 @@ type Stmt_SExprStmt struct {
 
 func New_Stmt_SExprStmt(v Expr) Stmt { return Stmt_SExprStmt{v} }
 
-type Stmt_SDefStmt struct {
+type RootStmt interface {
+	RootStmt_Union()
+}
+
+func (RootStmt_RSImport) RootStmt_Union()       {}
+func (RootStmt_RSPackage) RootStmt_Union()      {}
+func (RootStmt_RSPackageInfo) RootStmt_Union()  {}
+func (RootStmt_RSDefStmt) RootStmt_Union()      {}
+func (RootStmt_RSMultipleDefs) RootStmt_Union() {}
+func (RootStmt_RSRootFuncDef) RootStmt_Union()  {}
+func (RootStmt_RSLetFuncDef) RootStmt_Union()   {}
+
+type RootStmt_RSImport struct {
+	Value string
+}
+
+func New_RootStmt_RSImport(v string) RootStmt { return RootStmt_RSImport{v} }
+
+type RootStmt_RSPackage struct {
+	Value string
+}
+
+func New_RootStmt_RSPackage(v string) RootStmt { return RootStmt_RSPackage{v} }
+
+type RootStmt_RSPackageInfo struct {
+	Value PackageInfo
+}
+
+func New_RootStmt_RSPackageInfo(v PackageInfo) RootStmt { return RootStmt_RSPackageInfo{v} }
+
+type RootStmt_RSDefStmt struct {
 	Value DefStmt
 }
 
-func New_Stmt_SDefStmt(v DefStmt) Stmt { return Stmt_SDefStmt{v} }
+func New_RootStmt_RSDefStmt(v DefStmt) RootStmt { return RootStmt_RSDefStmt{v} }
 
-type Stmt_SMultipleDefs struct {
+type RootStmt_RSMultipleDefs struct {
 	Value MultipleDefs
 }
 
-func New_Stmt_SMultipleDefs(v MultipleDefs) Stmt { return Stmt_SMultipleDefs{v} }
+func New_RootStmt_RSMultipleDefs(v MultipleDefs) RootStmt { return RootStmt_RSMultipleDefs{v} }
+
+type RootStmt_RSRootFuncDef struct {
+	Value RootFuncDef
+}
+
+func New_RootStmt_RSRootFuncDef(v RootFuncDef) RootStmt { return RootStmt_RSRootFuncDef{v} }
+
+type RootStmt_RSLetFuncDef struct {
+	Value LetFuncDef
+}
+
+func New_RootStmt_RSLetFuncDef(v LetFuncDef) RootStmt { return RootStmt_RSLetFuncDef{v} }
 
 type LetFuncDef struct {
 	name   string
 	params []Var
 	body   Block
+}
+type RootFuncDef struct {
+	tparams []string
+	lfd     LetFuncDef
 }
 type LetVarDef struct {
 	name string
