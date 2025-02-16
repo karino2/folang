@@ -982,6 +982,21 @@ let nestMatch (lhs:IorS) (rhs:IorS) =
 `,
 			"return (ival+456)\n}",
 		},
+		{
+			`package main
+
+package_info _ =
+  let Concat<T>: [][]T -> []T
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+	let s2 = GoEval<[]int> "[]int{3, 4}"
+	let s3 = [s1; s2]
+	Concat s3
+
+`,
+			"hoge() []int{",
+		},
 	}
 
 	for _, test := range tests {
@@ -1171,20 +1186,15 @@ let ika (a:int) =
 func TestParserAddhook(t *testing.T) {
 	src := `package main
 
-  type IorS =
-    | IT of int
-    | ST of string
-	
-  let nestMatch (lhs:IorS) (rhs:IorS) =
-    match lhs with
-    | IT ival ->
-      match rhs with
-      | IT i2 ->
-        ival+i2
-      | _ ->
-        ival+456
-    | _ ->
-      123
+package_info _ =
+  let Concat<T>: [][]T -> []T
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+	let s2 = GoEval<[]int> "[]int{3, 4}"
+	let s3 = [s1; s2]
+	Concat s3
+
 `
 
 	got := transpile(src)
