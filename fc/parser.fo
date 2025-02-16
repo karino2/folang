@@ -400,10 +400,6 @@ let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseS
     parseStmtList pExpr pLet ps2
     |> CnvR (slice.PushHead one)
 
-// for dummy usage
-let emptyBlock () =
-  GoEval<Block> "Block{}"
-
 /*
   BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
   STMT_LIKE = LET_STMT | EXPR

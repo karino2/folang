@@ -10,12 +10,12 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 }
 
 func tpreplace(tvd TypeVarDict, ft FType) FType {
-	switch _v198 := (ft).(type) {
+	switch _v200 := (ft).(type) {
 	case FType_FTypeVar:
-		tv := _v198.Value
+		tv := _v200.Value
 		return frt.Pipe(tvdLookupNF(tvd, tv.name), New_FType_FTypeVar)
 	case FType_FSlice:
-		st := _v198.Value
+		st := _v200.Value
 		et := tpreplace(tvd, st.elemType)
 		return frt.Pipe(SliceType{elemType: et}, New_FType_FSlice)
 	default:

@@ -157,12 +157,12 @@ func udfToGo(ud UnionDef) string {
 }
 
 func dsToGo(ds DefStmt) string {
-	switch _v154 := (ds).(type) {
+	switch _v156 := (ds).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v154.Value
+		rd := _v156.Value
 		return rdfToGo(rd)
 	case DefStmt_DUnionDef:
-		ud := _v154.Value
+		ud := _v156.Value
 		return udfToGo(ud)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -175,12 +175,12 @@ func mdToGo(md MultipleDefs) string {
 
 func StmtToGo(stmt Stmt) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(StmtToGo, _r0) })
-	switch _v155 := (stmt).(type) {
+	switch _v157 := (stmt).(type) {
 	case Stmt_SLetVarDef:
-		lvd := _v155.Value
+		lvd := _v157.Value
 		return lvdToGo(eToGo, lvd)
 	case Stmt_SExprStmt:
-		expr := _v155.Value
+		expr := _v157.Value
 		return eToGo(expr)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -191,26 +191,26 @@ func RootStmtToGo(rstmt RootStmt) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(StmtToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(StmtToGo, eToGo, _r0) })
 	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(StmtToGo, eToGo, reToGoRet, _r0) })
-	switch _v156 := (rstmt).(type) {
+	switch _v158 := (rstmt).(type) {
 	case RootStmt_RSImport:
-		im := _v156.Value
+		im := _v158.Value
 		return imToGo(im)
 	case RootStmt_RSPackage:
-		pn := _v156.Value
+		pn := _v158.Value
 		return pmToGo(pn)
 	case RootStmt_RSPackageInfo:
 		return ""
 	case RootStmt_RSLetFuncDef:
-		lfd := _v156.Value
+		lfd := _v158.Value
 		return lfdToGo(bToGoRet, lfd)
 	case RootStmt_RSRootFuncDef:
-		rfd := _v156.Value
+		rfd := _v158.Value
 		return rfdToGo(bToGoRet, rfd)
 	case RootStmt_RSDefStmt:
-		ds := _v156.Value
+		ds := _v158.Value
 		return dsToGo(ds)
 	case RootStmt_RSMultipleDefs:
-		md := _v156.Value
+		md := _v158.Value
 		return mdToGo(md)
 	default:
 		panic("Union pattern fail. Never reached here.")

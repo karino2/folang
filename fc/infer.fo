@@ -148,42 +148,80 @@ let resolveType (tdict: TypeDict) (ftp:FType) : FType =
     |> FFunc
   | _ -> ftp
 
+/*
+  Self transform utility.
+  Currently, assume transform Var to Var.
+  Some are common to self transform Expr.
+*/
+
+let transExprNE (cnv:Expr->Expr) (p:NEPair) =
+   {NEPair.name=p.name; expr=cnv p.expr}
+
+let transVarStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
+  match stmt with
+  | SLetVarDef lvd ->
+    let nvar = transV lvd.lvar
+    let nrhs = transE lvd.rhs
+    {lvar=nvar;rhs=nrhs} |> SLetVarDef
+  | SExprStmt e -> 
+    transE e |> SExprStmt
+
+let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
+  let nbody = blockToExpr mr.body |> pExpr |> exprToBlock
+  {pattern=mr.pattern; body=nbody}
+
+/*
+  Self transform Var of expr.
+  For composite expr, call each element and composite automatically.
+*/
+let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
+  let transE = transVarExpr transV
+  match expr with
+  | EVar v -> transV v |> EVar
+  | ESlice es -> slice.Map (transVarExpr transV) es |> ESlice
+  | ERecordGen rg ->
+    let newNV = slice.Map (transExprNE transE) rg.fieldsNV
+    {fieldsNV=newNV; recordType=rg.recordType}
+    |> ERecordGen
+  | EReturnableExpr re -> 
+    match re with
+    | RBlock bl ->
+      let nss = bl.stmts |> slice.Map (transVarStmt transV transE)
+      let fexpr = transE bl.finalExpr
+      {Block.stmts=nss; finalExpr=fexpr}
+      |> blockToExpr
+    | RMatchExpr me ->
+      let ntarget = transE me.target
+      let nrules = slice.Map (transExprMatchRule transE) me.rules
+      {target=ntarget; rules=nrules}
+      |> RMatchExpr
+      |> EReturnableExpr
+  | EFunCall fc ->
+    let ntarget = transV fc.targetFunc
+    let nargs = slice.Map transE fc.args
+    {targetFunc=ntarget;args=nargs}
+    |> EFunCall
+  | EBoolLiteral _ -> expr
+  | EGoEvalExpr _ -> expr
+  | EStringLiteral _ -> expr
+  | EIntImm _ -> expr
+  | EUnit -> expr
+  | EFieldAccess _ -> expr
+
+/*
+  resolve type using transVarExpr utility.
+*/
+
 let resolveVarType (tdict: TypeDict) (v:Var) =
   {Var.name=v.name; ftype=resolveType tdict v.ftype}
 
-let resolveStmtType (resExpr: Expr->Expr) (tdict: TypeDict) (stmt:Stmt) : Stmt =
-  match stmt with
-  | SLetVarDef lvd ->
-    let nvar = resolveVarType tdict lvd.lvar
-    let nrhs = resExpr lvd.rhs
-    {lvar=nvar; rhs=nrhs}
-    |> SLetVarDef
-  | SExprStmt e ->
-    resExpr e
-    |> SExprStmt
-
-let resolveBlockType (resExpr: Expr->Expr) (tdict: TypeDict) (bl:Block) : Block =
-  let nstmts = slice.Map (resolveStmtType resExpr tdict) bl.stmts
-  let nfexpr = resExpr bl.finalExpr
-  {Block.stmts=nstmts; finalExpr=nfexpr}
-  
 let resolveExprType (tdict: TypeDict) (expr:Expr) : Expr =
-  match expr with
-  | EVar v ->
-    resolveVarType tdict v
-    |> EVar
-  | EFunCall fc ->
-    let ntf = resolveVarType tdict fc.targetFunc
-    let nargs = slice.Map (resolveExprType tdict) fc.args
-    EFunCall {targetFunc=ntf; args=nargs}
-  | EReturnableExpr re ->
-    match re with
-    | RBlock bl -> 
-      resolveBlockType (resolveExprType tdict) tdict bl
-      |> blockToExpr
-    | _ -> expr
-  | _ -> expr
+  transVarExpr (resolveVarType tdict) expr
 
+let resolveBlockType (tdict: TypeDict) (bl:Block) : Block =
+  blockToExpr bl
+  |> resolveExprType tdict
+  |> exprToBlock
 
 /*
 and LetFuncDef = {fvar: Var; params: []Var; body:Block}
@@ -193,7 +231,7 @@ and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
 let resolveLfd (tdict: TypeDict) (lfd:LetFuncDef) =
    let nfvar = resolveVarType tdict lfd.fvar
    let nparams = slice.Map (resolveVarType tdict) lfd.params
-   let nbody = resolveBlockType (resolveExprType tdict) tdict lfd.body
+   let nbody = resolveBlockType tdict lfd.body
    {fvar=nfvar; params=nparams; body=nbody}
 
 /*

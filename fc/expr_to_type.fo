@@ -24,6 +24,22 @@ let blockToType (toT: Expr->FType)  (b:Block)=
 let blockToExpr (block:Block) =
   EReturnableExpr (RBlock block)
 
+// for dummy usage
+let emptyBlock () =
+  GoEval<Block> "Block{}"
+
+let exprToBlock (bexpr:Expr) =
+  match bexpr with
+  | EReturnableExpr re ->
+    match re with
+    | RBlock b -> b
+    | _ ->
+      frt.Panic "Not block, some ReturnableExpr."
+      emptyBlock ()
+  | _ ->
+    frt.Panic "Not block."
+    emptyBlock ()
+
 let meToType (toT: Expr->FType) (me:MatchExpr) =
   let frule = me.rules |> slice.Head
   frule.body |> blockToExpr |> toT
