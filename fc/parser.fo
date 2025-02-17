@@ -417,12 +417,83 @@ let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
    |> CnvL (psConsume RSBRACKET)
    |> CnvR ESlice
 
+/*
+  parseIfExpr related
+*/
+
+
+let exprOnlyBlock (expr:Expr) =
+   let emp = GoEval<[]Stmt> "[]Stmt{}"
+   {Block.stmts=emp; finalExpr=expr}
+  
+
+/*
+parse single expr and return as block.
+This is occur like 'if c then XX else YY' oneliner.
+*/
+let parseInlineBlock (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+   let (ps2, expr) = pExpr ps
+   exprOnlyBlock expr
+   |> withPs ps2
+
+/*
+IF_EXPR = 'if' expr 'then' block (('elif' expr 'then' block)* 'else' block)?
+
+But for elif, this function parse just after if symbol.
+*/
+let parseIfAfterIfExpr (pExpr:ParseState->ParseState*Expr) (pBlock:ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
+  let (ps2, cond) = pExpr ps |> CnvL (psConsume THEN)
+  let tgen = psTypeVarGen ps2
+  let recurse = parseIfAfterIfExpr pExpr pBlock
+  if psCurIs EOL ps2 then
+    let (ps3, tbody) = psSkipEOL ps2
+                       |> pBlock
+    let ps4 = psSkipEOL ps3
+    if psCurIs ELSE ps4 then
+      let (pse2, fbody) = psConsume ELSE ps4 |> psSkipEOL |> pBlock
+      newIfElseCall tgen cond tbody fbody
+      |> withPs pse2
+    elif psCurIs ELIF ps4 then
+      let (ps5, elseExpr) = psConsume ELIF ps4
+                           |> recurse
+      let ebody = exprOnlyBlock elseExpr
+      newIfElseCall tgen cond tbody ebody
+      |> withPs ps5
+    else
+      // if only. use ps before skip eol
+      newIfOnlyCall tgen cond tbody
+      |> withPs ps3
+  else
+		// one line case: if COND then TBODY else FBODY
+    let (psi2, tbody) = parseInlineBlock pExpr ps2
+    if psCurIs ELSE psi2 then
+      let (psi3, fbody) = parseInlineBlock pExpr psi2
+      newIfElseCall tgen cond tbody fbody
+      |> withPs psi3
+    else
+      newIfOnlyCall tgen cond tbody
+      |> withPs psi2
+
+
+/*
+IF_EXPR = 'if' expr 'then' block (('elif' expr 'then' block)* 'else' block)?
+
+- expr must bo bool type.
+- both block must be the same return type.
+- if there is EOL after 'then', it assumue offside block
+- if there is no else block, block return type must be unit.
+*/
+let parseIfExpr (pExpr:ParseState->ParseState*Expr) (pBlock:ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
+  psConsume IF ps
+  |> parseIfAfterIfExpr pExpr pBlock
+
 let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
   match psCurrentTT ps with
   | MATCH ->
      parseMatchExpr pExpr pBlock ps
      |> CnvR RMatchExpr |> CnvR EReturnableExpr
   | LSBRACKET -> parseSliceExpr pExpr ps
+  | IF -> parseIfExpr pExpr pBlock ps 
   | _ ->
     let (ps2, es) = parseAtomList pExpr ps
     if (slice.Length es) = 1 then

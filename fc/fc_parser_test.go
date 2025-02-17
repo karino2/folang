@@ -402,6 +402,112 @@ this is test
 `,
 			"frt.OpNotEqual(s1, s2)",
 		},
+		{
+			`package main
+
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then
+    123
+  else
+    456
+`,
+			"frt.OpEqual",
+		},
+		// comment handling of block.
+		{
+			`package main
+
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then
+    123
+  else
+    // this line is comment
+    456
+`,
+			"frt.OpEqual",
+		},
+		// type resolve for non-funcall function
+		{
+			`
+package main
+
+package_info slice =
+  let Sort<T>: []T -> []T
+
+
+let ika (fields: []string) =
+  fields |> slice.Sort
+
+`,
+			"frt.Pipe",
+		},
+		// comment inside union case. just pass parse is enough.
+		{
+			`package main
+
+type AorB =
+ | A
+ // comment here.
+ // comment here2.
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
+`,
+			"a match", // whatever.
+		},
+		// comment inside match case. just parse is enough for test.
+		{
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  // comment here.
+  | B -> "b match"
+
+`,
+			"b match",
+		},
+		{
+			`package main
+
+package_info slice =
+  let Zip<T, U>: []T->[]U->[]T*U
+
+let ika () =
+  let s1 = [1; 2; 3]
+  let s2 = ["a"; "b"; "c"]
+  slice.Zip s1 s2
+`,
+			"frt.Tuple2[int, string]",
+		},
+		{
+			`package main
+
+let ika () =
+  "\n"
+`,
+			`return "\n"`,
+		},
+		{
+			`package main
+
+let ika (a:int) =
+  if a = 0 && a = 2 then
+    "abc"
+	else
+	  "def"
+`,
+			"(frt.OpEqual(a, 0)&&frt.OpEqual(a, 2))",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -529,9 +635,13 @@ let ika () =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	src := `let ika (s1:string) (s2:string) =
-  s1 = s2
+	src := `package main
 
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then
+    123
+  else
+    456
 `
 
 	got := transpile(src)

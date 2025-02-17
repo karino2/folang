@@ -326,12 +326,18 @@ let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
   let nbody = blockToExpr mr.body |> pExpr |> exprToBlock
   {pattern=mr.pattern; body=nbody}
 
+let transVarBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
+  let nss = bl.stmts |> slice.Map transS
+  let fexpr = transE bl.finalExpr
+  {Block.stmts=nss; finalExpr=fexpr}
+
 /*
   Self transform Var of expr.
   For composite expr, call each element and composite automatically.
 */
 let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   let transE = transVarExpr transV
+  let transS = (transVarStmt transV transE)
   match expr with
   | EVar v -> transV v |> EVar
   | ESlice es -> slice.Map transE es |> ESlice
@@ -345,12 +351,14 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
     let newNV = slice.Map (transExprNE transE) rg.fieldsNV
     {fieldsNV=newNV; recordType=rg.recordType}
     |> ERecordGen
+  | ELazyBlock lb ->
+    let nbl = transVarBlock transE transS lb.block
+    {LazyBlock.block=nbl}
+    |> ELazyBlock
   | EReturnableExpr re -> 
     match re with
     | RBlock bl ->
-      let nss = bl.stmts |> slice.Map (transVarStmt transV transE)
-      let fexpr = transE bl.finalExpr
-      {Block.stmts=nss; finalExpr=fexpr}
+      transVarBlock transE transS bl
       |> blockToExpr
     | RMatchExpr me ->
       let ntarget = transE me.target

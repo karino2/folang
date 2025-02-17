@@ -11,20 +11,20 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v223 := (ftp).(type) {
+	switch _v231 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v223.Value
+		tv := _v231.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v223.Value
+		ts := _v231.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FTuple:
-		ftup := _v223.Value
+		ftup := _v231.Value
 		nts := slice.Map(recurse, ftup.elemTypes)
 		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
 	case FType_FFunc:
-		fnt := _v223.Value
+		fnt := _v231.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -348,9 +348,9 @@ func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 
 func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	rht := ExprToType(rhs)
-	switch _v225 := (rht).(type) {
+	switch _v233 := (rht).(type) {
 	case FType_FFunc:
-		ft := _v225.Value
+		ft := _v233.Value
 		switch (freturn(ft)).(type) {
 		case FType_FUnit:
 			return newPipeCallUnit(tvgen, lhs, rhs)
@@ -382,4 +382,41 @@ func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr,
 	default:
 		return newBinOpNormal(binfo, lhs, rhs)
 	}
+}
+
+func newFnTp(argType FType, retType FType) FType {
+	tgs := ([]FType{argType, retType})
+	return frt.Pipe(FuncType{targets: tgs}, New_FType_FFunc)
+}
+
+func emptySS() []string {
+	return []string{}
+}
+
+func newIfElseCall(tvgen func() TypeVar, cond Expr, tbody Block, fbody Block) Expr {
+	ltbody := frt.Pipe(LazyBlock{block: tbody}, New_Expr_ELazyBlock)
+	lfbody := frt.Pipe(LazyBlock{block: fbody}, New_Expr_ELazyBlock)
+	retType := blockReturnType(ExprToType, tbody)
+	fname := (func() string {
+		switch (retType).(type) {
+		case FType_FUnit:
+			return "frt.IfElseUnit"
+		default:
+			return "frt.IfElse"
+		}
+	})()
+	emptyS := emptySS()
+	args := ([]Expr{cond, ltbody, lfbody})
+	ft := newFnTp(New_FType_FUnit, retType)
+	tps := ([]FType{New_FType_FBool, ft, ft, retType})
+	return genBuiltinFunCall(tvgen, fname, emptyS, tps, args)
+}
+
+func newIfOnlyCall(tvgen func() TypeVar, cond Expr, tbody Block) Expr {
+	ltbody := frt.Pipe(LazyBlock{block: tbody}, New_Expr_ELazyBlock)
+	emptyS := emptySS()
+	args := ([]Expr{cond, ltbody})
+	ft := newFnTp(New_FType_FUnit, New_FType_FUnit)
+	tps := ([]FType{New_FType_FBool, ft, ft, New_FType_FUnit})
+	return genBuiltinFunCall(tvgen, "frt.IfOnly", emptyS, tps, args)
 }

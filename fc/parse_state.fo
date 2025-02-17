@@ -401,3 +401,35 @@ let newBinOpCall (tvgen: ()->TypeVar) (tk:TokenType) (binfo: BinOpInfo) (lhs: Ex
   | EQ -> newEqNeq tvgen binfo.goFuncName lhs rhs
   | BRACKET -> newEqNeq tvgen binfo.goFuncName lhs rhs
   | _ -> newBinOpNormal binfo lhs rhs
+
+let newFnTp (argType:FType) (retType:FType) =
+  let tgs = [argType;retType]
+  {FuncType.targets=tgs}
+  |> FFunc
+
+let emptySS () =
+  GoEval<[]string> "[]string{}"
+
+/*
+  if else call.
+*/
+let newIfElseCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) (fbody: Block) =
+  let ltbody = {LazyBlock.block=tbody} |> ELazyBlock
+  let lfbody = {LazyBlock.block=fbody} |> ELazyBlock
+  let retType = blockReturnType ExprToType tbody
+  let fname = match retType with
+              | FUnit -> "frt.IfElseUnit"
+              | _ -> "frt.IfElse"
+  let emptyS = emptySS ()
+  let args = [cond; ltbody;lfbody]
+  let ft = newFnTp FUnit retType
+  let tps = [FBool; ft; ft; retType]
+  genBuiltinFunCall tvgen fname emptyS tps args
+  
+let newIfOnlyCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) =
+  let ltbody = {LazyBlock.block=tbody} |> ELazyBlock
+  let emptyS = emptySS ()
+  let args = [cond; ltbody]
+  let ft = newFnTp FUnit FUnit
+  let tps = [FBool; ft; ft; FUnit]
+  genBuiltinFunCall tvgen "frt.IfOnly" emptyS tps args
