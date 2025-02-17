@@ -272,6 +272,19 @@ let ika () =
 `,
 			"ika() []int{",
 		},
+		{
+			`package_info slice =
+  let Map<T, U> : (T->U)->[]T->[]U
+
+let conv (i:int) =
+  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
+
+let ika () =
+  let s = GoEval<[]int> "int[]{1, 2}"
+  slice.Map conv s
+`,
+			"ika() []string",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -340,12 +353,14 @@ let hoge () =
 }
 func TestParseAddhook(t *testing.T) {
 	src := `package_info slice =
-  let Length<T>: []T -> int
-  let Take<T> : int->[]T->[]T
+  let Map<T, U> : (T->U)->[]T->[]U
+
+let conv (i:int) =
+  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
 
 let ika () =
   let s = GoEval<[]int> "int[]{1, 2}"
-  slice.Take 2 s
+  slice.Map conv s
 `
 
 	got := transpile(src)

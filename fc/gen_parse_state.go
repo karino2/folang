@@ -9,18 +9,31 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 	return frt.NewTuple2(tpname, tv)
 }
 
-func tpreplace(tvd TypeVarDict, ft FType) FType {
-	switch _v200 := (ft).(type) {
+func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
+	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
+	switch _v200 := (ftp).(type) {
 	case FType_FTypeVar:
 		tv := _v200.Value
-		return frt.Pipe(tvdLookupNF(tvd, tv.name), New_FType_FTypeVar)
+		return transTV(tv)
 	case FType_FSlice:
-		st := _v200.Value
-		et := tpreplace(tvd, st.elemType)
-		return frt.Pipe(SliceType{elemType: et}, New_FType_FSlice)
+		ts := _v200.Value
+		et := recurse(ts.elemType)
+		return New_FType_FSlice(SliceType{elemType: et})
+	case FType_FFunc:
+		fnt := _v200.Value
+		nts := slice.Map(recurse, fnt.targets)
+		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
-		return ft
+		return ftp
 	}
+}
+
+func tpReplaceOne(tvd TypeVarDict, tv TypeVar) FType {
+	return frt.Pipe(tvdLookupNF(tvd, tv.name), New_FType_FTypeVar)
+}
+
+func tpreplace(tvd TypeVarDict, ft FType) FType {
+	return transTypeVarFType((func(_r0 TypeVar) FType { return tpReplaceOne(tvd, _r0) }), ft)
 }
 
 func GenFunc(ff FuncFactory, tvgen func() TypeVar) FuncType {

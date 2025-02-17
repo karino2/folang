@@ -14,13 +14,27 @@ let tpname2tvtp (tvgen: ()->TypeVar) (tpname:string) =
   let tv = tvgen ()
   (tpname, tv)
 
-let tpreplace (tvd:TypeVarDict) (ft:FType) : FType =
-  match ft with
-  | FTypeVar tv -> tvdLookupNF tvd tv.name |> FTypeVar
-  | FSlice st -> 
-    let et = tpreplace tvd st.elemType
-    {SliceType.elemType=et} |> FSlice
-  | _ -> ft
+/*
+  TransformT FTypeVar and recomposite.
+*/
+let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
+  let recurse = transTypeVarFType transTV
+  match ftp with
+  | FTypeVar tv -> transTV tv
+  | FSlice ts ->
+    let et = recurse ts.elemType
+    FSlice {SliceType.elemType = et}
+  | FFunc fnt ->
+    let nts = slice.Map recurse fnt.targets
+    {FuncType.targets=nts}
+    |> FFunc
+  | _ -> ftp
+
+let tpReplaceOne (tvd:TypeVarDict) (tv:TypeVar) =
+  tvdLookupNF tvd tv.name |> FTypeVar
+
+let tpreplace (tvd:TypeVarDict) (ft:FType) =
+  transTypeVarFType (tpReplaceOne tvd) ft
 
 let GenFunc (ff:FuncFactory) (tvgen: ()->TypeVar) =
   let tvd = slice.Map (tpname2tvtp tvgen) ff.tparams |> toTVDict

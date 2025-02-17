@@ -286,23 +286,6 @@ let rsResolveType (res:Resolver) (tvname:string) =
   Resolve TypeVar
 */
 
-/*
-  TransformT FTypeVar and recomposite.
-*/
-let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
-  let recurse = transTypeVarFType transTV
-  match ftp with
-  | FTypeVar tv -> transTV tv
-  | FSlice ts ->
-    let et = recurse ts.elemType
-    FSlice {SliceType.elemType = et}
-  | FFunc fnt ->
-    let nts = slice.Map recurse fnt.targets
-    {FuncType.targets=nts}
-    |> FFunc
-  | _ -> ftp
-
-
 let transOneTypeVar (rsv: Resolver) (tv:TypeVar) =
   rsResolveType rsv tv.name
 
