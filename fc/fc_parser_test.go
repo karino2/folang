@@ -647,6 +647,14 @@ let hoge () =
 		{
 			`package main
 
+let ika (s1:string) (s2:string) =
+  if s1 = s2 then 123 else 456
+`,
+			[]string{"return 123", "123}),"}, // no call.
+		},
+		{
+			`package main
+
 let ika () =
   [1; 2; 3]
 

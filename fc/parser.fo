@@ -467,7 +467,7 @@ let parseIfAfterIfExpr (pExpr:ParseState->ParseState*Expr) (pBlock:ParseState->P
 		// one line case: if COND then TBODY else FBODY
     let (psi2, tbody) = parseInlineBlock pExpr ps2
     if psCurIs ELSE psi2 then
-      let (psi3, fbody) = parseInlineBlock pExpr psi2
+      let (psi3, fbody) = psConsume ELSE psi2 |> parseInlineBlock pExpr
       newIfElseCall tgen cond tbody fbody
       |> withPs psi3
     else
