@@ -36,12 +36,12 @@ func emptyBlock() Block {
 }
 
 func exprToBlock(bexpr Expr) Block {
-	switch _v33 := (bexpr).(type) {
+	switch _v35 := (bexpr).(type) {
 	case Expr_EReturnableExpr:
-		re := _v33.Value
-		switch _v34 := (re).(type) {
+		re := _v35.Value
+		switch _v36 := (re).(type) {
 		case ReturnableExpr_RBlock:
-			b := _v34.Value
+			b := _v36.Value
 			return b
 		default:
 			frt.Panic("Not block, some ReturnableExpr.")
@@ -59,12 +59,12 @@ func meToType(toT func(Expr) FType, me MatchExpr) FType {
 }
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
-	switch _v35 := (rexpr).(type) {
+	switch _v37 := (rexpr).(type) {
 	case ReturnableExpr_RBlock:
-		b := _v35.Value
+		b := _v37.Value
 		return blockToType(toT, b)
 	case ReturnableExpr_RMatchExpr:
-		me := _v35.Value
+		me := _v37.Value
 		return meToType(toT, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -74,9 +74,9 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 func fcToFuncType(fc FunCall) FuncType {
 	tfv := fc.targetFunc
 	ft := tfv.ftype
-	switch _v36 := (ft).(type) {
+	switch _v38 := (ft).(type) {
 	case FType_FFunc:
-		ft := _v36.Value
+		ft := _v38.Value
 		return ft
 	default:
 		return FuncType{}
@@ -99,9 +99,9 @@ func fcToType(fc FunCall) FType {
 }
 
 func ExprToType(expr Expr) FType {
-	switch _v37 := (expr).(type) {
+	switch _v39 := (expr).(type) {
 	case Expr_EGoEvalExpr:
-		ge := _v37.Value
+		ge := _v39.Value
 		return ge.typeArg
 	case Expr_EStringLiteral:
 		return New_FType_FString
@@ -112,27 +112,31 @@ func ExprToType(expr Expr) FType {
 	case Expr_EBoolLiteral:
 		return New_FType_FBool
 	case Expr_EFieldAccess:
-		fa := _v37.Value
+		fa := _v39.Value
 		return faToType(fa)
 	case Expr_EVar:
-		v := _v37.Value
+		v := _v39.Value
 		return v.ftype
 	case Expr_ESlice:
-		s := _v37.Value
+		s := _v39.Value
 		etp := frt.Pipe(slice.Head(s), ExprToType)
 		st := SliceType{elemType: etp}
 		return New_FType_FSlice(st)
+	case Expr_ETupleExpr:
+		es := _v39.Value
+		ts := slice.Map(ExprToType, es)
+		return frt.Pipe(TupleType{elemTypes: ts}, New_FType_FTuple)
 	case Expr_ERecordGen:
-		rg := _v37.Value
+		rg := _v39.Value
 		return New_FType_FRecord(rg.recordType)
 	case Expr_ELazyBlock:
-		lb := _v37.Value
+		lb := _v39.Value
 		return lblockToType(ExprToType, lb)
 	case Expr_EReturnableExpr:
-		re := _v37.Value
+		re := _v39.Value
 		return returnableToType(ExprToType, re)
 	case Expr_EFunCall:
-		fc := _v37.Value
+		fc := _v39.Value
 		return fcToType(fc)
 	default:
 		panic("Union pattern fail. Never reached here.")

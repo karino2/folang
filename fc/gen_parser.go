@@ -135,12 +135,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v599 := (prm1).(type) {
+	switch _v615 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v599.Value
+		v := _v615.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -259,8 +259,17 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 				return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
 			}))
 		}), (func() frt.Tuple2[ParseState, Expr] {
-			return frt.Pipe(parseE(pn), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] {
-				return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
+			ps2, e1 := frt.Destr(parseE(pn))
+			return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_COMMA), (func() frt.Tuple2[ParseState, Expr] {
+				ps3, e2 := frt.Destr(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), parseE))
+				frt.IfOnly(frt.OpEqual(psCurrentTT(ps3), New_TokenType_COMMA), (func() {
+					frt.Panic("only pair is supported for tuple expr.")
+				}))
+				return frt.Pipe(frt.Pipe(([]Expr{e1, e2}), New_Expr_ETupleExpr), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(psConsume(New_TokenType_RPAREN, ps3), _r0) }))
+			}), (func() frt.Tuple2[ParseState, Expr] {
+				return frt.Pipe(frt.NewTuple2(ps2, e1), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] {
+					return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
+				}))
 			}))
 		}))
 	case TokenType_IDENTIFIER:
@@ -403,9 +412,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v607 := (head).(type) {
+			switch _v623 := (head).(type) {
 			case Expr_EVar:
-				v := _v607.Value
+				v := _v623.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
@@ -452,9 +461,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v609 := (last).(type) {
+	switch _v625 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v609.Value
+		e := _v625.Value
 		return frt.NewTuple2(ps2, Block{stmts: stmts, finalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")

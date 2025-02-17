@@ -334,6 +334,7 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   match expr with
   | EVar v -> transV v |> EVar
   | ESlice es -> slice.Map (transVarExpr transV) es |> ESlice
+  | ETupleExpr es -> slice.Map (transVarExpr transV) es |> ETupleExpr
   | ERecordGen rg ->
     let newNV = slice.Map (transExprNE transE) rg.fieldsNV
     {fieldsNV=newNV; recordType=rg.recordType}

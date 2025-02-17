@@ -84,6 +84,10 @@ let ExprToType (expr:Expr) : FType =
     let etp = slice.Head s |> ExprToType
     let st = {SliceType.elemType=etp}
     FSlice st
+  | ETupleExpr es ->
+    let ts = slice.Map ExprToType es
+    {TupleType.elemTypes=ts}
+    |> FTuple
   | ERecordGen rg -> FRecord rg.recordType
   | ELazyBlock lb -> lblockToType ExprToType lb
   | EReturnableExpr re -> returnableToType ExprToType re

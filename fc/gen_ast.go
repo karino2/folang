@@ -41,6 +41,7 @@ func (Expr_EVar) Expr_Union()            {}
 func (Expr_ESlice) Expr_Union()          {}
 func (Expr_ERecordGen) Expr_Union()      {}
 func (Expr_ELazyBlock) Expr_Union()      {}
+func (Expr_ETupleExpr) Expr_Union()      {}
 func (Expr_EReturnableExpr) Expr_Union() {}
 
 type Expr_EGoEvalExpr struct {
@@ -107,6 +108,12 @@ type Expr_ELazyBlock struct {
 }
 
 func New_Expr_ELazyBlock(v LazyBlock) Expr { return Expr_ELazyBlock{v} }
+
+type Expr_ETupleExpr struct {
+	Value []Expr
+}
+
+func New_Expr_ETupleExpr(v []Expr) Expr { return Expr_ETupleExpr{v} }
 
 type Expr_EReturnableExpr struct {
 	Value ReturnableExpr

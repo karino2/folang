@@ -256,7 +256,19 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     if (psCurrentTT pn) = RPAREN then
       (pn, EUnit) |> CnvL (psConsume RPAREN)
     else
-      parseE pn |> CnvL (psConsume RPAREN)
+      let (ps2, e1) = parseE pn
+      if (psCurrentTT ps2) = COMMA then
+        let (ps3, e2) = psConsume COMMA ps2
+                        |> parseE
+        if (psCurrentTT ps3) = COMMA then
+          frt.Panic "only pair is supported for tuple expr."
+        [e1; e2]
+        |> ETupleExpr
+        |> withPs (psConsume RPAREN ps3)
+      else
+        (ps2, e1)
+        |> CnvL (psConsume RPAREN)
+
   | IDENTIFIER ->
     if cur.stringVal = "GoEval" then
       parseGoEval ps

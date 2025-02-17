@@ -275,6 +275,16 @@ let sliceToGo (tGo:FType->string) (eGo:Expr->string) (exprs: []Expr) =
   buf.Write b ")"
   buf.String b
 
+let tupleToGo (eGo:Expr->string) (exprs: []Expr) =
+  let b = buf.New ()
+  buf.Write b "frt.NewTuple2("
+  slice.Map eGo exprs
+  |> strings.Concat ", "
+  |> buf.Write b
+  buf.Write b ")"
+  buf.String b
+
+
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   let reToGoRet = reToGoReturn sToGo eToGo 
@@ -287,6 +297,7 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | EFieldAccess fa -> fa.targetName + "." + fa.fieldName
   | EVar v -> v.name
   | ESlice es -> sliceToGo FTypeToGo eToGo es
+  | ETupleExpr es -> tupleToGo eToGo es
   | ERecordGen rg -> rgToGo eToGo rg
   | EReturnableExpr re -> reToGo sToGo eToGo re
   | EFunCall fc -> fcToGo FTypeToGo eToGo fc

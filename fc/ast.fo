@@ -36,6 +36,7 @@ type Expr =
 | ESlice of []Expr
 | ERecordGen of RecordGen
 | ELazyBlock of LazyBlock
+| ETupleExpr of []Expr
 /*
   For some expr, normally we need to wrap with func() to become expr in go stmt
   But in some case like final expr of block, just return is enough and do not need to wrap func().
