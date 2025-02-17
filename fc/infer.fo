@@ -410,7 +410,6 @@ let Infer (tvnames:[]string) (lfd:LetFuncDef) =
   let rels = collectLfdRels lfd
   // frt.Printf1 "%v\n" rels
   let rsv = buildResolver rels
-  // let rdict = relsToTDict rels
   // let unresTvs = slice.Filter (notFound rsv) tvnames
   // frt.Printf1 "unres: %v\n" unresTvs
   // assign formal type parameter
