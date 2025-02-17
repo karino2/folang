@@ -925,7 +925,7 @@ let fuga () =
 	a+4
 
 `,
-			"a :=",
+			"a, _ :=",
 		},
 		{
 			`package main

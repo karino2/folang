@@ -1065,11 +1065,8 @@ func (ldvd *LetDestVarDef) ToGo() string {
 		panic("Non 2 elem destructuring, NYI.")
 	}
 	buf.WriteString(ldvd.Names[0])
-	// if last arg is '_', do not emit ', _' because go lint complaint it.
-	if ldvd.Names[1] != "_" {
-		buf.WriteString(", ")
-		buf.WriteString(ldvd.Names[1])
-	}
+	buf.WriteString(", ")
+	buf.WriteString(ldvd.Names[1])
 	buf.WriteString(" := frt.Destr(")
 	buf.WriteString(ldvd.Rhs.ToGo())
 	buf.WriteString(")")

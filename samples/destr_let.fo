@@ -1,0 +1,12 @@
+package main
+
+import frt
+
+let ika () =
+  (123, "abc")
+
+let main () =
+  let (a, _) = ika ()
+  frt.Sprintf1 "a=%d" a
+  |> frt.Println
+  
