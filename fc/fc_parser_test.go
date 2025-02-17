@@ -661,6 +661,66 @@ let ika () =
 `,
 			[]string{"return ([]int{1,2,3})", "ika() []int"},
 		},
+		{
+			`package main
+
+let ika () =
+  (1, 2)
+
+`,
+			[]string{") frt.Tuple2[int, int]", "frt.NewTuple2(1, 2)"},
+		},
+		{
+			`package main
+
+package_info pair =
+  let Fst<T, U> : T*U->T
+
+let ika () =
+  pair.Fst (1, "s")
+`,
+			[]string{"ika() int{", "pair.Fst"},
+		},
+		// unit arg parse.
+		{
+			`package main
+
+let ika () =
+  "123"
+
+let hoge () =
+   let s = ika ()
+   s
+`,
+			[]string{"ika() string", "= ika()"},
+		},
+		{
+			`package main
+
+type Inner = {Name: string}
+type Nested = {Name: string; Elem: Inner}
+
+let ika (a:Nested) =
+   a.Elem.Name
+`,
+			[]string{") string", "a.Elem.Name"},
+		},
+		{
+			`package main
+
+let ika (a:int) =
+  if a = 1 then
+	  "abc"
+	elif a <> 5 then
+	  "def"
+	elif a = 3 then
+	  "xxx"
+	else
+	  "ghi"
+
+`,
+			[]string{"frt.IfElse(frt.OpEqual(a, 1)", "return frt.IfElse(frt.OpNotEqual(a, 5)"},
+		},
 	}
 
 	for _, test := range tests {
