@@ -1029,7 +1029,7 @@ func (p *Parser) parseMatchExpr() Expr {
 
 /*
 parse single expr and return as block.
-This is occur like 'if c then XX else YY' onliner.
+This is occur like 'if c then XX else YY' oneliner.
 */
 func (p *Parser) parseInlineBlock() *Block {
 	p.pushScope()
