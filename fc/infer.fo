@@ -26,6 +26,14 @@ let withTp (tp:FType) (rels:[]UniRel) =
   (tp, rels)
 
 
+let compositeTpList (cOne: FType->FType->FType*[]UniRel) (lhs: []FType) (rhs: []FType) =
+  let tups = slice.Zip lhs rhs
+              |> slice.Map (tupApply cOne)
+  let tps = tups |> slice.Map frt.Fst 
+  let rels = tups |> slice.Map frt.Snd |> slice.Concat
+  (tps, rels)
+
+
 /*
   compare two type and adopt concrete one.
   
@@ -68,16 +76,19 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
       let (rtp, rels) = compositeTp ts1.elemType ts2.elemType
       {SliceType.elemType=rtp}
       |> FSlice
-      |> withRels rels      
+      |> withRels rels
     | FFunc tf2 ->
       let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
-      // [](type*[]UniRel)
-      let tups = slice.Zip tf1.targets tf2.targets
-                 |> slice.Map (tupApply compositeTp)
-      let tps = slice.Map frt.Fst tups
-      let rels = tups |> slice.Map frt.Snd |> slice.Concat
+      let (tps, rels) = compositeTpList compositeTp tf1.targets tf2.targets
       {FuncType.targets=tps}
       |> FFunc
+      |> withRels rels
+    | FTuple tt2 ->
+      let tt1 = GoEval<TupleType> "lhs.(FType_FTuple).Value"
+      // [](type*[]UniRel)
+      let (tps, rels) = compositeTpList compositeTp tt1.elemTypes tt2.elemTypes
+      {TupleType.elemTypes=tps}
+      |> FTuple
       |> withRels rels
     | _ ->
       // both type is concrete.

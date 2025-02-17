@@ -11,16 +11,20 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v200 := (ftp).(type) {
+	switch _v204 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v200.Value
+		tv := _v204.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v200.Value
+		ts := _v204.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
+	case FType_FTuple:
+		ftup := _v204.Value
+		nts := slice.Map(recurse, ftup.elemTypes)
+		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
 	case FType_FFunc:
-		fnt := _v200.Value
+		fnt := _v204.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:

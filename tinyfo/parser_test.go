@@ -821,7 +821,7 @@ package_info slice =
 
 let ika () =
   let s1 = [1; 2; 3]
-	let s2 = ["a"; "b"; "c"]
+  let s2 = ["a"; "b"; "c"]
   slice.Zip s1 s2
 `,
 			"frt.Tuple2[int, string]",

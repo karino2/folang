@@ -21,9 +21,11 @@ type FType =
 | FExtType of string
 | FSlice of SliceType
 | FPreUsed of string
+| FTuple of TupleType
 | FTypeVar of TypeVar
 and SliceType = {elemType: FType}
 and FuncType = {targets: []FType}
+and TupleType = {elemTypes: []FType}
 and NameTypePair = {name: string; ftype: FType}
 and RecordType = {name: string; fields: []NameTypePair}
 and UnionType = {name: string; cases: []NameTypePair}
@@ -92,6 +94,12 @@ let unionCSName (unionName: string) (caseName: string) =
 let fSliceToGo (fs: SliceType) (toGo:FType->string) =
   "[]" + (toGo fs.elemType)
 
+// only support two tuple for a while
+let fTupleToGo (toGo:FType->string) (ft:TupleType) =
+  let args = slice.Map toGo ft.elemTypes |> strings.Concat ", "
+  frt.Sprintf1 "frt.Tuple2[%s]" args
+
+
 let FTypeToGo (ft:FType) : string =
   match ft with
   | FInt -> "int"
@@ -104,4 +112,5 @@ let FTypeToGo (ft:FType) : string =
   | FExtType fe -> fe // for external type with typename fe, use that type name as is.
   | FSlice fs -> fSliceToGo fs FTypeToGo
   | FPreUsed fp -> fp
+  | FTuple ft -> fTupleToGo FTypeToGo ft
   | FTypeVar fp -> fp.name

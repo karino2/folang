@@ -285,6 +285,38 @@ let ika () =
 `,
 			"ika() []string",
 		},
+		{
+			`package main
+
+package_info slice =
+  let Zip<T, U>: []T->[]U->[]T*U
+
+let ika () =
+  let s1 = [1; 2; 3]
+  let s2 = ["a"; "b"; "c"]
+  slice.Zip s1 s2
+`,
+			"frt.Tuple2[int, string]",
+		},
+		// tuple NYI.
+		/*
+					{
+						`package main
+
+			package_info _ =
+			  let Map<T, U> : (T->U)->[]T->[]U
+			  let Snd<T, U> : T*U->U
+
+			let hoge () =
+			  let s1 = GoEval<[]int> "[]int{1, 2}"
+			  let s2 = GoEval<[]int> "[]int{3, 4}"
+			  let tups = [(123, s1); (456, s2)]
+			  Map Snd tups
+
+			`,
+						"[][]int{",
+					},
+		*/
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -352,15 +384,15 @@ let hoge () =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	src := `package_info slice =
-  let Map<T, U> : (T->U)->[]T->[]U
+	src := `package main
 
-let conv (i:int) =
-  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
+package_info slice =
+  let Zip<T, U>: []T->[]U->[]T*U
 
 let ika () =
-  let s = GoEval<[]int> "int[]{1, 2}"
-  slice.Map conv s
+  let s1 = [1; 2; 3]
+  let s2 = ["a"; "b"; "c"]
+  slice.Zip s1 s2
 `
 
 	got := transpile(src)

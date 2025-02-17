@@ -55,8 +55,23 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
     frt.Panic("Unknown type")
     (ps, FUnit)
 
+/*
+TERM_TYPE = ATOM_TYPE | TUPLE_TYPE
+TUPLE_TYPE = ATOME_TYPE '*' ATOM_TYPE ('*' ATOME_TYPE)*
+*/
 let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
-  parseAtomType pType (parseTermType pType) ps
+  let pAtom = parseAtomType pType (parseTermType pType)
+  let (ps2, ft) = pAtom ps
+  if (psCurrentTT ps2) = ASTER then
+    let (ps3, ft2) = psConsume ASTER ps2
+                      |> pAtom
+    if (psCurrentTT ps3) = ASTER then
+      frt.Panic "More than three elem tuple, NYI"
+    {elemTypes=[ft;ft2]}
+    |> FTuple
+    |> withPs ps3
+  else
+    (ps2, ft)
 
 /*
   TYPE_ARROWS = TERM_TYPE ('->' TERM_TYPE)*

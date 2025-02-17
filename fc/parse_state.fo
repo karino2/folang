@@ -24,6 +24,10 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
   | FSlice ts ->
     let et = recurse ts.elemType
     FSlice {SliceType.elemType = et}
+  | FTuple ftup ->
+    let nts = slice.Map recurse ftup.elemTypes
+    {TupleType.elemTypes=nts}
+    |> FTuple
   | FFunc fnt ->
     let nts = slice.Map recurse fnt.targets
     {FuncType.targets=nts}

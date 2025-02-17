@@ -26,6 +26,7 @@ func (FType_FUnion) FType_Union()   {}
 func (FType_FExtType) FType_Union() {}
 func (FType_FSlice) FType_Union()   {}
 func (FType_FPreUsed) FType_Union() {}
+func (FType_FTuple) FType_Union()   {}
 func (FType_FTypeVar) FType_Union() {}
 
 type FType_FInt struct {
@@ -84,6 +85,12 @@ type FType_FPreUsed struct {
 
 func New_FType_FPreUsed(v string) FType { return FType_FPreUsed{v} }
 
+type FType_FTuple struct {
+	Value TupleType
+}
+
+func New_FType_FTuple(v TupleType) FType { return FType_FTuple{v} }
+
 type FType_FTypeVar struct {
 	Value TypeVar
 }
@@ -95,6 +102,9 @@ type SliceType struct {
 }
 type FuncType struct {
 	targets []FType
+}
+type TupleType struct {
+	elemTypes []FType
 }
 type NameTypePair struct {
 	name  string
@@ -190,8 +200,13 @@ func fSliceToGo(fs SliceType, toGo func(FType) string) string {
 	return ("[]" + toGo(fs.elemType))
 }
 
+func fTupleToGo(toGo func(FType) string, ft TupleType) string {
+	args := frt.Pipe(slice.Map(toGo, ft.elemTypes), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
+	return frt.Sprintf1("frt.Tuple2[%s]", args)
+}
+
 func FTypeToGo(ft FType) string {
-	switch _v19 := (ft).(type) {
+	switch _v21 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -201,25 +216,28 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnit:
 		return ""
 	case FType_FFunc:
-		ft := _v19.Value
+		ft := _v21.Value
 		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v19.Value
+		fr := _v21.Value
 		return recordTypeToGo(fr)
 	case FType_FUnion:
-		fu := _v19.Value
+		fu := _v21.Value
 		return funionToGo(fu)
 	case FType_FExtType:
-		fe := _v19.Value
+		fe := _v21.Value
 		return fe
 	case FType_FSlice:
-		fs := _v19.Value
+		fs := _v21.Value
 		return fSliceToGo(fs, FTypeToGo)
 	case FType_FPreUsed:
-		fp := _v19.Value
+		fp := _v21.Value
 		return fp
+	case FType_FTuple:
+		ft := _v21.Value
+		return fTupleToGo(FTypeToGo, ft)
 	case FType_FTypeVar:
-		fp := _v19.Value
+		fp := _v21.Value
 		return fp.name
 	default:
 		panic("Union pattern fail. Never reached here.")
