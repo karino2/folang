@@ -1029,6 +1029,27 @@ let hoge () =
 `,
 			"[][]int{",
 		},
+		// This is NYI.
+		// Resolve of Snd of "Map Snd tups"
+		// But we can resolve tups |> Map Snd
+		/*
+					{
+						`package main
+
+			package_info _ =
+			  let Map<T, U> : (T->U)->[]T->[]U
+			  let Snd<T, U>: T*U->U
+
+			let hoge () =
+			  let s1 = GoEval<[]int> "[]int{1, 2}"
+				let s2 = GoEval<[]int> "[]int{3, 4}"
+			  let tups = [(123, s1); (456, s2)]
+			  Map Snd tups
+
+			`,
+						"[][]int{",
+					},
+		*/
 	}
 
 	for _, test := range tests {
@@ -1225,10 +1246,9 @@ package_info _ =
 
 let hoge () =
   let s1 = GoEval<[]int> "[]int{1, 2}"
-	let s2 = GoEval<[]int> "[]int{3, 4}"
-	[(123, s1); (456, s2)]
-	|> Map Snd
-
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  let tups = [(123, s1); (456, s2)]
+  Map Snd tups
 
 `
 

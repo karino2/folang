@@ -557,10 +557,12 @@ func NewBinOpCall(btype TokenType, binfo binOpInfo, lhs Expr, rhs Expr) Expr {
 	return &BinOpCall{binfo.goFuncName, retType, lhs, rhs}
 }
 
-// frt.Pipe<T1, T2> : T1->(T1->T2)->T2
-//
-// lhs |> rhs
-// rhs must be T1->T2 and we might resolve T1 or T2 by lhs T1 type.
+/*
+frt.Pipe<T1, T2> : T1->(T1->T2)->T2
+
+lhs |> rhs
+rhs must be T1->T2 and we might resolve T1 or T2 by lhs T1 type.
+*/
 func NewPipeCall(lhs Expr, rhs Expr) *FunCall {
 	t1name := UniqueTmpTypeParamName()
 	t2name := UniqueTmpTypeParamName()
