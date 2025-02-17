@@ -378,28 +378,31 @@ T, int -> paramName=T, matchType=int, ok=true
 []T, []int -> paramName=T, matchType=int, ok=true
 int*T, int*string -> paramName=T matchType=string ok=true, currently, there is no way to inform two match, so only either of one param is matched. NYI for both.
 */
-func matchTypeParam(target FType, realType FType) (paramName string, matchType FType, matched bool) {
+func matchTypeParam(target FType, realType FType) (paramNames []string, matchTypes []FType, matched bool) {
 	switch tt := target.(type) {
 	case *FParametrized:
-		paramName = tt.name
-		matchType = realType
+		paramNames = []string{tt.name}
+		matchTypes = []FType{realType}
 		matched = true
 		return
 	case *FSlice:
 		rst := realType.(*FSlice)
-		paramName, matchType, matched = matchTypeParam(tt.elemType, rst.elemType)
+		paramNames, matchTypes, matched = matchTypeParam(tt.elemType, rst.elemType)
 		return
 	case *FTuple:
-		// NYI: support both match case.
+		realTupleType := realType.(*FTuple)
+		paramNames = []string{}
+		matchTypes = []FType{}
+		matched = false
 		for i, targetElemType := range tt.Elems {
-			if elemPt, ok := targetElemType.(*FParametrized); ok {
-				realTupleType := realType.(*FTuple)
-				paramName = elemPt.name
-				matchType = realTupleType.Elems[i]
+			tparamNames, tmatchTypes, tmatched := matchTypeParam(targetElemType, realTupleType.Elems[i])
+			if tmatched {
+				paramNames = append(paramNames, tparamNames...)
+				matchTypes = append(matchTypes, tmatchTypes...)
 				matched = true
-				return
 			}
 		}
+		return
 	}
 	matched = false
 	return
@@ -439,10 +442,13 @@ func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
 		}
 		fargType := patType.Targets[0]
 
-		if matchPname, matchType, ok := matchTypeParam(fargType, argType); ok {
+		if matchPnames, matchTypes, ok := matchTypeParam(fargType, argType); ok {
 			// can resolve.
 			tinfo := fe.buildResolvedInfo()
-			tinfo[matchPname] = matchType
+			for i, mp := range matchPnames {
+				tinfo[mp] = matchTypes[i]
+
+			}
 
 			oldFtype := fe.FuncType() // head Func var type.
 			var newTypes []FType
@@ -465,10 +471,12 @@ func resolveFuncTypeByArgType(f Expr, argType FType) Expr {
 		}
 		fargType := patType.Targets[0]
 
-		if matchPname, matchType, ok := matchTypeParam(fargType, argType); ok {
+		if matchPnames, matchTypes, ok := matchTypeParam(fargType, argType); ok {
 			// can resolve.
 			tinfo := make(map[string]FType)
-			tinfo[matchPname] = matchType
+			for i, mp := range matchPnames {
+				tinfo[mp] = matchTypes[i]
+			}
 
 			var newTypes []FType
 			for _, old := range patType.Targets {

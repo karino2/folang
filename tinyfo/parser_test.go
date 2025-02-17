@@ -1012,6 +1012,23 @@ let hoge () =
 `,
 			"hoge() []int{",
 		},
+		// tuple two typevar resolution.
+		{
+			`package main
+
+package_info _ =
+  let Map<T, U> : (T->U)->[]T->[]U
+  let Snd<T, U>: T*U->U
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+	let s2 = GoEval<[]int> "[]int{3, 4}"
+	[(123, s1); (456, s2)]
+	|> Map Snd
+
+`,
+			"[][]int{",
+		},
 	}
 
 	for _, test := range tests {
@@ -1202,13 +1219,16 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 package_info _ =
-  let Concat<T>: [][]T -> []T
+  let Map<T, U> : (T->U)->[]T->[]U
+  let Snd<T, U>: T*U->U
+  let Concat<T>: [][]T->[]T
 
 let hoge () =
   let s1 = GoEval<[]int> "[]int{1, 2}"
 	let s2 = GoEval<[]int> "[]int{3, 4}"
-	[s1; s2]
-	|> Concat
+	[(123, s1); (456, s2)]
+	|> Map Snd
+
 
 `
 
