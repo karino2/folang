@@ -11,20 +11,20 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v217 := (ftp).(type) {
+	switch _v223 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v217.Value
+		tv := _v223.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v217.Value
+		ts := _v223.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FTuple:
-		ftup := _v217.Value
+		ftup := _v223.Value
 		nts := slice.Map(recurse, ftup.elemTypes)
 		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
 	case FType_FFunc:
-		fnt := _v217.Value
+		fnt := _v223.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -50,6 +50,16 @@ func GenFuncVar(vname string, ff FuncFactory, tvgen func() TypeVar) Var {
 	funct := GenFunc(ff, tvgen)
 	ft := New_FType_FFunc(funct)
 	return Var{name: vname, ftype: ft}
+}
+
+func genBuiltinFunCall(tvgen func() TypeVar, fname string, tpnames []string, targetTPs []FType, args []Expr) Expr {
+	ff := FuncFactory{tparams: tpnames, targets: targetTPs}
+	fvar := GenFuncVar(fname, ff, tvgen)
+	return frt.Pipe(FunCall{targetFunc: fvar, args: args}, New_Expr_EFunCall)
+}
+
+func newTvf(name string) FType {
+	return frt.Pipe(TypeVar{name: name}, New_FType_FTypeVar)
 }
 
 type ParseState struct {
@@ -303,4 +313,73 @@ type BinOpInfo struct {
 	precedence int
 	goFuncName string
 	isBoolOp   bool
+}
+
+func newEqNeq(tvgen func() TypeVar, goFname string, lhs Expr, rhs Expr) Expr {
+	t1name := "T1"
+	t1tp := newTvf(t1name)
+	names := ([]string{t1name})
+	tps := ([]FType{t1tp, t1tp, New_FType_FBool})
+	args := ([]Expr{lhs, rhs})
+	return genBuiltinFunCall(tvgen, goFname, names, tps, args)
+}
+
+func newPipeCallNormal(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
+	t1name := "T1"
+	t1type := newTvf(t1name)
+	t2name := "T2"
+	t2type := newTvf(t2name)
+	secFncT := New_FType_FFunc(FuncType{targets: ([]FType{t1type, t2type})})
+	names := ([]string{t1name, t2name})
+	tps := ([]FType{t1type, secFncT, t2type})
+	args := ([]Expr{lhs, rhs})
+	return genBuiltinFunCall(tvgen, "frt.Pipe", names, tps, args)
+}
+
+func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
+	t1name := "T1"
+	t1type := newTvf(t1name)
+	secFncT := New_FType_FFunc(FuncType{targets: ([]FType{t1type, New_FType_FUnit})})
+	names := ([]string{t1name})
+	tps := ([]FType{t1type, secFncT, New_FType_FUnit})
+	args := ([]Expr{lhs, rhs})
+	return genBuiltinFunCall(tvgen, "frt.PipeUnit", names, tps, args)
+}
+
+func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
+	rht := ExprToType(rhs)
+	switch _v225 := (rht).(type) {
+	case FType_FFunc:
+		ft := _v225.Value
+		switch (freturn(ft)).(type) {
+		case FType_FUnit:
+			return newPipeCallUnit(tvgen, lhs, rhs)
+		default:
+			return newPipeCallNormal(tvgen, lhs, rhs)
+		}
+	default:
+		return newPipeCallNormal(tvgen, lhs, rhs)
+	}
+}
+
+func newBinOpNormal(binfo BinOpInfo, lhs Expr, rhs Expr) Expr {
+	rtype := frt.IfElse(binfo.isBoolOp, (func() FType {
+		return New_FType_FBool
+	}), (func() FType {
+		return ExprToType(rhs)
+	}))
+	return frt.Pipe(BinOpCall{op: binfo.goFuncName, rtype: rtype, lhs: lhs, rhs: rhs}, New_Expr_EBinOpCall)
+}
+
+func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr, rhs Expr) Expr {
+	switch (tk).(type) {
+	case TokenType_PIPE:
+		return newPipeCall(tvgen, lhs, rhs)
+	case TokenType_EQ:
+		return newEqNeq(tvgen, binfo.goFuncName, lhs, rhs)
+	case TokenType_BRACKET:
+		return newEqNeq(tvgen, binfo.goFuncName, lhs, rhs)
+	default:
+		return newBinOpNormal(binfo, lhs, rhs)
+	}
 }

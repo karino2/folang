@@ -54,6 +54,17 @@ let GenFuncVar (vname:string) (ff:FuncFactory) (tvgen: ()->TypeVar) =
   let ft = FFunc funct
   {Var.name=vname; ftype=ft}
 
+let genBuiltinFunCall (tvgen: ()->TypeVar) (fname:string) (tpnames: []string) (targetTPs:[]FType) (args:[]Expr) =
+  let ff = {tparams=tpnames; targets=targetTPs}
+  let fvar = GenFuncVar fname ff tvgen
+  {targetFunc=fvar; args=args}
+  |> EFunCall
+
+let newTvf (name:string) =
+   {TypeVar.name=name}
+   |> FTypeVar
+
+
 /*
   Scope and Parser related
 */
@@ -322,3 +333,71 @@ type BinOpInfo = {precedence: int; goFuncName: string; isBoolOp: bool}
 
 package_info _ =
   let lookupBinOp: TokenType->BinOpInfo*bool
+
+/*
+  '=' and '<>', we want to use DeepEqual isntead of go comparison.
+  So it need special handling.
+*/
+let newEqNeq (tvgen: ()->TypeVar) (goFname:string) (lhs:Expr) (rhs:Expr) =
+  let t1name = "T1"
+  let t1tp = newTvf t1name
+  let names =  [t1name]
+  let tps = [t1tp; t1tp; FBool]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen goFname names tps args
+
+
+let newPipeCallNormal (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let t1name = "T1"
+  let t1type = newTvf t1name
+  let t2name = "T2"
+  let t2type = newTvf t2name
+  let secFncT = FFunc {FuncType.targets=[t1type;t2type]}
+  let names =  [t1name; t2name]
+  let tps = [t1type; secFncT; t2type]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen "frt.Pipe" names tps args
+
+/*
+frt.PipeUnit<T>: T->(T->())->()
+*/
+let newPipeCallUnit (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let t1name = "T1"
+  let t1type = newTvf t1name
+  let secFncT = FFunc {FuncType.targets=[t1type;FUnit]}
+  let names =  [t1name]
+  let tps = [t1type; secFncT; FUnit]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen "frt.PipeUnit" names tps args
+
+
+/*
+frt.Pipe<T1, T2> : T1->(T1->T2)->T2
+
+lhs |> rhs
+rhs must be T1->T2 and we might resolve T1 or T2 by lhs T1 type.
+
+If T2 is unit, use frt.PipeUnit instead.
+
+*/
+let newPipeCall (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let rht = ExprToType rhs
+  match rht with
+  | FFunc ft ->
+    match freturn ft with
+    | FUnit -> newPipeCallUnit tvgen lhs rhs
+    | _ -> newPipeCallNormal tvgen lhs rhs
+  | _ -> newPipeCallNormal tvgen lhs rhs
+
+// BinOpCall = {op: string; rtype: FType; lhs: Expr; rhs: Expr}
+let newBinOpNormal (binfo:BinOpInfo) (lhs: Expr) (rhs:Expr) =
+  let rtype = if binfo.isBoolOp then FBool else (ExprToType rhs)
+  {op=binfo.goFuncName; rtype=rtype; lhs=lhs; rhs=rhs}
+  |> EBinOpCall
+
+let newBinOpCall (tvgen: ()->TypeVar) (tk:TokenType) (binfo: BinOpInfo) (lhs: Expr) (rhs:Expr) =
+  match tk with
+  | PIPE -> newPipeCall tvgen lhs rhs
+  | EQ -> newEqNeq tvgen binfo.goFuncName lhs rhs
+  | BRACKET -> newEqNeq tvgen binfo.goFuncName lhs rhs
+  | _ -> newBinOpNormal binfo lhs rhs

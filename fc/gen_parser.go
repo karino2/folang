@@ -152,12 +152,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v648 := (prm1).(type) {
+	switch _v651 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v648.Value
+		v := _v651.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -238,9 +238,9 @@ func refVar(vname string, ps ParseState) Expr {
 
 func parseFAAfterDot(ps ParseState, cur Expr) frt.Tuple2[ParseState, Expr] {
 	ps2, fname := frt.Destr(frt.Pipe(psConsume(New_TokenType_DOT, ps), psIdentNameNx))
-	switch _v651 := (ExprToType(cur)).(type) {
+	switch _v654 := (ExprToType(cur)).(type) {
 	case FType_FRecord:
-		rtype := _v651.Value
+		rtype := _v654.Value
 		fexpr := frt.Pipe(FieldAccess{targetExpr: cur, targetType: rtype, fieldName: fname}, New_Expr_EFieldAccess)
 		return frt.IfElse(psCurIs(New_TokenType_DOT, ps2), (func() frt.Tuple2[ParseState, Expr] {
 			return parseFAAfterDot(ps2, fexpr)
@@ -449,9 +449,9 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v657 := (head).(type) {
+			switch _v660 := (head).(type) {
 			case Expr_EVar:
-				v := _v657.Value
+				v := _v660.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
@@ -459,85 +459,6 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 				return frt.NewTuple2(ps2, head)
 			}
 		}))
-	}
-}
-
-func genBuiltinFunCall(tvgen func() TypeVar, fname string, tpnames []string, targetTPs []FType, args []Expr) Expr {
-	ff := FuncFactory{tparams: tpnames, targets: targetTPs}
-	fvar := GenFuncVar(fname, ff, tvgen)
-	return frt.Pipe(FunCall{targetFunc: fvar, args: args}, New_Expr_EFunCall)
-}
-
-func newTvf(name string) FType {
-	return frt.Pipe(TypeVar{name: name}, New_FType_FTypeVar)
-}
-
-func newEqNeq(tvgen func() TypeVar, goFname string, lhs Expr, rhs Expr) Expr {
-	t1name := "T1"
-	t1tp := newTvf(t1name)
-	names := ([]string{t1name})
-	tps := ([]FType{t1tp, t1tp, New_FType_FBool})
-	args := ([]Expr{lhs, rhs})
-	return genBuiltinFunCall(tvgen, goFname, names, tps, args)
-}
-
-func newPipeCallNormal(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
-	t1name := "T1"
-	t1type := newTvf(t1name)
-	t2name := "T2"
-	t2type := newTvf(t2name)
-	secFncT := New_FType_FFunc(FuncType{targets: ([]FType{t1type, t2type})})
-	names := ([]string{t1name, t2name})
-	tps := ([]FType{t1type, secFncT, t2type})
-	args := ([]Expr{lhs, rhs})
-	return genBuiltinFunCall(tvgen, "frt.Pipe", names, tps, args)
-}
-
-func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
-	t1name := "T1"
-	t1type := newTvf(t1name)
-	secFncT := New_FType_FFunc(FuncType{targets: ([]FType{t1type, New_FType_FUnit})})
-	names := ([]string{t1name})
-	tps := ([]FType{t1type, secFncT, New_FType_FUnit})
-	args := ([]Expr{lhs, rhs})
-	return genBuiltinFunCall(tvgen, "frt.PipeUnit", names, tps, args)
-}
-
-func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
-	rht := ExprToType(rhs)
-	switch _v658 := (rht).(type) {
-	case FType_FFunc:
-		ft := _v658.Value
-		switch (freturn(ft)).(type) {
-		case FType_FUnit:
-			return newPipeCallUnit(tvgen, lhs, rhs)
-		default:
-			return newPipeCallNormal(tvgen, lhs, rhs)
-		}
-	default:
-		return newPipeCallNormal(tvgen, lhs, rhs)
-	}
-}
-
-func newBinOpNormal(binfo BinOpInfo, lhs Expr, rhs Expr) Expr {
-	rtype := frt.IfElse(binfo.isBoolOp, (func() FType {
-		return New_FType_FBool
-	}), (func() FType {
-		return ExprToType(rhs)
-	}))
-	return frt.Pipe(BinOpCall{op: binfo.goFuncName, rtype: rtype, lhs: lhs, rhs: rhs}, New_Expr_EBinOpCall)
-}
-
-func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr, rhs Expr) Expr {
-	switch (tk).(type) {
-	case TokenType_PIPE:
-		return newPipeCall(tvgen, lhs, rhs)
-	case TokenType_EQ:
-		return newEqNeq(tvgen, binfo.goFuncName, lhs, rhs)
-	case TokenType_BRACKET:
-		return newEqNeq(tvgen, binfo.goFuncName, lhs, rhs)
-	default:
-		return newBinOpNormal(binfo, lhs, rhs)
 	}
 }
 
