@@ -174,39 +174,92 @@ let parseGoEval (ps:ParseState) =
     (ps2, EUnit)
 
 
-// FIELD_INITIALIZER = IDENTIFIER '=' expr
+type fiInfo = {
+  recName: string; // "" if not specified.
+  nePair: NEPair;
+}
+
+/*
+  FIELD_INITIALIZER = IDENTIFIER '=' expr | SPECIFIED_INITIALIZER
+
+  Specified initializer specify record name like: {myRec.X = 3; Y=4; Z=5}
+
+  SPECIFIED_INITIALIZER = IDENTIFIER '.' IDENTIFIER '=' expr
+
+  return ps* (string*NEPair) where string contains recname if present ("" if not).
+*/
 let parseFiIni (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
-  let fname = psIdentName ps
-  let (ps2, expr) = psNextNOL ps |> psConsume EQ |> psSkipEOL |> parseE
-  (ps2, {name=fname;expr=expr})
-
-
-let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]NEPair =
-  let (ps2, nep) = parseFiIni parseE ps
-  if (psCurrentTT ps2) = RBRACE then
-    (ps2, [nep])
+  let (ps2, fname) = psIdentNameNxL ps
+  if psCurIs DOT ps2 then
+    let (ps3, fname2) = psConsume DOT ps2 |> psIdentNameNxL
+    let (ps4, expr) = psConsume EQ ps3 |> psSkipEOL |> parseE
+    let fi = {name=fname2;expr=expr}
+    (ps4, {recName=fname; nePair=fi})
   else
-    psConsume SEMICOLON ps2
-    |> parseFieldInitializers parseE
-    |> CnvR (slice.PushHead nep)
+    let (ps3, expr) = ps2 |> psConsume EQ |> psSkipEOL |> parseE
+    let fi = {name=fname;expr=expr}
+    (ps3, {recName=""; nePair=fi})
+
+let notEmpty (s:string) =
+  s <> ""
+
+type fiListInfo = {
+  recName: string; // "" if not specified.
+  nePairs: []NEPair;
+}
+
+let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*fiListInfo =
+  let (ps2, fii) = parseFiIni parseE ps
+  let nep = fii.nePair
+  let recN = fii.recName
+  /*
+  slice.Map frt.Snd nepTup
+  let recs = slice.Map frt.Fst nepTup
+               |> slice.Filter notEmpty
+  let recN = if slice.IsEmpty recs then "" else slice.Head recs
+  */
+  if (psCurrentTT ps2) = RBRACE then
+    (ps2, {recName=recN; nePairs=[nep]})
+  else
+    let (ps3, fiInfos) = psConsume SEMICOLON ps2
+                      |> parseFieldInitializers parseE
+    let recN2 = fiInfos.recName
+    let neps = fiInfos.nePairs
+    let neps2 = slice.PushHead nep neps
+    let recN3 = if recN <> "" then recN else recN2
+    (ps3, {recName=recN3; nePairs=neps2})
 
 let NEPToName (nvp:NEPair) =
   nvp.name
 
+let retRecordGen (ok:bool) (rtype: RecordType) (neps: []NEPair) (ps:ParseState) =
+  if ok then
+    {fieldsNV=neps; recordType=rtype}
+    |> ERecordGen |> withPs ps
+  else
+    frt.Panic "can't find record type."
+    (ps, EUnit)
+
+
 /*
   RECORD_EXPRESISONN = '{' FIELD_INITIALIZERS '}'
   FIELD_INITIALIZERS = FIELD_INITIALIZER (';' FIELD_INITIALIZER)*
-  FIELD_INITIALIZER = IDENTIFIER '=' expr
+  FIELD_INITIALIZER = IDENTIFIER '=' expr | SPECIFIED_INITIALIZER
+
+  Specified initializer specify record name like: {myRec.X = 3; Y=4; Z=5}
+
+  SPECIFIED_INITIALIZER = IDENTIFIER '.' IDENTIFIER '=' expr
 */
 let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
-  let (ps2, neps) = psConsume LBRACE ps |> parseFieldInitializers parseE |> CnvL (psConsume RBRACE)
-  let (rtype, ok) = slice.Map NEPToName neps |> scLookupRecord ps2.scope
-  if ok then
-    {fieldsNV=neps; recordType=rtype}
-    |> ERecordGen |> withPs ps2
+  let (ps2, fiInfos) = psConsume LBRACE ps |> parseFieldInitializers parseE |> CnvL (psConsume RBRACE)
+  let neps = fiInfos.nePairs
+  let recName = fiInfos.recName
+  if recName = "" then
+    let (rtype, ok) = slice.Map NEPToName neps |> scLookupRecord ps2.scope
+    retRecordGen ok rtype neps ps2
   else
-    frt.Panic "record field name match to no record type."
-    (ps2, EUnit)
+    let (rtype, ok) = scLookupRecordByName ps2.scope recName
+    retRecordGen ok rtype neps ps2
 
 let refVar (vname:string) (ps:ParseState) =
   let (vfac, ok) = scLookupVarFac ps.scope vname

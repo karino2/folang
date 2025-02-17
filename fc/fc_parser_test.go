@@ -526,6 +526,19 @@ type ParseState = {
 		{
 			`package main
 
+type hoge = {X: string; Y: int}
+type ika = {X: string; Y: int}
+
+let fuga () =
+   let h = {X="ab"; Y="de"}
+   let i = {ika.X="gh"; Y="jk"}
+   (h, i)
+`,
+			"ika{X: ",
+		},
+		{
+			`package main
+
 let ika () =
   (123, "abc")
 
@@ -876,15 +889,13 @@ let ika (a:int) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let Concat<T>: [][]T -> []T
+type hoge = {X: string; Y: int}
+type ika = {X: string; Y: int}
 
-let hoge () =
-  let s1 = GoEval<[]int> "[]int{1, 2}"
-  let s2 = GoEval<[]int> "[]int{3, 4}"
-  [s1; s2]
-  |> Concat
-
+let fuga () =
+   let h = {X="ab"; Y="de"}
+   let i = {ika.X="gh"; Y="jk"}
+   (h, i)
 `
 
 	got := transpile(src)

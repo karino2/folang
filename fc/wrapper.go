@@ -485,6 +485,18 @@ func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
 	return frt.NewTuple2(RecordType{}, false)
 }
 
+func scLookupRecordByName(s Scope, rname string) frt.Tuple2[RecordType, bool] {
+	cur := s
+	for cur != nil {
+		ret, ok := cur.recordMap[rname]
+		if ok {
+			return frt.NewTuple2(ret, true)
+		}
+		cur = cur.parent
+	}
+	return frt.NewTuple2(RecordType{}, false)
+}
+
 func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
 	cur := s
 	for cur != nil {

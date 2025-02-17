@@ -79,6 +79,7 @@ package_info _ =
   let scLookupVarFac: Scope->string->((()->TypeVar)->Var)*bool
   let scRegisterRecType: Scope->RecordType->()
   let scLookupRecord: Scope->[]string->RecordType*bool
+  let scLookupRecordByName: Scope->string->RecordType*bool
   let scRegisterType: Scope->string->FType->()
   let scRegisterVarFac: Scope->string->((()->TypeVar)->Var)->()
   let scLookupType: Scope->string->FType*bool
