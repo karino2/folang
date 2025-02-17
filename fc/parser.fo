@@ -9,9 +9,17 @@ let parsePackage (ps:ParseState) =
   |> CnvR RSPackage
 
 let parseImport (ps:ParseState) =
-  psConsume IMPORT ps
-  |> psStringValNxL
-  |> CnvR RSImport
+  let ps2 = psConsume IMPORT ps
+  if psCurIs ps2 IDENTIFIER then
+    // fail to infer in tinyfor. So I do not use pipeline here.
+    let (ps3, iname) = psIdentNameNxL ps2
+    let rstmt = frt.Sprintf1 "github.com/karino2/folang/pkg/%s" iname |> RSImport
+    (ps3, rstmt)
+  else
+    ps2 
+    |> psStringValNxL
+    |> CnvR RSImport
+
 
 /*
   ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'

@@ -141,6 +141,9 @@ let psCurrentTT (ps:ParseState) =
   let tk = psCurrent ps
   tk.ttype
 
+let psCurIs (ps:ParseState) (expectTT: TokenType) =
+  (psCurrentTT ps) = expectTT
+
 let psNext (ps:ParseState) =
   let ntk = tkzNext ps.tkz
   psWithTkz ps ntk

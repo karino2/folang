@@ -11,8 +11,15 @@ func parsePackage(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
 }
 
 func parseImport(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
-	return frt.Pipe(frt.Pipe(psConsume(New_TokenType_IMPORT, ps), psStringValNxL), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, RootStmt] {
-		return CnvR(New_RootStmt_RSImport, _r0)
+	ps2 := psConsume(New_TokenType_IMPORT, ps)
+	return frt.IfElse(psCurIs(ps2, New_TokenType_IDENTIFIER), (func() frt.Tuple2[ParseState, RootStmt] {
+		ps3, iname := frt.Destr(psIdentNameNxL(ps2))
+		rstmt := frt.Pipe(frt.Sprintf1("github.com/karino2/folang/pkg/%s", iname), New_RootStmt_RSImport)
+		return frt.NewTuple2(ps3, rstmt)
+	}), (func() frt.Tuple2[ParseState, RootStmt] {
+		return frt.Pipe(frt.Pipe(ps2, psStringValNxL), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, RootStmt] {
+			return CnvR(New_RootStmt_RSImport, _r0)
+		}))
 	}))
 }
 
@@ -135,12 +142,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v615 := (prm1).(type) {
+	switch _v618 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v615.Value
+		v := _v618.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -412,9 +419,9 @@ func parseTerm(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseSt
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v623 := (head).(type) {
+			switch _v626 := (head).(type) {
 			case Expr_EVar:
-				v := _v623.Value
+				v := _v626.Value
 				fc := FunCall{targetFunc: v, args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
@@ -461,9 +468,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v625 := (last).(type) {
+	switch _v628 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v625.Value
+		e := _v628.Value
 		return frt.NewTuple2(ps2, Block{stmts: stmts, finalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")

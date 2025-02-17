@@ -314,6 +314,11 @@ let hoge () =
 `,
 			"[][]int{",
 		},
+		{
+			`import slice
+`,
+			`import "github.com/karino2/folang/pkg/slice"`,
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
