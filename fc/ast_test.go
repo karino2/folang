@@ -21,10 +21,6 @@ func TestExprToGo(t *testing.T) {
 			`"abc"`,
 		},
 		{
-			New_Expr_EFieldAccess(FieldAccess{"rec", RecordType{"MyRec", []NameTypePair{{"field1", New_FType_FInt}}}, "field1"}),
-			"rec.field1",
-		},
-		{
 			New_Expr_ERecordGen(
 				RecordGen{[]NEPair{{"hoge", New_Expr_EStringLiteral("sval")},
 					{"ika", New_Expr_EIntImm(123)}},

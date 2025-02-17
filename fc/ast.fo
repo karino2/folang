@@ -11,7 +11,7 @@ type GoEvalExpr = {goStmt: string; typeArg: FType}
 type Var = {name: string; ftype: FType}
 
 // stands for record field access of form: targetName.fieldName
-type FieldAccess = {targetName: string; targetType: RecordType; fieldName: string}
+type FieldAccess = {targetExpr: Expr; targetType: RecordType; fieldName: string}
 
 /*
 Union case matching.

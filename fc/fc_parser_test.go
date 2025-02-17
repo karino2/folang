@@ -434,13 +434,42 @@ let ika () =
 			[]string{"i := _v1.Value", "switch _v1 :="},
 		},
 		{
-			`package main
+			`package_info slice =
+  let Take<T> : int->[]T->[]T
 
 let ika () =
-  [1; 2; 3]
-
+  let s = GoEval<[]int> "[]int{1, 2, 3}"
+  s |> slice.Take 2
 `,
-			[]string{"return ([]int{1,2,3})", "ika() []int"},
+			[]string{"func (_r0 []int) []int", "frt.Pipe("},
+		},
+		{
+			`package main
+
+type Hoge = {X: string; Y: string}
+
+let hoge () =
+  let rec = {X="hoge"; Y="ika"}
+  rec.Y
+`,
+			[]string{"hoge() string", "return rec.Y"},
+		},
+		{
+			`package main
+
+type RecordType = {name: string; ival: int}
+
+type IorRec =
+| Int of int
+| Rec of RecordType
+
+let hoge () =
+  let rec = Rec {name="hoge"; ival=123}
+  match rec with
+  | Int i -> i
+  | Rec r-> r.ival
+`,
+			[]string{"hoge() int", "r.ival"},
 		},
 		{
 			`package main
@@ -456,6 +485,37 @@ let hoge () =
 `,
 			[]string{"buf.Buffer", "return buf.New()"},
 		},
+		// pipe to unit func test.
+		{
+			`package main
+
+package_info buf =
+  type Buffer
+  let New: ()->Buffer
+  let Write: Buffer->string->()
+
+let hoge () =
+  let bw = buf.New ()
+  "abc" |> buf.Write bw
+`,
+			[]string{"frt.PipeUnit", "{ buf.Write" /* no return */},
+		},
+		{
+			`let ika (s1:string) (s2:string) =
+  s1 = s2
+
+`,
+			[]string{"frt.OpEqual(s1, s2)", "s2 string) bool"},
+		},
+		{
+			`package main
+
+let ika () =
+  [1; 2; 3]
+
+`,
+			[]string{"return ([]int{1,2,3})", "ika() []int"},
+		},
 	}
 
 	for _, test := range tests {
@@ -469,10 +529,9 @@ let hoge () =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	src := `package main
+	src := `let ika (s1:string) (s2:string) =
+  s1 = s2
 
-let hoge () =
-  5-7+(1+2+3)
 `
 
 	got := transpile(src)

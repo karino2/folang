@@ -124,7 +124,7 @@ func psCurrentTT(ps ParseState) TokenType {
 	return tk.ttype
 }
 
-func psCurIs(ps ParseState, expectTT TokenType) bool {
+func psCurIs(expectTT TokenType, ps ParseState) bool {
 	return frt.OpEqual(psCurrentTT(ps), expectTT)
 }
 

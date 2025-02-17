@@ -110,7 +110,9 @@ func collectFunCall(fc FunCall) []UniRel {
 	switch _v337 := (tftype).(type) {
 	case FType_FFunc:
 		fft := _v337.Value
-		return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(ExprToType, fc.args), (func(_r0 []FType) []frt.Tuple2[FType, FType] { return slice.Zip(fargs(fft), _r0) })), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel { return slice.Map(unifyTupArg, _r0) })), slice.Concat)
+		argTps := slice.Map(ExprToType, fc.args)
+		tpArgTps := frt.Pipe(fargs(fft), (func(_r0 []FType) []FType { return slice.Take(slice.Length(argTps), _r0) }))
+		return frt.Pipe(frt.Pipe(slice.Zip(argTps, tpArgTps), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel { return slice.Map(unifyTupArg, _r0) })), slice.Concat)
 	default:
 		frt.Panic("funcall with non func first arg, possibly TypeVar, NYI.")
 		return emptyRels()

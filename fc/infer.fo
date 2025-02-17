@@ -123,8 +123,9 @@ let collectFunCall (fc: FunCall) =
   let tftype = fc.targetFunc.ftype
   match tftype with
   | FFunc fft ->
-    slice.Map ExprToType fc.args
-    |> slice.Zip (fargs fft) 
+    let argTps = slice.Map ExprToType fc.args
+    let tpArgTps = (fargs fft) |> slice.Take (slice.Length argTps)
+    slice.Zip argTps tpArgTps
     |> slice.Map unifyTupArg
     |> slice.Concat
   | _ ->

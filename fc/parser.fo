@@ -10,7 +10,7 @@ let parsePackage (ps:ParseState) =
 
 let parseImport (ps:ParseState) =
   let ps2 = psConsume IMPORT ps
-  if psCurIs ps2 IDENTIFIER then
+  if psCurIs IDENTIFIER ps2 then
     // fail to infer in tinyfor. So I do not use pipeline here.
     let (ps3, iname) = psIdentNameNxL ps2
     let rstmt = frt.Sprintf1 "github.com/karino2/folang/pkg/%s" iname |> RSImport
@@ -149,7 +149,7 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
       match tt with
       | LPAREN ->
         parseParams ps2
-        |> CnvR (slice.PushLast v)
+        |> CnvR (slice.PushHead v)
       | _ -> (ps2, [v])
 
 /*
@@ -217,6 +217,30 @@ let refVar (vname:string) (ps:ParseState) =
     EUnit
 
 /*
+  Parsing like field access.
+  a.b.c.d
+
+  comeing here on dot for recurse.
+  This is workaround and we'll parse more seriously later.
+*/
+let parseFAAfterDot (ps:ParseState) (cur:Expr) : (ParseState*Expr) =
+  let (ps2, fname) =  psConsume DOT ps
+                      |> psIdentNameNx
+  match (ExprToType cur) with
+  | FRecord rtype ->
+    let fexpr = {targetExpr=cur; targetType=rtype; fieldName=fname}
+                 |> EFieldAccess
+    if psCurIs DOT ps2 then
+      parseFAAfterDot ps2 fexpr
+    else
+      (ps2, fexpr)
+  | _ ->
+    frt.Panic "non record type of field access"
+    (ps2, EUnit)
+
+
+
+/*
   VARIABLE_REF = IDENTIFIER | IDENTIFER '.' IDENTIFIER
 
   For first case, IDENTIFIER must be in scope.
@@ -231,18 +255,17 @@ let parseVarRef (ps:ParseState) =
     |> withPs ps2
   else
   	// Next is dot. Check whether rec field access or pkg access.
-    // NYI
-    /*
-    let (v, ok) = scLookupVar ps2.scope firstId
+    let (vfac, ok) = scLookupVarFac ps2.scope firstId
     if ok then
-  		// symbol found, record field access.
-    */
-    //
-    // external pkg access.
-    // use original ps for parseFullName
-    let (ps3, fullName) = parseFullName ps
-    refVar fullName ps3
-    |> withPs ps3
+  	  // symbol found, record field access.
+      psTypeVarGen ps2 |> vfac |> EVar
+      |> parseFAAfterDot ps2
+    else
+      // external pkg access.
+      // use original ps for parseFullName
+      let (ps3, fullName) = parseFullName ps
+      refVar fullName ps3
+      |> withPs ps3
 
 
 let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =

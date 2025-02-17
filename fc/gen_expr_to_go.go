@@ -294,6 +294,11 @@ func binOpToGo(eGo func(Expr) string, binOp BinOpCall) string {
 	return buf.String(b)
 }
 
+func faToGo(eGo func(Expr) string, fa FieldAccess) string {
+	target := eGo(fa.targetExpr)
+	return ((target + ".") + fa.fieldName)
+}
+
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
@@ -314,7 +319,7 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 		return ""
 	case Expr_EFieldAccess:
 		fa := _v117.Value
-		return ((fa.targetName + ".") + fa.fieldName)
+		return faToGo(eToGo, fa)
 	case Expr_EVar:
 		v := _v117.Value
 		return v.name
