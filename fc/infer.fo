@@ -104,14 +104,35 @@ let unifyTupArg (tup:FType*FType) =
   let (lhs, rhs) = tup
   unifyType lhs rhs
 
+// Var's type-Expr unify, but ignore "_"
+let unifyVETup (veTup: Var*FType) =
+  let (v, ft) = veTup
+  if v.name = "_" then
+    emptyRels ()
+  else
+    unifyType v.ftype ft
 
 let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
   match stmt with
   | SExprStmt se -> ec se
-  | SLetVarDef lvd ->
-    let inside = ec lvd.rhs
-    let one = unifyType lvd.lvar.ftype (ExprToType lvd.rhs)
-    slice.Append one inside
+  | SLetVarDef slvd ->
+    match slvd with
+    | LLOneVarDef lvd ->
+      let inside = ec lvd.rhs
+      unifyType lvd.lvar.ftype (ExprToType lvd.rhs)
+      |> slice.Append inside
+    | LLDestVarDef ldvd ->
+        let inside = ec ldvd.rhs
+        let rhtype = ExprToType ldvd.rhs
+        match rhtype with
+        | FTuple ft ->
+          slice.Zip ldvd.lvars ft.elemTypes
+          |> slice.Map unifyVETup
+          |> slice.Concat
+          |> slice.Append inside
+        | _ ->
+          frt.Panic "Destructuring of right is not tuple, NYI."
+          inside
 
 /*
   collectXXX is subfunction for collectExprRel.
@@ -290,19 +311,28 @@ let buildResolver (rels:[]UniRel) =
   updateResolver res rels
   res
 
-let rsResolveType (res:Resolver) (tvname:string) =
+let rsResolveType (resT:FType->FType) (res:Resolver) (tvname:string) =
   let ei = rsLookupEI res tvname
-  ei.resType
+  let rcand = ei.resType
+  match rcand with
+  | FTypeVar tv ->
+    if tv.name = tvname then
+      // same type var, no need to drill down.
+      rcand
+    else
+      resT rcand
+  | _ -> resT rcand
 
 /*
   Resolve TypeVar
 */
 
-let transOneTypeVar (rsv: Resolver) (tv:TypeVar) =
-  rsResolveType rsv tv.name
+let transOneTypeVar (resT:FType->FType) (rsv: Resolver) (tv:TypeVar) =
+  rsResolveType resT rsv tv.name
 
-let resolveType (rsv: Resolver) (ftp:FType) =
-  transTypeVarFType (transOneTypeVar rsv) ftp
+let resolveType (rsv: Resolver) (ftp:FType) : FType =
+  let resT = resolveType rsv
+  transTypeVarFType (transOneTypeVar resT rsv) ftp
 
 /*
   Self transform utility.
@@ -315,10 +345,16 @@ let transExprNE (cnv:Expr->Expr) (p:NEPair) =
 
 let transVarStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
   match stmt with
-  | SLetVarDef lvd ->
-    let nvar = transV lvd.lvar
-    let nrhs = transE lvd.rhs
-    {lvar=nvar;rhs=nrhs} |> SLetVarDef
+  | SLetVarDef llvd ->
+    match llvd with
+    | LLOneVarDef lvd ->
+      let nvar = transV lvd.lvar
+      let nrhs = transE lvd.rhs
+      {lvar=nvar;rhs=nrhs} |> LLOneVarDef |> SLetVarDef
+    | LLDestVarDef ldvd ->
+      let nvars = slice.Map transV ldvd.lvars
+      let nrhs = transE ldvd.rhs
+      {lvars=nvars;rhs=nrhs} |> LLDestVarDef |> SLetVarDef
   | SExprStmt e -> 
     transE e |> SExprStmt
 
@@ -405,7 +441,8 @@ let resolveLfd (rsv: Resolver) (lfd:LetFuncDef) =
    {fvar=nfvar; params=nparams; body=nbody}
 
 let notFound (rsv:Resolver) (key:string) =
-  let rtype = rsResolveType rsv key
+  let resT = resolveType rsv
+  let rtype = rsResolveType resT rsv key
   match rtype with
   | FTypeVar tv ->
     // resType is the same TypeVar, means not found.

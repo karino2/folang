@@ -23,7 +23,7 @@ func TestBuildResolver(t *testing.T) {
 		{"_T2", newFInt()},
 	}
 	resv := buildResolver(rels)
-	got := rsResolveType(resv, "_T3")
+	got := resolveType(resv, newTVF("_T3"))
 	if _, ok := got.(FType_FInt); !ok {
 		t.Errorf("want int, got %T", got)
 	}

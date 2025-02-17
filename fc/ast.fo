@@ -56,7 +56,7 @@ and ReturnableExpr =
 | RBlock of Block
 | RMatchExpr of MatchExpr
 and Stmt =
-| SLetVarDef of LetVarDef
+| SLetVarDef of LLetVarDef
 | SExprStmt of Expr
 and RootStmt =
 | RSImport of string
@@ -69,6 +69,10 @@ and RootStmt =
 and LetFuncDef = {fvar: Var; params: []Var; body:Block}
 and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
 and LetVarDef = {lvar: Var; rhs: Expr}
+and LetDestVarDef = {lvars: []Var; rhs: Expr}
+and LLetVarDef =
+| LLOneVarDef of LetVarDef
+| LLDestVarDef of LetDestVarDef
 and PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
 and RecordDef = {name: string; fields: []NameTypePair}
 and UnionDef = {name: string; cases: []NameTypePair}

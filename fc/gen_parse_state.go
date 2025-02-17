@@ -11,20 +11,20 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v231 := (ftp).(type) {
+	switch _v238 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v231.Value
+		tv := _v238.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v231.Value
+		ts := _v238.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FTuple:
-		ftup := _v231.Value
+		ftup := _v238.Value
 		nts := slice.Map(recurse, ftup.elemTypes)
 		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
 	case FType_FFunc:
-		fnt := _v231.Value
+		fnt := _v238.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -348,9 +348,9 @@ func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 
 func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	rht := ExprToType(rhs)
-	switch _v233 := (rht).(type) {
+	switch _v240 := (rht).(type) {
 	case FType_FFunc:
-		ft := _v233.Value
+		ft := _v240.Value
 		switch (freturn(ft)).(type) {
 		case FType_FUnit:
 			return newPipeCallUnit(tvgen, lhs, rhs)

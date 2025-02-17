@@ -48,6 +48,17 @@ let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =
   let rhs = eToGo lvd.rhs
   lvd.lvar.name + " := " + rhs
 
+let vToN (v:Var) =
+  v.name
+
+let ldvdToGo (eToGo: Expr->string) (ldvd:LetDestVarDef) =
+  let b = buf.New ()
+  slice.Map vToN ldvd.lvars |> strings.Concat ", " |> buf.Write b
+  buf.Write b " := frt.Destr("
+  eToGo ldvd.rhs |> buf.Write b
+  buf.Write b ")"
+  buf.String b
+
 /*
   RecordDef to Go implementation.
 */
@@ -211,7 +222,10 @@ let mdToGo (md:MultipleDefs) =
 let StmtToGo (stmt:Stmt) : string=
   let eToGo = ExprToGo StmtToGo
   match stmt with
-  | SLetVarDef lvd -> lvdToGo eToGo lvd
+  | SLetVarDef llvd ->
+    match llvd with
+    | LLOneVarDef lvd -> lvdToGo eToGo lvd
+    | LLDestVarDef ldvd -> ldvdToGo eToGo ldvd
   | SExprStmt expr -> eToGo expr
 
 let RootStmtToGo (rstmt:RootStmt) : string=

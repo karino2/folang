@@ -45,7 +45,7 @@ func TestParseParams(t *testing.T) {
 /*
 Resolve mutual recursive in golang layer (NYI for and letfunc def).
 */
-func parseLetFacade(ps ParseState) frt.Tuple2[ParseState, LetVarDef] {
+func parseLetFacade(ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
 	return parseLetVarDef(parseExprFacade, ps)
 }
 
@@ -336,22 +336,6 @@ let ika () =
 			"frt.Tuple2[int, string]",
 		},
 		{
-			`package main
-
-package_info _ =
-  let Map<T, U> : (T->U)->[]T->[]U
-  let Snd<T, U> : T*U->U
-
-let hoge () =
-  let s1 = GoEval<[]int> "[]int{1, 2}"
-  let s2 = GoEval<[]int> "[]int{3, 4}"
-  let tups = [(123, s1); (456, s2)]
-  Map Snd tups
-
-`,
-			"[][]int{",
-		},
-		{
 			`import slice
 `,
 			`import "github.com/karino2/folang/pkg/slice"`,
@@ -538,6 +522,162 @@ type ParseState = {
 }
 `,
 			"ParseState", // whatever
+		},
+		{
+			`package main
+
+let ika () =
+  (123, "abc")
+
+let fuga () =
+  let (a, b) = ika ()
+  a+1
+
+`,
+			"a, b := frt.Destr(ika())",
+		},
+		{
+			`package main
+
+let ika () =
+  (123, "abc")
+
+let fuga () =
+  let (_, b) = ika ()
+  b+"def"
+`,
+			"_, b :=",
+		},
+		{
+			`package main
+
+let ika () =
+  (123, "abc")
+
+let fuga () =
+  let (a, _) = ika ()
+  a+4
+
+`,
+			"a, _ :=",
+		},
+		{
+			`package main
+
+package_info _=
+  let lookupFunc: string->(()->string)*bool
+
+let ika () =
+  lookupFunc "hoge"
+
+`,
+			"ika() frt.Tuple2[func () string, bool]{",
+		},
+		{
+			`package main
+
+let tpname2tvtp (tvgen: ()->string) (tpname:string) =
+  let tv = tvgen ()
+  (tpname, tv)
+
+`,
+			"tvgen func () string",
+		},
+		{
+			`package main
+
+package_info _ =
+  let lookupVarFac: string->((()->string)->string)*bool
+
+
+let hoge () =
+  lookupVarFac "abc"
+
+`,
+			"[func (func () string) string, bool]",
+		},
+		{
+			`package main
+
+type IorS =
+  | IT of int
+  | ST of string
+
+let nestMatch (lhs:IorS) (rhs:IorS) =
+  match lhs with
+  | IT ival ->
+    match rhs with
+    | IT i2 ->
+      ival+i2
+    | _ ->
+      ival+456
+  | _ ->
+    123
+`,
+			"return (ival+456)\n}",
+		},
+		{
+			`package main
+
+package_info _ =
+  let Concat<T>: [][]T -> []T
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  let s3 = [s1; s2]
+  Concat s3
+
+`,
+			"hoge() []int{",
+		},
+		{
+			`package main
+
+package_info _ =
+  let Concat<T>: [][]T -> []T
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  [s1; s2]
+  |> Concat
+
+`,
+			"hoge() []int{",
+		},
+		// tuple two typevar resolution.
+		{
+			`package main
+
+package_info _ =
+  let Map<T, U> : (T->U)->[]T->[]U
+  let Snd<T, U>: T*U->U
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  [(123, s1); (456, s2)]
+  |> Map Snd
+
+`,
+			"[][]int{",
+		},
+		{
+			`package main
+
+package_info _ =
+  let Map<T, U> : (T->U)->[]T->[]U
+  let Snd<T, U> : T*U->U
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  let tups = [(123, s1); (456, s2)]
+  Map Snd tups
+
+`,
+			"[][]int{",
 		},
 	}
 	for _, test := range tests {
@@ -736,11 +876,15 @@ let ika (a:int) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let ika (s1:string) (s2:string) =
-  if s1 = s2 then
-    123
-  else
-    456
+package_info _ =
+  let Concat<T>: [][]T -> []T
+
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  [s1; s2]
+  |> Concat
+
 `
 
 	got := transpile(src)

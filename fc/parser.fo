@@ -383,9 +383,14 @@ let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Pars
     {pattern=mp; body=block}
     |> withPs ps6
 
+let insideOffside (ps:ParseState) =
+  let curCol = psCurCol ps
+  let curOff = psCurOffside ps
+  curCol >= curOff
+
 let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : ParseState*[]MatchRule =
   let (ps2, one) = parseMatchRule pBlock target ps |> CnvL psSkipEOL
-  if (psCurrentTT ps2) = BAR then
+  if (psCurrentTT ps2) = BAR && insideOffside ps2 then
     parseMatchRules pBlock target ps2 |> CnvR (slice.PushHead one)
   else
     (ps2, [one])
@@ -557,10 +562,10 @@ let parseExpr (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
 */
 
 // STMT = LET_STMT | EXPR
-let parseStmt (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+let parseStmt (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   match psCurrentTT ps with
   | LET ->
-    pLet ps |> CnvR SLetVarDef
+    pLet ps |> CnvR SLetVarDef  
   | _ ->
     pExpr ps |> CnvR SExprStmt
 
@@ -570,7 +575,7 @@ let isEndOfBlock (ps:ParseState) =
   let isEof = (psCurrentTT ps) = EOF
   isOffside || isEof
 
-let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : ParseState*[]Stmt =
+let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : ParseState*[]Stmt =
   let (ps2, one) = parseStmt pExpr pLet ps |> CnvL psSkipEOL
   if isEndOfBlock ps2 then
     (ps2, [one])
@@ -585,7 +590,7 @@ let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseS
   In some case, we wanto add local variables in block scope,
   in that case, it's handy to pushScope before calling this function.
 */
-let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let (ps2, sls) = psPushOffside ps |> (parseStmtList pExpr pLet) |> CnvL psPopOffside
   let last = slice.Last sls
   let stmts = slice.PopLast sls
@@ -598,20 +603,64 @@ let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseSt
     emptyBlock ()
     |> withPs ps2
 
-let parseBlock (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : ParseState*Block =
+let parseBlock (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : ParseState*Block =
   let pExpr = parseExpr (parseBlock pLet)
   psPushScope ps |> parseBlockAfterPushScope pExpr pLet
 
 /*
-  LET_VAR_DEF = 'let' IDENTIFIER '=' expr
+  LL_ONE_VAR_DEF = 'let' IDENTIFIER '=' expr
 */
-let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+let parseLLOneVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> CnvL (psConsume EQ)
   let (ps3, rhs) = pExpr ps2
   let v = {Var.name=vname; ftype=(ExprToType rhs)}
   scDefVar ps3.scope vname v
   {LetVarDef.lvar=v; rhs=rhs}
+  |> LLOneVarDef
   |> withPs ps3
+
+
+let psIdentOrUSNameNx (ps:ParseState) =
+  if psCurIs IDENTIFIER ps then
+    psIdentNameNx ps
+  else
+    let ps2 = psNext ps
+    (ps2, "_")
+
+/*
+  Destructuring, only support pair for a while like:
+  let (a, b) = ...
+
+  LL_DEST_VAR_DEF = 'let' '(' IDENTIFIER ',' IDENTIFIER ')' '=' expr
+*/
+let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+  let (ps2, vname1) = psConsume LET ps
+                     |> psConsume LPAREN
+                     |> psIdentOrUSNameNx
+                     |> CnvL (psConsume COMMA)
+  let (ps3, vname2) = psIdentOrUSNameNx ps2
+                     |> CnvL (psConsume RPAREN)
+                     |> CnvL (psConsume EQ)
+  let (ps4, rhs) = pExpr ps3
+  let rtype = ExprToType rhs
+  match rtype with
+  | FTuple tup ->
+    let v1 = {Var.name=vname1; ftype= slice.Head tup.elemTypes}
+    let v2 = {Var.name=vname2; ftype= slice.Last tup.elemTypes}
+    if vname1 <> "_" then
+      scDefVar ps4.scope vname1 v1
+    if vname2 <> "_" then
+      scDefVar ps4.scope vname2 v2
+    let vs = [v1; v2]
+    {LetDestVarDef.lvars=vs; rhs=rhs}
+    |> LLDestVarDef
+    |> withPs ps4
+  | _ ->
+    frt.Panic "Destructuring let, but rhs is not tuple. NYI."
+    let dummy = GoEval<[]Var> "[]Var{}"
+    (ps2, LLDestVarDef {LetDestVarDef.lvars=dummy; rhs=EUnit})
+
+
 
 let vToT (v:Var) =
   v.ftype
@@ -625,7 +674,7 @@ let lfdToFuncVar (lfd:LetFuncDef) =
 /*
   LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
 */
-let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let ps2 = psConsume LET ps
   let fname = psIdentName ps2
   let (ps3, params) = psNext ps2 |> parseParams
@@ -646,13 +695,23 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
 let tvToN (tv:TypeVar) =
   tv.name
 
-let parseRootLetFuncDef (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) =
+let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
   // resolve lfd here.
   lfdToFuncVar lfd |> scDefVar ps.scope lfd.fvar.name 
   let tnames = tvaListAlloced ps.tva |> slice.Map tvToN
   let rfd = Infer tnames lfd
   (ps2, rfd)
+
+/*
+LET_VAR_DEF = LL_ONE_VAR_DEF | LL_DEST_VAR_DEF
+*/
+let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+  let peekPs = psConsume LET ps
+  if psCurIs LPAREN peekPs then
+    parseLLDestVarDef pExpr ps
+  else
+    parseLLOneVarDef pExpr ps
 
 /*
   LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF

@@ -188,10 +188,10 @@ func (Stmt_SLetVarDef) Stmt_Union() {}
 func (Stmt_SExprStmt) Stmt_Union()  {}
 
 type Stmt_SLetVarDef struct {
-	Value LetVarDef
+	Value LLetVarDef
 }
 
-func New_Stmt_SLetVarDef(v LetVarDef) Stmt { return Stmt_SLetVarDef{v} }
+func New_Stmt_SLetVarDef(v LLetVarDef) Stmt { return Stmt_SLetVarDef{v} }
 
 type Stmt_SExprStmt struct {
 	Value Expr
@@ -266,6 +266,29 @@ type LetVarDef struct {
 	lvar Var
 	rhs  Expr
 }
+type LetDestVarDef struct {
+	lvars []Var
+	rhs   Expr
+}
+type LLetVarDef interface {
+	LLetVarDef_Union()
+}
+
+func (LLetVarDef_LLOneVarDef) LLetVarDef_Union()  {}
+func (LLetVarDef_LLDestVarDef) LLetVarDef_Union() {}
+
+type LLetVarDef_LLOneVarDef struct {
+	Value LetVarDef
+}
+
+func New_LLetVarDef_LLOneVarDef(v LetVarDef) LLetVarDef { return LLetVarDef_LLOneVarDef{v} }
+
+type LLetVarDef_LLDestVarDef struct {
+	Value LetDestVarDef
+}
+
+func New_LLetVarDef_LLDestVarDef(v LetDestVarDef) LLetVarDef { return LLetVarDef_LLDestVarDef{v} }
+
 type PackageInfo struct {
 	name     string
 	funcInfo funcFacDict
