@@ -508,6 +508,37 @@ let ika (a:int) =
 `,
 			"(frt.OpEqual(a, 0)&&frt.OpEqual(a, 2))",
 		},
+		{
+			`let ika (a:int) =
+  if not (a = 0) then
+    "abc"
+  else
+    "def"
+
+`,
+			"frt.OpNot(",
+		},
+		// comment inside block.
+		{
+			`package main
+
+let ika () =
+   let a = 1
+   // this is comment
+   a
+`,
+			"ika", // whatever
+		},
+		// last field semicolon ending.
+		{
+			`
+type ParseState = {
+  tkz: string;
+  offsideCol: []int;
+}
+`,
+			"ParseState", // whatever
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)

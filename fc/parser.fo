@@ -494,6 +494,10 @@ let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseSta
      |> CnvR RMatchExpr |> CnvR EReturnableExpr
   | LSBRACKET -> parseSliceExpr pExpr ps
   | IF -> parseIfExpr pExpr pBlock ps 
+  | NOT ->
+    let (ps2, target) = psConsume NOT ps |> parseTerm pExpr pBlock
+    newUnaryNotCall (psTypeVarGen ps2) target
+    |> withPs ps2
   | _ ->
     let (ps2, es) = parseAtomList pExpr ps
     if (slice.Length es) = 1 then
@@ -687,13 +691,16 @@ let parseFieldDef (ps:ParseState) =
 
 
 let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
-  let (ps2, ntp) = parseFieldDef ps
+  let (ps2, ntp) = psSkipEOL ps |> parseFieldDef
   if (psCurrentTT ps2) = RBRACE then
     (ps2, [ntp])
   else
-    psConsume SEMICOLON ps2
-    |> parseFieldDefs
-    |> CnvR (slice.PushHead ntp)
+    let ps3 = psConsume SEMICOLON ps2 |> psSkipEOL
+    if psCurIs RBRACE ps3 then
+      (ps3, [ntp])
+    else
+      parseFieldDefs ps3
+      |> CnvR (slice.PushHead ntp)
 
 let rdToRecType (rd:RecordDef) =
   // golang complaint:
