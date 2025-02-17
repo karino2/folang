@@ -92,3 +92,4 @@ let ExprToType (expr:Expr) : FType =
   | ELazyBlock lb -> lblockToType ExprToType lb
   | EReturnableExpr re -> returnableToType ExprToType re
   | EFunCall fc -> fcToType fc
+  | EBinOpCall bc -> bc.rtype

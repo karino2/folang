@@ -21,6 +21,8 @@ type TokenType =
 |	RSBRACKET
 |	LT
 |	GT
+| LE
+| GE
 |	BRACKET // <>
 |	PIPE
 |	STRING

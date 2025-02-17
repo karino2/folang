@@ -3,6 +3,10 @@ package main
 import frt
 import slice
 
+/*
+  GenFunc related
+*/
+
 // wrapper types.
 package_info _ =
   type TypeVarDict
@@ -49,6 +53,10 @@ let GenFuncVar (vname:string) (ff:FuncFactory) (tvgen: ()->TypeVar) =
   let funct = GenFunc ff tvgen
   let ft = FFunc funct
   {Var.name=vname; ftype=ft}
+
+/*
+  Scope and Parser related
+*/
 
 // wrapper types.
 package_info _ =
@@ -306,3 +314,11 @@ let piRegAll (pi:PackageInfo) (sc:Scope) =
   etdKVs pi.typeInfo
   |> slice.Iter (regET sc)
 
+/*
+  BinOp related
+*/
+
+type BinOpInfo = {precedence: int; goFuncName: string; isBoolOp: bool}
+
+package_info _ =
+  let lookupBinOp: TokenType->BinOpInfo*bool

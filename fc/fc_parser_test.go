@@ -54,7 +54,7 @@ func parseBlockFacade(ps ParseState) frt.Tuple2[ParseState, Block] {
 }
 
 func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
-	return parseTerm(parseBlockFacade, ps)
+	return parseExpr(parseBlockFacade, ps)
 }
 
 func parseAll(ps ParseState) (ParseState, []RootStmt) {
@@ -243,6 +243,30 @@ let main () =
 			"func ika() bool{",
 		},
 		{
+			`package_info buf =
+  type Buffer
+  let WriteString: Buffer->string->()
+
+let main () =
+  let b = GoEval<buf.Buffer> "buf.Buffer{}"
+  buf.WriteString b "hogehoge"
+`,
+			"buf.WriteString(b, \"hogehoge\")",
+		},
+		// comment inside package_info
+		{
+			`package_info buf =
+  type Buffer
+  // comment test
+  let WriteString: Buffer->string->()
+
+let main () =
+  let b = GoEval<buf.Buffer> "buf.Buffer{}"
+  buf.WriteString b "hogehoge"
+`,
+			"buf.WriteString(b, \"hogehoge\")",
+		},
+		{
 			`let hoge () =
   let a = "abc"
   a
@@ -254,6 +278,18 @@ return a
 `,
 		},
 		{
+			`package_info buf =
+  type Buffer
+  let WriteString: Buffer->string->()
+  let New: ()->Buffer
+
+let main () =
+  let b = buf.New ()
+  buf.WriteString b "hogehoge"
+`,
+			"buf.New()",
+		},
+		{
 			`
 type NameTypePair = {Name: string; Type: string}
 
@@ -261,6 +297,7 @@ type RecordType = {name: string; fiedls: []NameTypePair}
 `,
 			"fiedls []NameTypePair",
 		},
+		// resolve type parameter test.
 		{
 			`package_info slice =
   let Length<T>: []T -> int
@@ -318,6 +355,52 @@ let hoge () =
 			`import slice
 `,
 			`import "github.com/karino2/folang/pkg/slice"`,
+		},
+		// left assoc
+		{
+			`package main
+
+let hoge () =
+  5-7+1+2
+`,
+			"(((5-7)+1)+2)",
+		},
+		// left assoc + ()
+		{
+			`package main
+
+let hoge () =
+  5-7+(1+2+3)
+`,
+			"((5-7)+((1+2)+3))",
+		},
+		{
+			// once match parse wrongly move one token after end.
+			// So this parse is failed.
+			// check whether this is not failed. result string is not important.
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
+/*
+this is test
+*/
+`,
+			"AorB", // whatever.
+		},
+		{
+			`let ika (s1:string) (s2:string) =
+  s1 <> s2
+
+`,
+			"frt.OpNotEqual(s1, s2)",
 		},
 	}
 	for _, test := range tests {
@@ -388,17 +471,9 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-  package_info _ =
-    let Map<T, U> : (T->U)->[]T->[]U
-    let Snd<T, U> : T*U->U
-
-  let hoge () =
-    let s1 = GoEval<[]int> "[]int{1, 2}"
-    let s2 = GoEval<[]int> "[]int{3, 4}"
-    let tups = [(123, s1); (456, s2)]
-    Map Snd tups
-
-	`
+let hoge () =
+  5-7+(1+2+3)
+`
 
 	got := transpile(src)
 	// t.Error(got)

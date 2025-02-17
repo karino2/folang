@@ -138,6 +138,9 @@ func ExprToType(expr Expr) FType {
 	case Expr_EFunCall:
 		fc := _v39.Value
 		return fcToType(fc)
+	case Expr_EBinOpCall:
+		bc := _v39.Value
+		return bc.rtype
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

@@ -333,7 +333,12 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   let transE = transVarExpr transV
   match expr with
   | EVar v -> transV v |> EVar
-  | ESlice es -> slice.Map (transVarExpr transV) es |> ESlice
+  | ESlice es -> slice.Map transE es |> ESlice
+  | EBinOpCall bop ->
+     let nlhs = transE bop.lhs
+     let nrhs = transE bop.rhs
+     {op=bop.op; rtype=bop.rtype; lhs=nlhs; rhs=nrhs}
+     |> EBinOpCall
   | ETupleExpr es -> slice.Map (transVarExpr transV) es |> ETupleExpr
   | ERecordGen rg ->
     let newNV = slice.Map (transExprNE transE) rg.fieldsNV

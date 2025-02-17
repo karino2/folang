@@ -20,6 +20,13 @@ let parseImport (ps:ParseState) =
     |> psStringValNxL
     |> CnvR RSImport
 
+let parseFullName (ps:ParseState) : ParseState*string =
+   let (ps2, one) = psIdentNameNx ps
+   if (psCurrentTT ps2) = DOT then
+     let (ps3, rest) = psConsume DOT ps2 |> parseFullName
+     (ps3, (one + "." + rest))
+   else
+     (ps2, one)
 
 /*
   ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
@@ -45,20 +52,20 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
   | IDENTIFIER ->
     let tname = tk.stringVal
     let ps3 = psNext ps
-    let rtype = if tname = "string" then
-                  FString
-                elif tname = "int" then
-                  FInt
-                elif tname = "bool" then
-                  FBool
-                else
-                  let (res, ok) = scLookupType ps3.scope tname
-                  if ok then
-                    res
-                  else
-                    frt.Panic("type not found.")
-                    FUnit
-    (ps3, rtype)
+    if tname = "string" then
+      (ps3, FString)
+    elif tname = "int" then
+      (ps3, FInt)
+    elif tname = "bool" then
+      (ps3, FBool)
+    else
+      let (ps4, fullName) = parseFullName ps
+      let (res, ok) = scLookupType ps3.scope fullName
+      if ok then
+        (ps4, res)
+      else
+        frt.Panic("type not found.")
+        (ps4, FUnit)
   | _ ->
     frt.Panic("Unknown type")
     (ps, FUnit)
@@ -209,14 +216,6 @@ let refVar (vname:string) (ps:ParseState) =
     frt.Panic "Unknown var ref"
     EUnit
 
-let parseFullName (ps:ParseState) : ParseState*string =
-   let (ps2, one) = psIdentNameNx ps
-   if (psCurrentTT ps2) = DOT then
-     let (ps3, rest) = psConsume DOT ps2 |> parseFullName
-     (ps3, (one + "." + rest))
-   else
-     (ps2, one)
-
 /*
   VARIABLE_REF = IDENTIFIER | IDENTIFER '.' IDENTIFIER
 
@@ -286,6 +285,13 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     frt.Panic "Unown atom."
     (ps, EUnit)
 
+let psCurIsBinOp (ps:ParseState) =
+  let (_, ok) = lookupBinOp (psCurrentTT ps)
+  ok
+
+let psNextNonEOLIsBinOp (ps:ParseState) =
+  psSkipEOL ps
+  |> psCurIsBinOp
 
 let isEndOfTerm (ps:ParseState) =
   match psCurrentTT ps with
@@ -299,7 +305,8 @@ let isEndOfTerm (ps:ParseState) =
   | THEN -> true
   | ELSE -> true
   | COMMA -> true
-  | _ -> false
+  | _ -> 
+    psNextNonEOLIsBinOp ps
 
 let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
   let (ps2, one) = parseAtom parseE ps
@@ -386,8 +393,7 @@ let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
    |> CnvL (psConsume RSBRACKET)
    |> CnvR ESlice
 
-let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
-  let pExpr = parseTerm pBlock
+let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
   match psCurrentTT ps with
   | MATCH ->
      parseMatchExpr pExpr pBlock ps
@@ -408,6 +414,122 @@ let parseTerm (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseStat
       | _ ->
         frt.Panic "Funcall head is not var"
         (ps2, head)
+
+let genBuiltinFunCall (tvgen: ()->TypeVar) (fname:string) (tpnames: []string) (targetTPs:[]FType) (args:[]Expr) =
+  let ff = {tparams=tpnames; targets=targetTPs}
+  let fvar = GenFuncVar fname ff tvgen
+  {targetFunc=fvar; args=args}
+  |> EFunCall
+
+let newTvf (name:string) =
+   {TypeVar.name=name}
+   |> FTypeVar
+
+/*
+  '=' and '<>', we want to use DeepEqual isntead of go comparison.
+  So it need special handling.
+*/
+let newEqNeq (tvgen: ()->TypeVar) (goFname:string) (lhs:Expr) (rhs:Expr) =
+  let t1name = "T1"
+  let t1tp = newTvf t1name
+  let names =  [t1name]
+  let tps = [t1tp; t1tp; FBool]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen goFname names tps args
+
+
+let newPipeCallNormal (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let t1name = "T1"
+  let t1type = newTvf t1name
+  let t2name = "T2"
+  let t2type = newTvf t2name
+  let secFncT = FFunc {FuncType.targets=[t1type;t2type]}
+  let names =  [t1name; t2name]
+  let tps = [t1type; secFncT; t2type]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen "frt.Pipe" names tps args
+
+/*
+frt.PipeUnit<T>: T->(T->())->()
+*/
+let newPipeCallUnit (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let t1name = "T1"
+  let t1type = newTvf t1name
+  let secFncT = FFunc {FuncType.targets=[t1type;FUnit]}
+  let names =  [t1name]
+  let tps = [t1type; secFncT; FUnit]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen "frt.PipeUnit" names tps args
+
+
+/*
+frt.Pipe<T1, T2> : T1->(T1->T2)->T2
+
+lhs |> rhs
+rhs must be T1->T2 and we might resolve T1 or T2 by lhs T1 type.
+
+If T2 is unit, use frt.PipeUnit instead.
+
+*/
+let newPipeCall (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let rht = ExprToType rhs
+  match rht with
+  | FFunc ft ->
+    match freturn ft with
+    | FUnit -> newPipeCallUnit tvgen lhs rhs
+    | _ -> newPipeCallNormal tvgen lhs rhs
+  | _ -> newPipeCallNormal tvgen lhs rhs
+
+// BinOpCall = {op: string; rtype: FType; lhs: Expr; rhs: Expr}
+let newBinOpNormal (binfo:BinOpInfo) (lhs: Expr) (rhs:Expr) =
+  let rtype = if binfo.isBoolOp then FBool else (ExprToType rhs)
+  {op=binfo.goFuncName; rtype=rtype; lhs=lhs; rhs=rhs}
+  |> EBinOpCall
+
+let newBinOpCall (tvgen: ()->TypeVar) (tk:TokenType) (binfo: BinOpInfo) (lhs: Expr) (rhs:Expr) =
+  match tk with
+  | PIPE -> newPipeCall tvgen lhs rhs
+  | EQ -> newEqNeq tvgen binfo.goFuncName lhs rhs
+  | BRACKET -> newEqNeq tvgen binfo.goFuncName lhs rhs
+  | _ -> newBinOpNormal binfo lhs rhs
+
+let lookupBinOpNF (tk:TokenType) =
+  let res = lookupBinOp tk
+  frt.Fst res
+
+// for recursive call, extract binop later parse.
+let parseBinAfter (pEwithMinPrec: int->ParseState->ParseState*Expr) (minPrec: int) (ps:ParseState) (cur:Expr): ParseState*Expr =
+  let ps2 = psSkipEOL ps
+  if psCurIsBinOp ps2 then
+    let btk = psCurrentTT ps2
+    let bop = lookupBinOpNF btk
+    if bop.precedence < minPrec then
+      (ps, cur)
+    else
+      let (ps3, rhs) = psConsume btk ps2
+                       |> pEwithMinPrec (bop.precedence+1)
+      let tvgen = psTypeVarGen ps3
+      newBinOpCall tvgen btk bop cur rhs
+      |> parseBinAfter pEwithMinPrec minPrec ps3
+  else
+    (ps, cur)
+
+/*
+EXPR = TERM (BINOP EXPR)*
+*/
+let parseExprWithPrec (pBlock: ParseState->ParseState*Block) (minPrec: int) (ps:ParseState) : ParseState*Expr =
+  let pExpr = parseExprWithPrec pBlock 1
+  let (ps2, expr) = parseTerm pExpr pBlock ps
+  let ps3 = psSkipEOL ps2
+  if psCurIsBinOp ps3 then
+    parseBinAfter (parseExprWithPrec pBlock) minPrec ps3 expr
+  else
+    (ps2, expr)
+
+
+
+let parseExpr (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
+  parseExprWithPrec pBlock 1 ps
 
 /*
   parseBlock related.
@@ -456,7 +578,7 @@ let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseSt
     |> withPs ps2
 
 let parseBlock (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : ParseState*Block =
-  let pExpr = parseTerm (parseBlock pLet)
+  let pExpr = parseExpr (parseBlock pLet)
   psPushScope ps |> parseBlockAfterPushScope pExpr pLet
 
 /*

@@ -37,6 +37,7 @@ type Expr =
 | ERecordGen of RecordGen
 | ELazyBlock of LazyBlock
 | ETupleExpr of []Expr
+| EBinOpCall of BinOpCall
 /*
   For some expr, normally we need to wrap with func() to become expr in go stmt
   But in some case like final expr of block, just return is enough and do not need to wrap func().
@@ -44,6 +45,7 @@ type Expr =
 */
 | EReturnableExpr of ReturnableExpr
 and FunCall = {targetFunc: Var; args: []Expr}
+and BinOpCall = {op: string; rtype: FType; lhs: Expr; rhs: Expr}
 and NEPair = {name: string; expr: Expr}
 and RecordGen = {fieldsNV: []NEPair; recordType: RecordType}
 and Block = {stmts: []Stmt; finalExpr: Expr}

@@ -9,7 +9,7 @@ import (
 
 // currently, map is NYI  and generic exxt type is also NYI.
 // wrap to standard type for each.
-func dictLookup[T any](dict map[string]T, key string) frt.Tuple2[T, bool] {
+func dictLookup[K comparable, T any](dict map[K]T, key K) frt.Tuple2[T, bool] {
 	e, ok := dict[key]
 	return frt.NewTuple2(e, ok)
 }
@@ -639,4 +639,27 @@ func eqsUnion(es1 EquivSet, es2 EquivSet) EquivSet {
 		e3.dict[k] = true
 	}
 	return e3
+}
+
+/*
+BinOp related
+*/
+
+// type BinOpInfo = {precedence: int; goFuncName: string}
+var binOpMap = map[TokenType]BinOpInfo{
+	New_TokenType_PIPE:    {1, "frt.Pipe", false},
+	New_TokenType_AMPAMP:  {2, "&&", true},
+	New_TokenType_BARBAR:  {2, "||", true},
+	New_TokenType_GT:      {2, ">", true},
+	New_TokenType_LT:      {2, "<", true},
+	New_TokenType_GE:      {2, ">=", true},
+	New_TokenType_LE:      {2, "<=", true},
+	New_TokenType_EQ:      {3, "frt.OpEqual", true}, // as a comparison operator
+	New_TokenType_BRACKET: {3, "frt.OpNotEqual", true},
+	New_TokenType_PLUS:    {4, "+", false},
+	New_TokenType_MINUS:   {4, "-", false},
+}
+
+func lookupBinOp(tk TokenType) frt.Tuple2[BinOpInfo, bool] {
+	return dictLookup(binOpMap, tk)
 }

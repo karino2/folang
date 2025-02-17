@@ -24,6 +24,8 @@ func (TokenType_LSBRACKET) TokenType_Union()    {}
 func (TokenType_RSBRACKET) TokenType_Union()    {}
 func (TokenType_LT) TokenType_Union()           {}
 func (TokenType_GT) TokenType_Union()           {}
+func (TokenType_LE) TokenType_Union()           {}
+func (TokenType_GE) TokenType_Union()           {}
 func (TokenType_BRACKET) TokenType_Union()      {}
 func (TokenType_PIPE) TokenType_Union()         {}
 func (TokenType_STRING) TokenType_Union()       {}
@@ -143,6 +145,16 @@ type TokenType_GT struct {
 }
 
 var New_TokenType_GT TokenType = TokenType_GT{}
+
+type TokenType_LE struct {
+}
+
+var New_TokenType_LE TokenType = TokenType_LE{}
+
+type TokenType_GE struct {
+}
+
+var New_TokenType_GE TokenType = TokenType_GE{}
 
 type TokenType_BRACKET struct {
 }

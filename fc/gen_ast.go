@@ -42,6 +42,7 @@ func (Expr_ESlice) Expr_Union()          {}
 func (Expr_ERecordGen) Expr_Union()      {}
 func (Expr_ELazyBlock) Expr_Union()      {}
 func (Expr_ETupleExpr) Expr_Union()      {}
+func (Expr_EBinOpCall) Expr_Union()      {}
 func (Expr_EReturnableExpr) Expr_Union() {}
 
 type Expr_EGoEvalExpr struct {
@@ -115,6 +116,12 @@ type Expr_ETupleExpr struct {
 
 func New_Expr_ETupleExpr(v []Expr) Expr { return Expr_ETupleExpr{v} }
 
+type Expr_EBinOpCall struct {
+	Value BinOpCall
+}
+
+func New_Expr_EBinOpCall(v BinOpCall) Expr { return Expr_EBinOpCall{v} }
+
 type Expr_EReturnableExpr struct {
 	Value ReturnableExpr
 }
@@ -124,6 +131,12 @@ func New_Expr_EReturnableExpr(v ReturnableExpr) Expr { return Expr_EReturnableEx
 type FunCall struct {
 	targetFunc Var
 	args       []Expr
+}
+type BinOpCall struct {
+	op    string
+	rtype FType
+	lhs   Expr
+	rhs   Expr
 }
 type NEPair struct {
 	name string

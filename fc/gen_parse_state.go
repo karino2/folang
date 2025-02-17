@@ -11,20 +11,20 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v211 := (ftp).(type) {
+	switch _v217 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v211.Value
+		tv := _v217.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v211.Value
+		ts := _v217.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FTuple:
-		ftup := _v211.Value
+		ftup := _v217.Value
 		nts := slice.Map(recurse, ftup.elemTypes)
 		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
 	case FType_FFunc:
-		fnt := _v211.Value
+		fnt := _v217.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -297,4 +297,10 @@ func piRegAll(pi PackageInfo, sc Scope) {
 	frt.PipeUnit(etdKVs(pi.typeInfo), (func(_r0 []frt.Tuple2[string, string]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, string]) { regET(sc, _r0) }), _r0)
 	}))
+}
+
+type BinOpInfo struct {
+	precedence int
+	goFuncName string
+	isBoolOp   bool
 }

@@ -284,6 +284,16 @@ let tupleToGo (eGo:Expr->string) (exprs: []Expr) =
   buf.Write b ")"
   buf.String b
 
+let binOpToGo (eGo:Expr->string) (binOp:BinOpCall) =
+  let b = buf.New ()
+  buf.Write b "("
+  [binOp.lhs; binOp.rhs]
+  |> slice.Map eGo
+  |> strings.Concat binOp.op
+  |> buf.Write b
+  buf.Write b ")"
+  buf.String b
+  
 
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
@@ -298,6 +308,7 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | EVar v -> v.name
   | ESlice es -> sliceToGo FTypeToGo eToGo es
   | ETupleExpr es -> tupleToGo eToGo es
+  | EBinOpCall bop -> binOpToGo eToGo bop
   | ERecordGen rg -> rgToGo eToGo rg
   | EReturnableExpr re -> reToGo sToGo eToGo re
   | EFunCall fc -> fcToGo FTypeToGo eToGo fc
