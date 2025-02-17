@@ -585,24 +585,58 @@ func tvdLookupNF(tvd TypeVarDict, key string) TypeVar {
 }
 
 /*
-  TypeDict related.
+EquivSet
 */
 
-type TypeDict = map[string]FType
-
-func toTDict(ps []frt.Tuple2[string, FType]) TypeDict {
-	return toDict(ps)
+type EquivSet struct {
+	dict map[string]bool
 }
 
-func tdLookup(dict TypeDict, key string) frt.Tuple2[FType, bool] {
-	return dictLookup(dict, key)
+type EquivInfoDict struct {
+	dict map[string]EquivInfo
 }
 
-func tdLookupNF(dict TypeDict, key string) FType {
-	res, _ := frt.Destr(dictLookup(dict, key))
+func newEquivSet0() EquivSet {
+	s := EquivSet{}
+	s.dict = make(map[string]bool)
+	return s
+}
+
+func NewEquivSet(itype TypeVar) EquivSet {
+	s := newEquivSet0()
+	s.dict[itype.name] = true
+	return s
+}
+
+func NewEquivInfoDict() EquivInfoDict {
+	ei := EquivInfoDict{}
+	ei.dict = make(map[string]EquivInfo)
+	return ei
+}
+
+func eidPut(eid EquivInfoDict, key string, v EquivInfo) {
+	dictPut(eid.dict, key, v)
+}
+
+func eidLookup(eid EquivInfoDict, key string) frt.Tuple2[EquivInfo, bool] {
+	return dictLookup(eid.dict, key)
+}
+
+func eqsItems(es EquivSet) []string {
+	var res []string
+	for k := range es.dict {
+		res = append(res, k)
+	}
 	return res
 }
 
-func tdPut(dic TypeDict, key string, v FType) {
-	dictPut(dic, key, v)
+func eqsUnion(es1 EquivSet, es2 EquivSet) EquivSet {
+	e3 := newEquivSet0()
+	for _, k := range eqsItems(es1) {
+		e3.dict[k] = true
+	}
+	for _, k := range eqsItems(es2) {
+		e3.dict[k] = true
+	}
+	return e3
 }

@@ -317,7 +317,7 @@ let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Pars
     {pattern=mp; body=block}
     |> withPs ps6
 
-let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : []MatchRule =
+let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : ParseState*[]MatchRule =
   let (ps2, one) = parseMatchRule pBlock target ps |> CnvL psSkipEOL
   if (psCurrentTT ps2) = BAR then
     parseMatchRules pBlock target ps2 |> CnvR (slice.PushHead one)
@@ -392,7 +392,7 @@ let isEndOfBlock (ps:ParseState) =
   let isEof = (psCurrentTT ps) = EOF
   isOffside || isEof
 
-let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : []Stmt =
+let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LetVarDef) (ps:ParseState) : ParseState*[]Stmt =
   let (ps2, one) = parseStmt pExpr pLet ps |> CnvL psSkipEOL
   if isEndOfBlock ps2 then
     (ps2, [one])
@@ -556,7 +556,7 @@ let parseOneCaseDef (ps:ParseState) =
     let cs = {NameTypePair.name=cname; ftype=FUnit}
     (ps3, cs)
 
-let parseCaseDefs (ps:ParseState) : []NameTypePair =
+let parseCaseDefs (ps:ParseState) : ParseState*[]NameTypePair =
   let (ps2, cs) = parseOneCaseDef ps
   let ps3 = psSkipEOL ps2
   if (psCurrentTT ps3) = BAR then

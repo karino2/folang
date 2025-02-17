@@ -15,6 +15,7 @@ package_info buf =
 
 package_info slice =
   let Length<T>: []T -> int
+  let IsEmpty<T>: []T -> bool
   let Last<T>: []T -> T
   let Head<T>: []T -> T
   let Tail<T>: []T -> []T

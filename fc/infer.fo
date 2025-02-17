@@ -3,13 +3,9 @@ package main
 import frt
 import slice
 
-package_info _ =
-  type TypeDict
-  let toTDict: []string*FType->TypeDict
-  let tdLookup: TypeDict->string->FType*bool
-  let tdPut: TypeDict->string->FType->()
-  let tdLookupNF: TypeDict->string->FType
-
+/*
+  UniRel collection.
+*/
 
 // src VarType and dest FType has unique constraints.
 // If both are VarType, src is alphabetically later order (to avoid cyclic reference to later stage).
@@ -18,47 +14,80 @@ type UniRel = {srcV:string; dest: FType}
 let emptyRels () =
   GoEval<[]UniRel> "[]UniRel{}"
 
-let relToTp (rel:UniRel) =
-  (rel.srcV, rel.dest)
-
-let relsToTDict (rels: []UniRel) =
-  slice.Map relToTp rels
-  |> toTDict
-
-let tupApply (f:FType->FType->[]UniRel) (tup:FType*FType) =
+// generics it NYI...
+let tupApply (f:FType->FType->FType*[]UniRel) (tup:FType*FType) =
   let (lhs, rhs) = tup
   f lhs rhs
 
-let unifyType (lhs:FType) (rhs:FType) : []UniRel =
+let withRels (rels:[]UniRel) (tp:FType) =
+  (tp, rels)
+
+let withTp (tp:FType) (rels:[]UniRel) =
+  (tp, rels)
+
+
+/*
+  compare two type and adopt concrete one.
+  
+  tp1: int->T1->[]string
+  tp2: int->int->[]T2
+
+  result type is: int->int->[]string
+  unirel is: [{T1->int}; {T2->string}]
+
+  If you just need unirel, just discard result type. 
+*/
+let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
   match lhs with
   | FTypeVar tv ->
     match rhs with
     | FTypeVar tv2 ->
       // same typevar
-      if tv.name = tv2.name then
+      if tv.name = tv2.name then        
         emptyRels ()
+        |> withTp lhs
       elif tv.name > tv2.name then
         // keep alphabetically later one to src.
         [{srcV=tv.name; dest=rhs}]
+        |> withTp rhs
       else
         [{srcV=tv2.name;dest=lhs}]
+        |> withTp lhs
     | _ ->
       [{srcV=tv.name; dest=rhs}]
+      |> withTp rhs
   | _ ->
     match rhs with
     | FTypeVar tv2 ->
       [{srcV=tv2.name; dest=lhs}]
+      |> withTp lhs
     // Both are not FTypeVar, drill down.
     // Both type must be equal for this layer.
     | FSlice ts2 ->
       let ts1 = GoEval<SliceType> "lhs.(FType_FSlice).Value"
-      unifyType ts1.elemType ts2.elemType
+      let (rtp, rels) = compositeTp ts1.elemType ts2.elemType
+      {SliceType.elemType=rtp}
+      |> FSlice
+      |> withRels rels      
     | FFunc tf2 ->
       let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
-      slice.Zip tf1.targets tf2.targets
-      |> slice.Map (tupApply unifyType)
-      |> slice.Concat 
-    | _ -> emptyRels () // both type is concrete.
+      // [](type*[]UniRel)
+      let tups = slice.Zip tf1.targets tf2.targets
+                 |> slice.Map (tupApply compositeTp)
+      let tps = slice.Map frt.Fst tups
+      let rels = tups |> slice.Map frt.Snd |> slice.Concat
+      {FuncType.targets=tps}
+      |> FFunc
+      |> withRels rels
+    | _ ->
+      // both type is concrete.
+      emptyRels ()
+      |> withTp lhs
+
+
+let unifyType (lhs:FType) (rhs:FType) : []UniRel =
+  let (_, rels) = compositeTp lhs rhs
+  rels
 
 let unifyTupArg (tup:FType*FType) =
   let (lhs, rhs) = tup
@@ -159,6 +188,105 @@ let collectLfdRels (lfd:LetFuncDef) =
   |> slice.Append brels
 
 /*
+  Building ResolveInfo from []UniRel
+
+*/
+
+package_info _ =
+  type EquivSet
+  type EquivInfoDict
+  let eqsUnion: EquivSet->EquivSet->EquivSet
+  let eqsItems: EquivSet->[]string
+  let NewEquivSet: TypeVar->EquivSet
+  let NewEquivInfoDict: ()->EquivInfoDict
+
+/*
+  resType is most concrete type for this equiv set.
+  If only TypeVar is known, alphabetically first one is set.
+*/
+type EquivInfo = {eset: EquivSet; resType: FType}
+
+// circular dependency.
+package_info _ =
+  let eidLookup: EquivInfoDict->string->EquivInfo*bool
+  let eidPut: EquivInfoDict->string->EquivInfo->()
+
+
+let eiUnion (e1: EquivInfo) (e2:EquivInfo) =
+  let nset = eqsUnion e1.eset e2.eset
+  let (nres, rels) = compositeTp e1.resType e2.resType
+  let nei = {eset=nset; resType=nres}
+  (nei, rels)
+
+let eiUpdateResT (e: EquivInfo) (tcan:FType) =
+  let (nres, rels) = compositeTp e.resType tcan
+  let nei = {eset=e.eset; resType=nres}
+  (nei, rels)
+
+// EquivInfo which only contains TypeVar and resType is TypeVar.
+let eiInit (tv:TypeVar) =
+  let es = NewEquivSet tv
+  let rtype = FTypeVar tv
+  {eset=es; resType=rtype}
+
+type Resolver = {eid: EquivInfoDict}
+
+let newResolver () =
+  let neid = NewEquivInfoDict ()
+  {eid=neid}
+
+let rsLookupEI (res:Resolver) (tvname:string) =
+  let (ei, ok) = eidLookup res.eid tvname
+  if ok then
+    ei
+  else
+    // if not exist, return only tv's ei.
+    eiInit {TypeVar.name=tvname}
+
+let rsRegisterTo (res:Resolver) (ei:EquivInfo) (key:string) =
+  eidPut res.eid key ei
+
+let rsRegisterNewEI (res:Resolver) (ei:EquivInfo) =
+  eqsItems ei.eset
+  |> slice.Iter (rsRegisterTo res ei)
+
+let updateResOne (res:Resolver) (rel:UniRel) =
+  let ei1 = rsLookupEI res rel.srcV
+  match rel.dest with
+  | FTypeVar tvd ->
+    let ei2 = rsLookupEI res tvd.name
+    let (nei, rels) = eiUnion ei1 ei2
+    rsRegisterNewEI res nei
+    rels
+  | _ ->
+    let (nei, rels) = eiUpdateResT ei1 rel.dest
+    if slice.IsEmpty rels then
+      emptyRels ()
+    else
+      rsRegisterNewEI res nei
+      rels
+
+let updateResolver (res:Resolver) (rels:[]UniRel) : Resolver =
+  let nrels = rels |> slice.Map (updateResOne res) |> slice.Concat
+  if slice.IsEmpty nrels then
+    res
+  else
+    updateResolver res nrels
+
+let buildResolver (rels:[]UniRel) =
+  let res = newResolver ()
+  updateResolver res rels
+  res
+
+let rsResolveType (res:Resolver) (tvname:string) =
+  let ei = rsLookupEI res tvname
+  ei.resType
+
+/*
+  Resolve TypeVar
+*/
+
+/*
   TransformT FTypeVar and recomposite.
 */
 let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
@@ -175,11 +303,11 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
   | _ -> ftp
 
 
-let transOneTypeVar (tdict: TypeDict) (tv:TypeVar) =
-  tdLookupNF tdict tv.name
+let transOneTypeVar (rsv: Resolver) (tv:TypeVar) =
+  rsResolveType rsv tv.name
 
-let resolveType (tdict: TypeDict) (ftp:FType) =
-  transTypeVarFType (transOneTypeVar tdict) ftp
+let resolveType (rsv: Resolver) (ftp:FType) =
+  transTypeVarFType (transOneTypeVar rsv) ftp
 
 /*
   Self transform utility.
@@ -245,15 +373,15 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   resolve type using transVarExpr utility.
 */
 
-let resolveVarType (tdict: TypeDict) (v:Var) =
-  {Var.name=v.name; ftype=resolveType tdict v.ftype}
+let resolveVarType (rsv: Resolver) (v:Var) =
+  {Var.name=v.name; ftype=resolveType rsv v.ftype}
 
-let resolveExprType (tdict: TypeDict) (expr:Expr) : Expr =
-  transVarExpr (resolveVarType tdict) expr
+let resolveExprType (rsv: Resolver) (expr:Expr) : Expr =
+  transVarExpr (resolveVarType rsv) expr
 
-let resolveBlockType (tdict: TypeDict) (bl:Block) : Block =
+let resolveBlockType (rsv: Resolver) (bl:Block) : Block =
   blockToExpr bl
-  |> resolveExprType tdict
+  |> resolveExprType rsv
   |> exprToBlock
 
 /*
@@ -261,15 +389,19 @@ and LetFuncDef = {fvar: Var; params: []Var; body:Block}
 and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
 */
 
-let resolveLfd (tdict: TypeDict) (lfd:LetFuncDef) =
-   let nfvar = resolveVarType tdict lfd.fvar
-   let nparams = slice.Map (resolveVarType tdict) lfd.params
-   let nbody = resolveBlockType tdict lfd.body
+let resolveLfd (rsv: Resolver) (lfd:LetFuncDef) =
+   let nfvar = resolveVarType rsv lfd.fvar
+   let nparams = slice.Map (resolveVarType rsv) lfd.params
+   let nbody = resolveBlockType rsv lfd.body
    {fvar=nfvar; params=nparams; body=nbody}
 
-let notFound (dic:TypeDict) (key:string) =
-  let (_, ok) = tdLookup dic key
-  not ok
+let notFound (rsv:Resolver) (key:string) =
+  let rtype = rsResolveType rsv key
+  match rtype with
+  | FTypeVar tv ->
+    // resType is the same TypeVar, means not found.
+    tv.name = key
+  | _ -> false
 
 /*
   Infer TypeVar's and promote as TypeParameters if necessary, then return RootFuncDef.
@@ -277,13 +409,12 @@ let notFound (dic:TypeDict) (key:string) =
 let Infer (tvnames:[]string) (lfd:LetFuncDef) =
   let rels = collectLfdRels lfd
   // frt.Printf1 "%v\n" rels
-  // this is not enough.
-  // merge and select most concrete type.
-  let rdict = relsToTDict rels
-  // let unresTvs = slice.Filter (notFound rdict) tvnames
+  let rsv = buildResolver rels
+  // let rdict = relsToTDict rels
+  // let unresTvs = slice.Filter (notFound rsv) tvnames
   // frt.Printf1 "unres: %v\n" unresTvs
   // assign formal type parameter
   // NYI.
   let tps = GoEval<[]string> "[]string{}"
-  let nlfd = resolveLfd rdict lfd
+  let nlfd = resolveLfd rsv lfd
   {tparams=tps; lfd=nlfd}

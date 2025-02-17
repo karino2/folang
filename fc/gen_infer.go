@@ -13,57 +13,66 @@ func emptyRels() []UniRel {
 	return []UniRel{}
 }
 
-func relToTp(rel UniRel) frt.Tuple2[string, FType] {
-	return frt.NewTuple2(rel.srcV, rel.dest)
-}
-
-func relsToTDict(rels []UniRel) TypeDict {
-	return frt.Pipe(slice.Map(relToTp, rels), toTDict)
-}
-
-func tupApply(f func(FType, FType) []UniRel, tup frt.Tuple2[FType, FType]) []UniRel {
+func tupApply(f func(FType, FType) frt.Tuple2[FType, []UniRel], tup frt.Tuple2[FType, FType]) frt.Tuple2[FType, []UniRel] {
 	lhs, rhs := frt.Destr(tup)
 	return f(lhs, rhs)
 }
 
-func unifyType(lhs FType, rhs FType) []UniRel {
-	switch _v281 := (lhs).(type) {
+func withRels(rels []UniRel, tp FType) frt.Tuple2[FType, []UniRel] {
+	return frt.NewTuple2(tp, rels)
+}
+
+func withTp(tp FType, rels []UniRel) frt.Tuple2[FType, []UniRel] {
+	return frt.NewTuple2(tp, rels)
+}
+
+func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
+	switch _v308 := (lhs).(type) {
 	case FType_FTypeVar:
-		tv := _v281.Value
-		switch _v282 := (rhs).(type) {
+		tv := _v308.Value
+		switch _v309 := (rhs).(type) {
 		case FType_FTypeVar:
-			tv2 := _v282.Value
-			return frt.IfElse(frt.OpEqual(tv.name, tv2.name), (func() []UniRel {
-				return emptyRels()
-			}), (func() []UniRel {
-				return frt.IfElse((tv.name > tv2.name), (func() []UniRel {
-					return ([]UniRel{UniRel{srcV: tv.name, dest: rhs}})
-				}), (func() []UniRel {
-					return ([]UniRel{UniRel{srcV: tv2.name, dest: lhs}})
+			tv2 := _v309.Value
+			return frt.IfElse(frt.OpEqual(tv.name, tv2.name), (func() frt.Tuple2[FType, []UniRel] {
+				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
+			}), (func() frt.Tuple2[FType, []UniRel] {
+				return frt.IfElse((tv.name > tv2.name), (func() frt.Tuple2[FType, []UniRel] {
+					return frt.Pipe(([]UniRel{UniRel{srcV: tv.name, dest: rhs}}), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(rhs, _r0) }))
+				}), (func() frt.Tuple2[FType, []UniRel] {
+					return frt.Pipe(([]UniRel{UniRel{srcV: tv2.name, dest: lhs}}), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
 				}))
 			}))
 		default:
-			return ([]UniRel{UniRel{srcV: tv.name, dest: rhs}})
+			return frt.Pipe(([]UniRel{UniRel{srcV: tv.name, dest: rhs}}), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(rhs, _r0) }))
 		}
 	default:
-		switch _v283 := (rhs).(type) {
+		switch _v310 := (rhs).(type) {
 		case FType_FTypeVar:
-			tv2 := _v283.Value
-			return ([]UniRel{UniRel{srcV: tv2.name, dest: lhs}})
+			tv2 := _v310.Value
+			return frt.Pipe(([]UniRel{UniRel{srcV: tv2.name, dest: lhs}}), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
 		case FType_FSlice:
-			ts2 := _v283.Value
+			ts2 := _v310.Value
 			ts1 := lhs.(FType_FSlice).Value
-			return unifyType(ts1.elemType, ts2.elemType)
+			rtp, rels := frt.Destr(compositeTp(ts1.elemType, ts2.elemType))
+			return frt.Pipe(frt.Pipe(SliceType{elemType: rtp}, New_FType_FSlice), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 		case FType_FFunc:
-			tf2 := _v283.Value
+			tf2 := _v310.Value
 			tf1 := lhs.(FType_FFunc).Value
-			return frt.Pipe(frt.Pipe(slice.Zip(tf1.targets, tf2.targets), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel {
-				return slice.Map((func(_r0 frt.Tuple2[FType, FType]) []UniRel { return tupApply(unifyType, _r0) }), _r0)
-			})), slice.Concat)
+			tups := frt.Pipe(slice.Zip(tf1.targets, tf2.targets), (func(_r0 []frt.Tuple2[FType, FType]) []frt.Tuple2[FType, []UniRel] {
+				return slice.Map((func(_r0 frt.Tuple2[FType, FType]) frt.Tuple2[FType, []UniRel] { return tupApply(compositeTp, _r0) }), _r0)
+			}))
+			tps := slice.Map(frt.Fst, tups)
+			rels := frt.Pipe(frt.Pipe(tups, (func(_r0 []frt.Tuple2[FType, []UniRel]) [][]UniRel { return slice.Map(frt.Snd, _r0) })), slice.Concat)
+			return frt.Pipe(frt.Pipe(FuncType{targets: tps}, New_FType_FFunc), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 		default:
-			return emptyRels()
+			return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
 		}
 	}
+}
+
+func unifyType(lhs FType, rhs FType) []UniRel {
+	_, rels := frt.Destr(compositeTp(lhs, rhs))
+	return rels
 }
 
 func unifyTupArg(tup frt.Tuple2[FType, FType]) []UniRel {
@@ -72,12 +81,12 @@ func unifyTupArg(tup frt.Tuple2[FType, FType]) []UniRel {
 }
 
 func collectStmtRel(ec func(Expr) []UniRel, stmt Stmt) []UniRel {
-	switch _v284 := (stmt).(type) {
+	switch _v311 := (stmt).(type) {
 	case Stmt_SExprStmt:
-		se := _v284.Value
+		se := _v311.Value
 		return ec(se)
 	case Stmt_SLetVarDef:
-		lvd := _v284.Value
+		lvd := _v311.Value
 		inside := ec(lvd.rhs)
 		one := unifyType(lvd.lvar.ftype, ExprToType(lvd.rhs))
 		return slice.Append(one, inside)
@@ -88,9 +97,9 @@ func collectStmtRel(ec func(Expr) []UniRel, stmt Stmt) []UniRel {
 
 func collectFunCall(fc FunCall) []UniRel {
 	tftype := fc.targetFunc.ftype
-	switch _v285 := (tftype).(type) {
+	switch _v312 := (tftype).(type) {
 	case FType_FFunc:
-		fft := _v285.Value
+		fft := _v312.Value
 		return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(ExprToType, fc.args), (func(_r0 []FType) []frt.Tuple2[FType, FType] { return slice.Zip(fargs(fft), _r0) })), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel { return slice.Map(unifyTupArg, _r0) })), slice.Concat)
 	default:
 		frt.Panic("funcall with non func first arg, possibly TypeVar, NYI.")
@@ -125,29 +134,29 @@ func collectExprRel(expr Expr) []UniRel {
 	colB := (func(_r0 Block) []UniRel {
 		return collectBlock(collectExprRel, (func(_r0 Stmt) []UniRel { return collectStmtRel(collectExprRel, _r0) }), _r0)
 	})
-	switch _v286 := (expr).(type) {
+	switch _v313 := (expr).(type) {
 	case Expr_EFunCall:
-		fc := _v286.Value
+		fc := _v313.Value
 		inside := frt.Pipe(slice.Map(collectExprRel, fc.args), slice.Concat)
 		return frt.Pipe(collectFunCall(fc), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ESlice:
-		es := _v286.Value
+		es := _v313.Value
 		inside := frt.Pipe(slice.Map(collectExprRel, es), slice.Concat)
 		return frt.Pipe(collectSlice(es), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ERecordGen:
-		rg := _v286.Value
+		rg := _v313.Value
 		return frt.Pipe(frt.Pipe(slice.Map(NEPToExpr, rg.fieldsNV), (func(_r0 []Expr) [][]UniRel { return slice.Map(collectExprRel, _r0) })), slice.Concat)
 	case Expr_ELazyBlock:
-		lb := _v286.Value
+		lb := _v313.Value
 		return colB(lb.block)
 	case Expr_EReturnableExpr:
-		re := _v286.Value
-		switch _v287 := (re).(type) {
+		re := _v313.Value
+		switch _v314 := (re).(type) {
 		case ReturnableExpr_RBlock:
-			bl := _v287.Value
+			bl := _v314.Value
 			return colB(bl)
 		case ReturnableExpr_RMatchExpr:
-			me := _v287.Value
+			me := _v314.Value
 			return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(mrToBlock, me.rules), (func(_r0 []Block) [][]UniRel { return slice.Map(colB, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(collectExprRel(me.target), _r0) }))
 		default:
 			panic("Union pattern fail. Never reached here.")
@@ -158,9 +167,9 @@ func collectExprRel(expr Expr) []UniRel {
 }
 
 func lfdRetType(lfd LetFuncDef) FType {
-	switch _v288 := (lfd.fvar.ftype).(type) {
+	switch _v315 := (lfd.fvar.ftype).(type) {
 	case FType_FFunc:
-		ft := _v288.Value
+		ft := _v315.Value
 		return freturn(ft)
 	default:
 		frt.Panic("LetFuncDef's fvar is not FFunc type.")
@@ -174,18 +183,110 @@ func collectLfdRels(lfd LetFuncDef) []UniRel {
 	return frt.Pipe(unifyType(lfdRetType(lfd), lastExprType), (func(_r0 []UniRel) []UniRel { return slice.Append(brels, _r0) }))
 }
 
+type EquivInfo struct {
+	eset    EquivSet
+	resType FType
+}
+
+func eiUnion(e1 EquivInfo, e2 EquivInfo) frt.Tuple2[EquivInfo, []UniRel] {
+	nset := eqsUnion(e1.eset, e2.eset)
+	nres, rels := frt.Destr(compositeTp(e1.resType, e2.resType))
+	nei := EquivInfo{eset: nset, resType: nres}
+	return frt.NewTuple2(nei, rels)
+}
+
+func eiUpdateResT(e EquivInfo, tcan FType) frt.Tuple2[EquivInfo, []UniRel] {
+	nres, rels := frt.Destr(compositeTp(e.resType, tcan))
+	nei := EquivInfo{eset: e.eset, resType: nres}
+	return frt.NewTuple2(nei, rels)
+}
+
+func eiInit(tv TypeVar) EquivInfo {
+	es := NewEquivSet(tv)
+	rtype := New_FType_FTypeVar(tv)
+	return EquivInfo{eset: es, resType: rtype}
+}
+
+type Resolver struct {
+	eid EquivInfoDict
+}
+
+func newResolver() Resolver {
+	neid := NewEquivInfoDict()
+	return Resolver{eid: neid}
+}
+
+func rsLookupEI(res Resolver, tvname string) EquivInfo {
+	ei, ok := frt.Destr(eidLookup(res.eid, tvname))
+	return frt.IfElse(ok, (func() EquivInfo {
+		return ei
+	}), (func() EquivInfo {
+		return eiInit(TypeVar{name: tvname})
+	}))
+}
+
+func rsRegisterTo(res Resolver, ei EquivInfo, key string) {
+	eidPut(res.eid, key, ei)
+}
+
+func rsRegisterNewEI(res Resolver, ei EquivInfo) {
+	frt.PipeUnit(eqsItems(ei.eset), (func(_r0 []string) { slice.Iter((func(_r0 string) { rsRegisterTo(res, ei, _r0) }), _r0) }))
+}
+
+func updateResOne(res Resolver, rel UniRel) []UniRel {
+	ei1 := rsLookupEI(res, rel.srcV)
+	switch _v316 := (rel.dest).(type) {
+	case FType_FTypeVar:
+		tvd := _v316.Value
+		ei2 := rsLookupEI(res, tvd.name)
+		nei, rels := frt.Destr(eiUnion(ei1, ei2))
+		rsRegisterNewEI(res, nei)
+		return rels
+	default:
+		nei, rels := frt.Destr(eiUpdateResT(ei1, rel.dest))
+		return frt.IfElse(slice.IsEmpty(rels), (func() []UniRel {
+			return emptyRels()
+		}), (func() []UniRel {
+			rsRegisterNewEI(res, nei)
+			return rels
+		}))
+	}
+}
+
+func updateResolver(res Resolver, rels []UniRel) Resolver {
+	nrels := frt.Pipe(frt.Pipe(rels, (func(_r0 []UniRel) [][]UniRel {
+		return slice.Map((func(_r0 UniRel) []UniRel { return updateResOne(res, _r0) }), _r0)
+	})), slice.Concat)
+	return frt.IfElse(slice.IsEmpty(nrels), (func() Resolver {
+		return res
+	}), (func() Resolver {
+		return updateResolver(res, nrels)
+	}))
+}
+
+func buildResolver(rels []UniRel) Resolver {
+	res := newResolver()
+	updateResolver(res, rels)
+	return res
+}
+
+func rsResolveType(res Resolver, tvname string) FType {
+	ei := rsLookupEI(res, tvname)
+	return ei.resType
+}
+
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v289 := (ftp).(type) {
+	switch _v317 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v289.Value
+		tv := _v317.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v289.Value
+		ts := _v317.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FFunc:
-		fnt := _v289.Value
+		fnt := _v317.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -193,12 +294,12 @@ func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	}
 }
 
-func transOneTypeVar(tdict TypeDict, tv TypeVar) FType {
-	return tdLookupNF(tdict, tv.name)
+func transOneTypeVar(rsv Resolver, tv TypeVar) FType {
+	return rsResolveType(rsv, tv.name)
 }
 
-func resolveType(tdict TypeDict, ftp FType) FType {
-	return transTypeVarFType((func(_r0 TypeVar) FType { return transOneTypeVar(tdict, _r0) }), ftp)
+func resolveType(rsv Resolver, ftp FType) FType {
+	return transTypeVarFType((func(_r0 TypeVar) FType { return transOneTypeVar(rsv, _r0) }), ftp)
 }
 
 func transExprNE(cnv func(Expr) Expr, p NEPair) NEPair {
@@ -206,14 +307,14 @@ func transExprNE(cnv func(Expr) Expr, p NEPair) NEPair {
 }
 
 func transVarStmt(transV func(Var) Var, transE func(Expr) Expr, stmt Stmt) Stmt {
-	switch _v290 := (stmt).(type) {
+	switch _v318 := (stmt).(type) {
 	case Stmt_SLetVarDef:
-		lvd := _v290.Value
+		lvd := _v318.Value
 		nvar := transV(lvd.lvar)
 		nrhs := transE(lvd.rhs)
 		return frt.Pipe(LetVarDef{lvar: nvar, rhs: nrhs}, New_Stmt_SLetVarDef)
 	case Stmt_SExprStmt:
-		e := _v290.Value
+		e := _v318.Value
 		return frt.Pipe(transE(e), New_Stmt_SExprStmt)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -227,29 +328,29 @@ func transExprMatchRule(pExpr func(Expr) Expr, mr MatchRule) MatchRule {
 
 func transVarExpr(transV func(Var) Var, expr Expr) Expr {
 	transE := (func(_r0 Expr) Expr { return transVarExpr(transV, _r0) })
-	switch _v291 := (expr).(type) {
+	switch _v319 := (expr).(type) {
 	case Expr_EVar:
-		v := _v291.Value
+		v := _v319.Value
 		return frt.Pipe(transV(v), New_Expr_EVar)
 	case Expr_ESlice:
-		es := _v291.Value
+		es := _v319.Value
 		return frt.Pipe(slice.Map((func(_r0 Expr) Expr { return transVarExpr(transV, _r0) }), es), New_Expr_ESlice)
 	case Expr_ERecordGen:
-		rg := _v291.Value
+		rg := _v319.Value
 		newNV := slice.Map((func(_r0 NEPair) NEPair { return transExprNE(transE, _r0) }), rg.fieldsNV)
 		return frt.Pipe(RecordGen{fieldsNV: newNV, recordType: rg.recordType}, New_Expr_ERecordGen)
 	case Expr_EReturnableExpr:
-		re := _v291.Value
-		switch _v292 := (re).(type) {
+		re := _v319.Value
+		switch _v320 := (re).(type) {
 		case ReturnableExpr_RBlock:
-			bl := _v292.Value
+			bl := _v320.Value
 			nss := frt.Pipe(bl.stmts, (func(_r0 []Stmt) []Stmt {
 				return slice.Map((func(_r0 Stmt) Stmt { return transVarStmt(transV, transE, _r0) }), _r0)
 			}))
 			fexpr := transE(bl.finalExpr)
 			return frt.Pipe(Block{stmts: nss, finalExpr: fexpr}, blockToExpr)
 		case ReturnableExpr_RMatchExpr:
-			me := _v292.Value
+			me := _v320.Value
 			ntarget := transE(me.target)
 			nrules := slice.Map((func(_r0 MatchRule) MatchRule { return transExprMatchRule(transE, _r0) }), me.rules)
 			return frt.Pipe(frt.Pipe(MatchExpr{target: ntarget, rules: nrules}, New_ReturnableExpr_RMatchExpr), New_Expr_EReturnableExpr)
@@ -257,7 +358,7 @@ func transVarExpr(transV func(Var) Var, expr Expr) Expr {
 			panic("Union pattern fail. Never reached here.")
 		}
 	case Expr_EFunCall:
-		fc := _v291.Value
+		fc := _v319.Value
 		ntarget := transV(fc.targetFunc)
 		nargs := slice.Map(transE, fc.args)
 		return frt.Pipe(FunCall{targetFunc: ntarget, args: nargs}, New_Expr_EFunCall)
@@ -278,34 +379,40 @@ func transVarExpr(transV func(Var) Var, expr Expr) Expr {
 	}
 }
 
-func resolveVarType(tdict TypeDict, v Var) Var {
-	return Var{name: v.name, ftype: resolveType(tdict, v.ftype)}
+func resolveVarType(rsv Resolver, v Var) Var {
+	return Var{name: v.name, ftype: resolveType(rsv, v.ftype)}
 }
 
-func resolveExprType(tdict TypeDict, expr Expr) Expr {
-	return transVarExpr((func(_r0 Var) Var { return resolveVarType(tdict, _r0) }), expr)
+func resolveExprType(rsv Resolver, expr Expr) Expr {
+	return transVarExpr((func(_r0 Var) Var { return resolveVarType(rsv, _r0) }), expr)
 }
 
-func resolveBlockType(tdict TypeDict, bl Block) Block {
-	return frt.Pipe(frt.Pipe(blockToExpr(bl), (func(_r0 Expr) Expr { return resolveExprType(tdict, _r0) })), exprToBlock)
+func resolveBlockType(rsv Resolver, bl Block) Block {
+	return frt.Pipe(frt.Pipe(blockToExpr(bl), (func(_r0 Expr) Expr { return resolveExprType(rsv, _r0) })), exprToBlock)
 }
 
-func resolveLfd(tdict TypeDict, lfd LetFuncDef) LetFuncDef {
-	nfvar := resolveVarType(tdict, lfd.fvar)
-	nparams := slice.Map((func(_r0 Var) Var { return resolveVarType(tdict, _r0) }), lfd.params)
-	nbody := resolveBlockType(tdict, lfd.body)
+func resolveLfd(rsv Resolver, lfd LetFuncDef) LetFuncDef {
+	nfvar := resolveVarType(rsv, lfd.fvar)
+	nparams := slice.Map((func(_r0 Var) Var { return resolveVarType(rsv, _r0) }), lfd.params)
+	nbody := resolveBlockType(rsv, lfd.body)
 	return LetFuncDef{fvar: nfvar, params: nparams, body: nbody}
 }
 
-func notFound(dic TypeDict, key string) bool {
-	_, ok := frt.Destr(tdLookup(dic, key))
-	return frt.OpNot(ok)
+func notFound(rsv Resolver, key string) bool {
+	rtype := rsResolveType(rsv, key)
+	switch _v321 := (rtype).(type) {
+	case FType_FTypeVar:
+		tv := _v321.Value
+		return frt.OpEqual(tv.name, key)
+	default:
+		return false
+	}
 }
 
 func Infer(tvnames []string, lfd LetFuncDef) RootFuncDef {
 	rels := collectLfdRels(lfd)
-	rdict := relsToTDict(rels)
+	rsv := buildResolver(rels)
 	tps := []string{}
-	nlfd := resolveLfd(rdict, lfd)
+	nlfd := resolveLfd(rsv, lfd)
 	return RootFuncDef{tparams: tps, lfd: nlfd}
 }

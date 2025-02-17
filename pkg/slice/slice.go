@@ -16,6 +16,10 @@ func Length[T any](s []T) int {
 	return len(s)
 }
 
+func IsEmpty[T any](a []T) bool {
+	return len(a) == 0
+}
+
 func Last[T any](s []T) T {
 	return s[len(s)-1]
 }
