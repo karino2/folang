@@ -23,6 +23,7 @@ func main() {
 	tp := NewTranspiler()
 	parser := NewParser()
 	for _, file := range files {
+		fmt.Printf("Transpile: %s\n", file)
 		buf, err := os.ReadFile(file)
 		check(err)
 		stmts := parser.Parse(file, buf)

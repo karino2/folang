@@ -609,8 +609,9 @@ func (rg *RecordGen) FType() FType {
 
 func (rg *RecordGen) ToGo() string {
 	rtype, ok := rg.recordType.(*FRecord)
-	if !ok {
-		panic("Unresolved record type.")
+	if !ok || rtype == nil {
+		msg := fmt.Sprintf("Unresolved record type: %v", rg)
+		panic(msg)
 	}
 
 	var buf bytes.Buffer

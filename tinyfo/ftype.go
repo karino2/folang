@@ -191,7 +191,8 @@ func (fr *FRecord) GetField(fieldName string) *NameTypePair {
 			return &fp
 		}
 	}
-	panic("Field not found")
+	msg := fmt.Sprintf("Field not found: rec: %s, fname: %s", fr.name, fieldName)
+	panic(msg)
 }
 
 func (fr *FRecord) Match(fieldNames []string) bool {

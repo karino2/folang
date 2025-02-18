@@ -1447,6 +1447,8 @@ func (p *Parser) parseFuncDefLet() Stmt {
 	v := &Var{fname.stringVal, &FUnresolved{}}
 	p.scope.DefineVar(fname.stringVal, v)
 
+	fmt.Printf("func: %s\n", fname.stringVal)
+
 	p.gotoNext()
 	params := p.parseParams()
 
