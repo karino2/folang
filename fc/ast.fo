@@ -7,11 +7,11 @@ package_info _ =
   let newFFD: ()->funcFacDict
   let newETD: ()->extTypeDict
 
-type GoEvalExpr = {goStmt: string; typeArg: FType}
-type Var = {name: string; ftype: FType}
+type GoEvalExpr = {GoStmt: string; TypeArg: FType}
+type Var = {Name: string; Ftype: FType}
 
-// stands for record field access of form: targetName.fieldName
-type FieldAccess = {targetExpr: Expr; fieldName: string}
+// stands for record field access of form: targetName.FieldName
+type FieldAccess = {TargetExpr: Expr; FieldName: string}
 
 /*
 Union case matching.
@@ -19,10 +19,10 @@ Only support variable match for a while:
 | I i -> ...
 | Record r -> ...
 */
-type MatchPattern = {caseId: string; varName: string}
+type MatchPattern = {CaseId: string; VarName: string}
 
 // external package func info.
-type FuncFactory = {tparams:[]string; targets:[]FType}
+type FuncFactory = {Tparams:[]string; Targets:[]FType}
 
 type Expr =
 | EGoEvalExpr of GoEvalExpr
@@ -44,14 +44,14 @@ type Expr =
   We use type ReturnableExpr for expr of which we can emit directlry return go code.
 */
 | EReturnableExpr of ReturnableExpr
-and FunCall = {targetFunc: Var; args: []Expr}
-and BinOpCall = {op: string; rtype: FType; lhs: Expr; rhs: Expr}
-and NEPair = {name: string; expr: Expr}
-and RecordGen = {fieldsNV: []NEPair; recordType: RecordType}
-and Block = {stmts: []Stmt; finalExpr: Expr}
-and LazyBlock = {block: Block}
-and MatchRule = {pattern: MatchPattern; body: Block}
-and MatchExpr = {target: Expr; rules: []MatchRule}
+and FunCall = {TargetFunc: Var; Args: []Expr}
+and BinOpCall = {Op: string; Rtype: FType; Lhs: Expr; Rhs: Expr}
+and NEPair = {Name: string; Expr: Expr}
+and RecordGen = {FieldsNV: []NEPair; RecordType: RecordType}
+and Block = {Stmts: []Stmt; FinalExpr: Expr}
+and LazyBlock = {Block: Block}
+and MatchRule = {Pattern: MatchPattern; Body: Block}
+and MatchExpr = {Target: Expr; Rules: []MatchRule}
 and ReturnableExpr =
 | RBlock of Block
 | RMatchExpr of MatchExpr
@@ -66,22 +66,22 @@ and RootStmt =
 | RSMultipleDefs of MultipleDefs
 | RSRootFuncDef of RootFuncDef
 | RSLetFuncDef of LetFuncDef
-and LetFuncDef = {fvar: Var; params: []Var; body:Block}
-and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
-and LetVarDef = {lvar: Var; rhs: Expr}
-and LetDestVarDef = {lvars: []Var; rhs: Expr}
+and LetFuncDef = {Fvar: Var; Params: []Var; Body:Block}
+and RootFuncDef = {Tparams:[]string; Lfd:LetFuncDef}
+and LetVarDef = {Lvar: Var; Rhs: Expr}
+and LetDestVarDef = {Lvars: []Var; Rhs: Expr}
 and LLetVarDef =
 | LLOneVarDef of LetVarDef
 | LLDestVarDef of LetDestVarDef
-and PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
-and RecordDef = {name: string; fields: []NameTypePair}
-and UnionDef = {name: string; cases: []NameTypePair}
+and PackageInfo = {Name: string; FuncInfo: funcFacDict; TypeInfo: extTypeDict}
+and RecordDef = {Name: string; Fields: []NameTypePair}
+and UnionDef = {Name: string; Cases: []NameTypePair}
 and DefStmt =
 | DRecordDef of RecordDef
 | DUnionDef of UnionDef
-and MultipleDefs = {defs: []DefStmt}
+and MultipleDefs = {Defs: []DefStmt}
 
 let NewPackageInfo (name:string) =
   let ffd = newFFD ()
   let etd = newETD ()
-  {name=name; funcInfo=ffd; typeInfo=etd}
+  {Name=name; FuncInfo=ffd; TypeInfo=etd}

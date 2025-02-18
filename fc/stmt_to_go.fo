@@ -17,45 +17,45 @@ let pmToGo (pn:string) =
 */
 
 let paramsToGo (pm: Var) =
-   let ts = FTypeToGo pm.ftype
-   pm.name + " " + ts
+   let ts = FTypeToGo pm.Ftype
+   pm.Name + " " + ts
 
 /*
   Emit parameters of func defs like following:
   a int, b string, c []int
 */
 let lfdParamsToGo (lfd:LetFuncDef) =
-   lfd.params |> slice.Map paramsToGo |> strings.Concat ", "
+   lfd.Params |> slice.Map paramsToGo |> strings.Concat ", "
 
 let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
   let b = buf.New ()
   buf.Write b "func "
-  buf.Write b lfd.fvar.name
+  buf.Write b lfd.Fvar.Name
   buf.Write b "("
   lfdParamsToGo lfd |> buf.Write b
   buf.Write b ") "
-  blockToType ExprToType lfd.body |> FTypeToGo |> buf.Write b
+  blockToType ExprToType lfd.Body |> FTypeToGo |> buf.Write b
   buf.Write b "{\n"
-  bToGoRet lfd.body |> buf.Write b
+  bToGoRet lfd.Body |> buf.Write b
   buf.Write b "\n}"
   buf.String b
 
 let rfdToGo (bToGoRet: Block->string) (rfd:RootFuncDef) =
-  lfdToGo bToGoRet rfd.lfd
+  lfdToGo bToGoRet rfd.Lfd
 
 
 let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =
-  let rhs = eToGo lvd.rhs
-  lvd.lvar.name + " := " + rhs
+  let rhs = eToGo lvd.Rhs
+  lvd.Lvar.Name + " := " + rhs
 
 let vToN (v:Var) =
-  v.name
+  v.Name
 
 let ldvdToGo (eToGo: Expr->string) (ldvd:LetDestVarDef) =
   let b = buf.New ()
-  slice.Map vToN ldvd.lvars |> strings.Concat ", " |> buf.Write b
+  slice.Map vToN ldvd.Lvars |> strings.Concat ", " |> buf.Write b
   buf.Write b " := frt.Destr("
-  eToGo ldvd.rhs |> buf.Write b
+  eToGo ldvd.Rhs |> buf.Write b
   buf.Write b ")"
   buf.String b
 
@@ -64,14 +64,14 @@ let ldvdToGo (eToGo: Expr->string) (ldvd:LetDestVarDef) =
 */
 
 let rdffieldToGo (field: NameTypePair) =
-  "  " + field.name + " " + (FTypeToGo field.ftype)
+  "  " + field.Name + " " + (FTypeToGo field.Ftype)
 
 let rdfToGo (rdf:RecordDef) =
   let b = buf.New ()
   buf.Write b "type "
-  buf.Write b rdf.name
+  buf.Write b rdf.Name
   buf.Write b " struct {\n"
-  rdf.fields |> slice.Map rdffieldToGo |> strings.Concat "\n" |> buf.Write b
+  rdf.Fields |> slice.Map rdffieldToGo |> strings.Concat "\n" |> buf.Write b
   buf.Write b "\n}" 
   buf.String b
 
@@ -104,10 +104,10 @@ We call IntOrString_I "case struct of I".
 let udUnionDef (ud:UnionDef) =
   let b = buf.New ()
   buf.Write b "type "
-  buf.Write b ud.name
+  buf.Write b ud.Name
   buf.Write b " interface {\n"
   buf.Write b "  "
-  buf.Write b ud.name
+  buf.Write b ud.Name
   buf.Write b "_Union()\n"
   buf.Write b "}\n"
   buf.String b
@@ -116,7 +116,7 @@ let udUnionDef (ud:UnionDef) =
 func (IntOrString_I) [method]
 */
 let csToConformMethod (uname:string) (method:string) (cas: NameTypePair) =
-  let csname = unionCSName uname cas.name
+  let csname = unionCSName uname cas.Name
   "func (" + csname + ") " + method
 
 /*
@@ -124,8 +124,8 @@ func (IntOrString_I) IntOrString_Union(){}
 func (IntOrString_B) IntOrString_Union(){}
 */
 let udCSConformMethods (ud:UnionDef) =
-  let method = ud.name + "_Union(){}\n"
-  ud.cases |> slice.Map (csToConformMethod ud.name method) |> strings.Concat ""
+  let method = ud.Name + "_Union(){}\n"
+  ud.Cases |> slice.Map (csToConformMethod ud.Name method) |> strings.Concat ""
 
 /*
 	type IntOrString_I struct {
@@ -135,18 +135,18 @@ let udCSConformMethods (ud:UnionDef) =
 let udCSDef (ud:UnionDef) (cas: NameTypePair) =
   let b = buf.New ()
   buf.Write b "type "
-  unionCSName ud.name cas.name |> buf.Write b
+  unionCSName ud.Name cas.Name |> buf.Write b
   buf.Write b " struct {\n"
-  if cas.ftype <> FUnit then
+  if cas.Ftype <> FUnit then
     buf.Write b "  Value "
-    FTypeToGo cas.ftype |> buf.Write b
+    FTypeToGo cas.Ftype |> buf.Write b
     buf.Write b "\n"
   buf.Write b "}\n"
   buf.String b
 
 // New_IntOrString_I
 let csConstructorName  (unionName: string) (cas: NameTypePair) =
-   "New_" + (unionCSName unionName cas.name)
+   "New_" + (unionCSName unionName cas.Name)
 
 /*
 CS Constructor, function case.
@@ -158,11 +158,11 @@ let csConstructFunc (uname:string) (cas: NameTypePair) =
   buf.Write b "func "
   csConstructorName uname cas |> buf.Write b
   buf.Write b "(v "
-  FTypeToGo cas.ftype |> buf.Write b
+  FTypeToGo cas.Ftype |> buf.Write b
   buf.Write b ") "
   buf.Write b uname
   buf.Write b " { return "
-  buf.Write b (unionCSName uname cas.name)
+  buf.Write b (unionCSName uname cas.Name)
   buf.Write b "{v} }\n"
   buf.String b
 
@@ -183,19 +183,19 @@ let csConstructVar (uname:string) (cas: NameTypePair) =
   buf.Write b " "
   buf.Write b uname
   buf.Write b " = "
-  buf.Write b (unionCSName uname cas.name)
+  buf.Write b (unionCSName uname cas.Name)
   buf.Write b "{}\n"
   buf.String b
 
 let csConstruct (uname:string) (cas: NameTypePair) =
-  if cas.ftype = FUnit then
+  if cas.Ftype = FUnit then
     csConstructVar uname cas
   else
     csConstructFunc uname cas
 
 let caseToGo (ud:UnionDef) (cas: NameTypePair) =
   let sdf = udCSDef ud cas
-  let csdf = csConstruct ud.name cas
+  let csdf = csConstruct ud.Name cas
   sdf + "\n" + csdf + "\n"
 
 let udfToGo (ud:UnionDef) =
@@ -204,7 +204,7 @@ let udfToGo (ud:UnionDef) =
   buf.Write b "\n"
   udCSConformMethods ud |> buf.Write b
   buf.Write b "\n"
-  ud.cases |> slice.Map (caseToGo ud) |> strings.Concat "" |> buf.Write b
+  ud.Cases |> slice.Map (caseToGo ud) |> strings.Concat "" |> buf.Write b
   buf.String b
 
 /*
@@ -217,7 +217,7 @@ let dsToGo (ds:DefStmt) =
    | DUnionDef ud -> udfToGo ud
 
 let mdToGo (md:MultipleDefs) =
-  md.defs |>  slice.Map dsToGo |> strings.Concat "\n"
+  md.Defs |>  slice.Map dsToGo |> strings.Concat "\n"
 
 let StmtToGo (stmt:Stmt) : string=
   let eToGo = ExprToGo StmtToGo

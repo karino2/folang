@@ -9,7 +9,7 @@ import slice
 
 // src VarType and dest FType has unique constraints.
 // If both are VarType, src is alphabetically later order (to avoid cyclic reference to later stage).
-type UniRel = {srcV:string; dest: FType}
+type UniRel = {SrcV:string; Dest: FType}
 
 let emptyRels () =
   GoEval<[]UniRel> "[]UniRel{}"
@@ -51,31 +51,31 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
     match rhs with
     | FTypeVar tv2 ->
       // same typevar
-      if tv.name = tv2.name then        
+      if tv.Name = tv2.Name then        
         emptyRels ()
         |> withTp lhs
-      elif tv.name > tv2.name then
+      elif tv.Name > tv2.Name then
         // keep alphabetically later one to src.
-        [{srcV=tv.name; dest=rhs}]
+        [{SrcV=tv.Name; Dest=rhs}]
         |> withTp rhs
       else
-        [{srcV=tv2.name;dest=lhs}]
+        [{SrcV=tv2.Name;Dest=lhs}]
         |> withTp lhs
     | _ ->
-      [{srcV=tv.name; dest=rhs}]
+      [{SrcV=tv.Name; Dest=rhs}]
       |> withTp rhs
   | _ ->
     match rhs with
     | FTypeVar tv2 ->
-      [{srcV=tv2.name; dest=lhs}]
+      [{SrcV=tv2.Name; Dest=lhs}]
       |> withTp lhs
     // Both are not FTypeVar, drill down.
     // Both type must be equal for this layer.
     | FSlice ts2 ->
       match lhs with
       | FSlice ts1 ->
-        let (rtp, rels) = compositeTp ts1.elemType ts2.elemType
-        {SliceType.elemType=rtp}
+        let (rtp, rels) = compositeTp ts1.ElemType ts2.ElemType
+        {SliceType.ElemType=rtp}
         |> FSlice
         |> withRels rels
       | FFieldAccess fa2 ->
@@ -88,21 +88,21 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
         |> withTp lhs
     | FFieldAccess fa2 ->
       let fa1 = GoEval<FieldAccessType> "lhs.(FType_FFieldAccess).Value"
-      let (rtp, rels) = compositeTp fa1.recType fa2.recType
-      {recType=rtp; fieldName=fa1.fieldName}
+      let (rtp, rels) = compositeTp fa1.RecType fa2.RecType
+      {RecType=rtp; FieldName=fa1.FieldName}
       |>faResolve
       |> withRels rels      
     | FFunc tf2 ->
       let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
-      let (tps, rels) = compositeTpList compositeTp tf1.targets tf2.targets
-      {FuncType.targets=tps}
+      let (tps, rels) = compositeTpList compositeTp tf1.Targets tf2.Targets
+      {FuncType.Targets=tps}
       |> FFunc
       |> withRels rels
     | FTuple tt2 ->
       let tt1 = GoEval<TupleType> "lhs.(FType_FTuple).Value"
       // [](type*[]UniRel)
-      let (tps, rels) = compositeTpList compositeTp tt1.elemTypes tt2.elemTypes
-      {TupleType.elemTypes=tps}
+      let (tps, rels) = compositeTpList compositeTp tt1.ElemTypes tt2.ElemTypes
+      {TupleType.ElemTypes=tps}
       |> FTuple
       |> withRels rels
     | _ ->
@@ -122,17 +122,17 @@ let unifyTupArg (tup:FType*FType) =
 // Var's type-Expr unify, but ignore "_"
 let unifyVETup (veTup: Var*FType) =
   let (v, ft) = veTup
-  if v.name = "_" then
+  if v.Name = "_" then
     emptyRels ()
   else
-    unifyType v.ftype ft
+    unifyType v.Ftype ft
 
 let vToT (v:Var) =
-  v.ftype
+  v.Ftype
 
 let varsToTupleType (vars: []Var) =
   let ets = slice.Map vToT vars
-  {elemTypes=ets}
+  {ElemTypes=ets}
   |> FTuple
 
 let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
@@ -141,20 +141,20 @@ let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
   | SLetVarDef slvd ->
     match slvd with
     | LLOneVarDef lvd ->
-      let inside = ec lvd.rhs
-      unifyType lvd.lvar.ftype (ExprToType lvd.rhs)
+      let inside = ec lvd.Rhs
+      unifyType lvd.Lvar.Ftype (ExprToType lvd.Rhs)
       |> slice.Append inside
     | LLDestVarDef ldvd ->
-        let inside = ec ldvd.rhs
-        let rhtype = ExprToType ldvd.rhs
+        let inside = ec ldvd.Rhs
+        let rhtype = ExprToType ldvd.Rhs
         match rhtype with
         | FTuple ft ->
-          slice.Zip ldvd.lvars ft.elemTypes
+          slice.Zip ldvd.Lvars ft.ElemTypes
           |> slice.Map unifyVETup
           |> slice.Concat
           |> slice.Append inside
         | FTypeVar _ ->
-          let lft = varsToTupleType ldvd.lvars
+          let lft = varsToTupleType ldvd.Lvars
           unifyType rhtype lft
           |> slice.Append inside
         | _ ->
@@ -168,10 +168,10 @@ let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
   So just check current layer for each node.
 */
 let collectFunCall (fc: FunCall) =
-  let tftype = fc.targetFunc.ftype
+  let tftype = fc.TargetFunc.Ftype
   match tftype with
   | FFunc fft ->
-    let argTps = slice.Map ExprToType fc.args
+    let argTps = slice.Map ExprToType fc.Args
     let tpArgTps = (fargs fft) |> slice.Take (slice.Length argTps)
     slice.Zip argTps tpArgTps
     |> slice.Map unifyTupArg
@@ -193,22 +193,22 @@ let collectSlice (es: []Expr) =
 // This is exception for collectXXX.
 // collect inside here.
 let collectBlock (colE:Expr->[]UniRel) (colS:Stmt->[]UniRel) (block:Block) =
-    slice.Map colS block.stmts
+    slice.Map colS block.Stmts
     |> slice.Concat
-    |> slice.Append (colE block.finalExpr)
+    |> slice.Append (colE block.FinalExpr)
 
 let mrToBlock (mr:MatchRule) =
-  mr.body
+  mr.Body
 
 let NEPToExpr (nep:NEPair) =
-  nep.expr
+  nep.Expr
 
 
 let collectExprRel (expr:Expr) : []UniRel =
   let colB = collectBlock collectExprRel (collectStmtRel collectExprRel)
   match expr with
   | EFunCall fc ->
-    let inside = slice.Map collectExprRel fc.args |> slice.Concat
+    let inside = slice.Map collectExprRel fc.Args |> slice.Concat
     collectFunCall fc
     |> slice.Append inside
   | ESlice es ->
@@ -217,33 +217,33 @@ let collectExprRel (expr:Expr) : []UniRel =
     |> slice.Append inside
   | ERecordGen rg ->
     // NYI: unify to recordType.  
-    slice.Map NEPToExpr rg.fieldsNV
+    slice.Map NEPToExpr rg.FieldsNV
     |> slice.Map collectExprRel
     |> slice.Concat 
   | ELazyBlock lb ->
-    colB lb.block
+    colB lb.Block
   | EReturnableExpr re ->
     match re with
     | RBlock bl ->
       colB bl
     | RMatchExpr me ->
-      slice.Map mrToBlock me.rules
+      slice.Map mrToBlock me.Rules
       |> slice.Map colB
       |> slice.Concat
-      |> slice.Append (collectExprRel me.target)
+      |> slice.Append (collectExprRel me.Target)
   | _ -> emptyRels()
 
 let lfdRetType (lfd:LetFuncDef) =
-  match lfd.fvar.ftype with
+  match lfd.Fvar.Ftype with
   | FFunc ft -> freturn ft
   | _ ->
     frt.Panic "LetFuncDef's fvar is not FFunc type."
     FUnit
 
 let collectLfdRels (lfd:LetFuncDef) =
-  let brels = blockToExpr lfd.body
+  let brels = blockToExpr lfd.Body
               |> collectExprRel
-  let lastExprType = lfd.body.finalExpr |> ExprToType
+  let lastExprType = lfd.Body.FinalExpr |> ExprToType
   unifyType (lfdRetType lfd) lastExprType
   |> slice.Append brels
 
@@ -301,7 +301,7 @@ let rsLookupEI (res:Resolver) (tvname:string) =
     ei
   else
     // if not exist, return only tv's ei.
-    eiInit {TypeVar.name=tvname}
+    eiInit {TypeVar.Name=tvname}
 
 let rsRegisterTo (res:Resolver) (ei:EquivInfo) (key:string) =
   eidPut res.eid key ei
@@ -311,15 +311,15 @@ let rsRegisterNewEI (res:Resolver) (ei:EquivInfo) =
   |> slice.Iter (rsRegisterTo res ei)
 
 let updateResOne (res:Resolver) (rel:UniRel) =
-  let ei1 = rsLookupEI res rel.srcV
-  match rel.dest with
+  let ei1 = rsLookupEI res rel.SrcV
+  match rel.Dest with
   | FTypeVar tvd ->
-    let ei2 = rsLookupEI res tvd.name
+    let ei2 = rsLookupEI res tvd.Name
     let (nei, rels) = eiUnion ei1 ei2
     rsRegisterNewEI res nei
     rels
   | _ ->
-    let (nei, rels) = eiUpdateResT ei1 rel.dest
+    let (nei, rels) = eiUpdateResT ei1 rel.Dest
     if slice.IsEmpty rels then
       emptyRels ()
     else
@@ -343,7 +343,7 @@ let rsResolveType (resT:FType->FType) (res:Resolver) (tvname:string) =
   let rcand = ei.resType
   match rcand with
   | FTypeVar tv ->
-    if tv.name = tvname then
+    if tv.Name = tvname then
       // same type var, no need to drill down.
       rcand
     else
@@ -355,7 +355,7 @@ let rsResolveType (resT:FType->FType) (res:Resolver) (tvname:string) =
 */
 
 let transOneTypeVar (resT:FType->FType) (rsv: Resolver) (tv:TypeVar) =
-  rsResolveType resT rsv tv.name
+  rsResolveType resT rsv tv.Name
 
 let resolveType (rsv: Resolver) (ftp:FType) : FType =
   let resT = resolveType rsv
@@ -368,31 +368,31 @@ let resolveType (rsv: Resolver) (ftp:FType) : FType =
 */
 
 let transExprNE (cnv:Expr->Expr) (p:NEPair) =
-   {NEPair.name=p.name; expr=cnv p.expr}
+   {NEPair.Name=p.Name; Expr=cnv p.Expr}
 
 let transVarStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
   match stmt with
   | SLetVarDef llvd ->
     match llvd with
     | LLOneVarDef lvd ->
-      let nvar = transV lvd.lvar
-      let nrhs = transE lvd.rhs
-      {lvar=nvar;rhs=nrhs} |> LLOneVarDef |> SLetVarDef
+      let nvar = transV lvd.Lvar
+      let nrhs = transE lvd.Rhs
+      {Lvar=nvar; Rhs=nrhs} |> LLOneVarDef |> SLetVarDef
     | LLDestVarDef ldvd ->
-      let nvars = slice.Map transV ldvd.lvars
-      let nrhs = transE ldvd.rhs
-      {lvars=nvars;rhs=nrhs} |> LLDestVarDef |> SLetVarDef
+      let nvars = slice.Map transV ldvd.Lvars
+      let nrhs = transE ldvd.Rhs
+      {Lvars=nvars;Rhs=nrhs} |> LLDestVarDef |> SLetVarDef
   | SExprStmt e -> 
     transE e |> SExprStmt
 
 let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
-  let nbody = blockToExpr mr.body |> pExpr |> exprToBlock
-  {pattern=mr.pattern; body=nbody}
+  let nbody = blockToExpr mr.Body |> pExpr |> exprToBlock
+  {Pattern=mr.Pattern; Body=nbody}
 
 let transVarBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
-  let nss = bl.stmts |> slice.Map transS
-  let fexpr = transE bl.finalExpr
-  {Block.stmts=nss; finalExpr=fexpr}
+  let nss = bl.Stmts |> slice.Map transS
+  let fexpr = transE bl.FinalExpr
+  {Block.Stmts=nss; FinalExpr=fexpr}
 
 /*
   Self transform Var of expr.
@@ -405,18 +405,18 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   | EVar v -> transV v |> EVar
   | ESlice es -> slice.Map transE es |> ESlice
   | EBinOpCall bop ->
-     let nlhs = transE bop.lhs
-     let nrhs = transE bop.rhs
-     {op=bop.op; rtype=bop.rtype; lhs=nlhs; rhs=nrhs}
+     let nlhs = transE bop.Lhs
+     let nrhs = transE bop.Rhs
+     {Op=bop.Op; Rtype=bop.Rtype; Lhs=nlhs; Rhs=nrhs}
      |> EBinOpCall
   | ETupleExpr es -> slice.Map (transVarExpr transV) es |> ETupleExpr
   | ERecordGen rg ->
-    let newNV = slice.Map (transExprNE transE) rg.fieldsNV
-    {fieldsNV=newNV; recordType=rg.recordType}
+    let newNV = slice.Map (transExprNE transE) rg.FieldsNV
+    {FieldsNV=newNV; RecordType=rg.RecordType}
     |> ERecordGen
   | ELazyBlock lb ->
-    let nbl = transVarBlock transE transS lb.block
-    {LazyBlock.block=nbl}
+    let nbl = transVarBlock transE transS lb.Block
+    {LazyBlock.Block=nbl}
     |> ELazyBlock
   | EReturnableExpr re -> 
     match re with
@@ -424,15 +424,15 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
       transVarBlock transE transS bl
       |> blockToExpr
     | RMatchExpr me ->
-      let ntarget = transE me.target
-      let nrules = slice.Map (transExprMatchRule transE) me.rules
-      {target=ntarget; rules=nrules}
+      let ntarget = transE me.Target
+      let nrules = slice.Map (transExprMatchRule transE) me.Rules
+      {Target=ntarget; Rules=nrules}
       |> RMatchExpr
       |> EReturnableExpr
   | EFunCall fc ->
-    let ntarget = transV fc.targetFunc
-    let nargs = slice.Map transE fc.args
-    {targetFunc=ntarget;args=nargs}
+    let ntarget = transV fc.TargetFunc
+    let nargs = slice.Map transE fc.Args
+    {TargetFunc=ntarget;Args=nargs}
     |> EFunCall
   | EBoolLiteral _ -> expr
   | EGoEvalExpr _ -> expr
@@ -440,8 +440,8 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   | EIntImm _ -> expr
   | EUnit -> expr
   | EFieldAccess fa ->
-    let ntarget = transE fa.targetExpr
-    {targetExpr=ntarget; fieldName=fa.fieldName}
+    let ntarget = transE fa.TargetExpr
+    {TargetExpr=ntarget; FieldName=fa.FieldName}
     |> EFieldAccess
 
 /*
@@ -449,7 +449,7 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
 */
 
 let resolveVarType (rsv: Resolver) (v:Var) =
-  {Var.name=v.name; ftype=resolveType rsv v.ftype}
+  {Var.Name=v.Name; Ftype=resolveType rsv v.Ftype}
 
 let resolveExprType (rsv: Resolver) (expr:Expr) : Expr =
   transVarExpr (resolveVarType rsv) expr
@@ -465,10 +465,10 @@ and RootFuncDef = {tparams:[]string; lfd:LetFuncDef}
 */
 
 let resolveLfd (rsv: Resolver) (lfd:LetFuncDef) =
-   let nfvar = resolveVarType rsv lfd.fvar
-   let nparams = slice.Map (resolveVarType rsv) lfd.params
-   let nbody = resolveBlockType rsv lfd.body
-   {fvar=nfvar; params=nparams; body=nbody}
+   let nfvar = resolveVarType rsv lfd.Fvar
+   let nparams = slice.Map (resolveVarType rsv) lfd.Params
+   let nbody = resolveBlockType rsv lfd.Body
+   {Fvar=nfvar; Params=nparams; Body=nbody}
 
 let notFound (rsv:Resolver) (key:string) =
   let resT = resolveType rsv
@@ -476,13 +476,13 @@ let notFound (rsv:Resolver) (key:string) =
   match rtype with
   | FTypeVar tv ->
     // resType is the same TypeVar, means not found.
-    tv.name = key
+    tv.Name = key
   | _ -> false
 
 /*
   Infer TypeVar's and promote as TypeParameters if necessary, then return RootFuncDef.
 */
-let Infer (tvnames:[]string) (lfd:LetFuncDef) =
+let Infer (tva:TypeVarAllocator) (lfd:LetFuncDef) =
   let rels = collectLfdRels lfd
   // frt.Printf1 "%v\n" rels
   let rsv = buildResolver rels
@@ -492,4 +492,4 @@ let Infer (tvnames:[]string) (lfd:LetFuncDef) =
   // NYI.
   let tps = GoEval<[]string> "[]string{}"
   let nlfd = resolveLfd rsv lfd
-  {tparams=tps; lfd=nlfd}
+  {Tparams=tps; Lfd=nlfd}

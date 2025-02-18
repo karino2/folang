@@ -12,17 +12,17 @@ package_info _ =
 
 
 let rgFVToGo  (toGo: Expr->string) (fvPair: NEPair) =
-  let fn = fvPair.name
-  let fv = fvPair.expr
+  let fn = fvPair.Name
+  let fv = fvPair.Expr
   let fvGo = toGo fv
   fn + ": " + fvGo
 
 let rgToGo (toGo: Expr->string) (rg:RecordGen) =
-  let rtype = rg.recordType
+  let rtype = rg.RecordType
   let b = buf.New ()
   frStructName rtype |> buf.Write b
   buf.Write b "{"
-  let fvGo = rg.fieldsNV
+  let fvGo = rg.FieldsNV
              |> slice.Map (rgFVToGo toGo)
              |> strings.Concat ", "
   buf.Write b fvGo
@@ -66,16 +66,16 @@ let wrapFunCall (toGo: FType->string) (rtype:FType) (goReturnBody:string) =
   wf + "()"
 
 let blockToGoReturn (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (block:Block) =
-  buildReturn sToGo eToGo reToGoRet block.stmts block.finalExpr
+  buildReturn sToGo eToGo reToGoRet block.Stmts block.FinalExpr
 
 let blockToGo (sToGo: Stmt->string) (eToGo: Expr->string) (reToGoRet: ReturnableExpr->string) (block:Block) =
   let goRet = blockToGoReturn sToGo eToGo reToGoRet block
-  let rtype = ExprToType block.finalExpr
+  let rtype = ExprToType block.FinalExpr
   wrapFunCall FTypeToGo rtype goRet 
 
 let lbToGo (bToRet: Block->string) (lb:LazyBlock) =
-  let returnBody = bToRet lb.block
-  let rtype = ExprToType lb.block.finalExpr
+  let returnBody = bToRet lb.Block
+  let rtype = ExprToType lb.Block.FinalExpr
   wrapFunc FTypeToGo rtype returnBody
 
 
@@ -89,15 +89,15 @@ let lbToGo (bToRet: Block->string) (lb:LazyBlock) =
 Build following case header. (If unit or _ variable, generate code appropriately.)
 
   case IntOrBool_I:
-    [varName] := tmpV
+    [VarName] := tmpV
 */
 let mpToCaseHeader (uname: string) (mp: MatchPattern) (tmpVarName: string) =
   let b = buf.New ()
   buf.Write b "case "
-  unionCSName uname mp.caseId |> buf.Write b
+  unionCSName uname mp.CaseId |> buf.Write b
   buf.Write b ":\n"
-  if mp.varName <> "_" && mp.varName <> "" then
-    buf.Write b mp.varName
+  if mp.VarName <> "_" && mp.VarName <> "" then
+    buf.Write b mp.VarName
     buf.Write b " := "
     buf.Write b tmpVarName
     buf.Write b ".Value"
@@ -110,7 +110,7 @@ let mpToCaseHeader (uname: string) (mp: MatchPattern) (tmpVarName: string) =
  Generate following codes.
 
 case IntOrBool_I:
-	[varName] := tmpV
+	[VarName] := tmpV
 	body...
 
 or
@@ -121,47 +121,47 @@ default:
 */
 let mrToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (mr: MatchRule)  =
   let b = buf.New ()
-  let mp = mr.pattern
-  let cheader = if mp.caseId = "_" then
+  let mp = mr.Pattern
+  let cheader = if mp.CaseId = "_" then
                   "default:\n"
                 else
                   mpToCaseHeader uname mp tmpVarName
   buf.Write b cheader
-  btogRet mr.body |> buf.Write b
+  btogRet mr.Body |> buf.Write b
   buf.Write b "\n"
   buf.String b  
 
 let mrHasNoCaseVar (mr: MatchRule) =
-  let pat = mr.pattern
-  pat.caseId = "_" || pat.varName = "" || pat.varName = "_"
+  let pat = mr.Pattern
+  pat.CaseId = "_" || pat.VarName = "" || pat.VarName = "_"
 
 /*
   If atlease one value or not (if not, tmp var is not necessary).
 */
 let meHasCaseVar (me:MatchExpr) =
-  not (slice.Forall mrHasNoCaseVar me.rules)
+  not (slice.Forall mrHasNoCaseVar me.Rules)
 
 let mrIsDefault (mr:MatchRule) =
-  let pat = mr.pattern
-  pat.caseId = "_"
+  let pat = mr.Pattern
+  pat.CaseId = "_"
 
 
 let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
-  let ttype = ExprToType me.target
+  let ttype = ExprToType me.Target
   let uttype = GoEval<UnionType> "ttype.(FType_FUnion).Value" // for non UnionType, NYI.
   let hasCaseVar = meHasCaseVar me
-  let hasDefault = slice.Forany mrIsDefault me.rules
+  let hasDefault = slice.Forany mrIsDefault me.Rules
   let tmpVarName = if hasCaseVar then uniqueTmpVarName () else ""
-  let mrtocase = mrToCase btogRet uttype.name tmpVarName
+  let mrtocase = mrToCase btogRet uttype.Name tmpVarName
   let b = buf.New ()
   buf.Write b "switch "
   if hasCaseVar then
     buf.Write b tmpVarName
     buf.Write b " := "
   buf.Write b "("
-  toGo me.target |> buf.Write b 
+  toGo me.Target |> buf.Write b 
   buf.Write b ").(type){\n"
-  slice.Map mrtocase me.rules
+  slice.Map mrtocase me.Rules
    |> strings.Concat ""
    |> buf.Write b
   if not hasDefault then
@@ -216,7 +216,7 @@ let ntpairToParam (tGo:FType->string) (ntp: string*FType) =
 let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   let funcType = fcToFuncType fc
   let fargTypes = fargs funcType
-  let argNum = slice.Length fc.args
+  let argNum = slice.Length fc.Args
   let restTypes = slice.Skip argNum fargTypes
   let restParamNames = slice.Mapi ftiToParamName restTypes
   let b = buf.New ()
@@ -230,34 +230,34 @@ let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   else
     tGo fret |> buf.Write b
     buf.Write b "{ return "
-  buf.Write b fc.targetFunc.name
+  buf.Write b fc.TargetFunc.Name
   buf.Write b "("
-  slice.Map eGo fc.args |> strings.Concat ", " |> buf.Write b
+  slice.Map eGo fc.Args |> strings.Concat ", " |> buf.Write b
   buf.Write b ", "
   strings.Concat ", " restParamNames |> buf.Write b
   buf.Write b ") })"
   buf.String b
 
 let fcUnitArgOnly (fc:FunCall) =
-  let al = slice.Length fc.args
+  let al = slice.Length fc.Args
   if al = 1 then
-    EUnit = slice.Head fc.args 
+    EUnit = slice.Head fc.Args 
   else
     false
 
 let fcFullApplyGo (eGo:Expr->string) (fc:FunCall) =
   let b = buf.New ()
-  buf.Write b fc.targetFunc.name
+  buf.Write b fc.TargetFunc.Name
   buf.Write b "("
   if not (fcUnitArgOnly fc) then
-    slice.Map eGo fc.args |> strings.Concat ", " |> buf.Write b
+    slice.Map eGo fc.Args |> strings.Concat ", " |> buf.Write b
   buf.Write b ")"
   buf.String b
 
 let fcToGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   let funcType = fcToFuncType fc
   let fargTypes = fargs funcType
-  let al = slice.Length fc.args
+  let al = slice.Length fc.Args
   let tal = slice.Length fargTypes
   if al > tal then GoEval "panic(\"Too many argument\")"
   if al < tal then
@@ -287,28 +287,28 @@ let tupleToGo (eGo:Expr->string) (exprs: []Expr) =
 let binOpToGo (eGo:Expr->string) (binOp:BinOpCall) =
   let b = buf.New ()
   buf.Write b "("
-  [binOp.lhs; binOp.rhs]
+  [binOp.Lhs; binOp.Rhs]
   |> slice.Map eGo
-  |> strings.Concat binOp.op
+  |> strings.Concat binOp.Op
   |> buf.Write b
   buf.Write b ")"
   buf.String b
 
 let faToGo (eGo:Expr->string) (fa:FieldAccess) =
-  let target = eGo fa.targetExpr
-  target + "." + fa.fieldName
+  let target = eGo fa.TargetExpr
+  target + "." + fa.FieldName
 
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   let reToGoRet = reToGoReturn sToGo eToGo 
   match expr with
   | EBoolLiteral b -> frt.Sprintf1 "%t" b
-  | EGoEvalExpr ge -> reinterpretEscape ge.goStmt
+  | EGoEvalExpr ge -> reinterpretEscape ge.GoStmt
   | EStringLiteral s -> frt.Sprintf1 "\"%s\"" s
   | EIntImm i -> frt.Sprintf1 "%d" i
   | EUnit -> ""
   | EFieldAccess fa -> faToGo eToGo fa
-  | EVar v -> v.name
+  | EVar v -> v.Name
   | ESlice es -> sliceToGo FTypeToGo eToGo es
   | ETupleExpr es -> tupleToGo eToGo es
   | EBinOpCall bop -> binOpToGo eToGo bop

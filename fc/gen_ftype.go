@@ -9,7 +9,7 @@ import "github.com/karino2/folang/pkg/slice"
 import "github.com/karino2/folang/pkg/strings"
 
 type TypeVar struct {
-	name string
+	Name string
 }
 
 type FType interface {
@@ -98,42 +98,42 @@ type FType_FTypeVar struct {
 func New_FType_FTypeVar(v TypeVar) FType { return FType_FTypeVar{v} }
 
 type SliceType struct {
-	elemType FType
+	ElemType FType
 }
 type FuncType struct {
-	targets []FType
+	Targets []FType
 }
 type FieldAccessType struct {
-	recType   FType
-	fieldName string
+	RecType   FType
+	FieldName string
 }
 type TupleType struct {
-	elemTypes []FType
+	ElemTypes []FType
 }
 type NameTypePair struct {
-	name  string
-	ftype FType
+	Name  string
+	Ftype FType
 }
 type RecordType struct {
-	name   string
-	fields []NameTypePair
+	Name   string
+	Fields []NameTypePair
 }
 type UnionType struct {
-	name  string
-	cases []NameTypePair
+	Name  string
+	Cases []NameTypePair
 }
 
 func fargs(ft FuncType) []FType {
-	l := slice.Length(ft.targets)
-	return frt.Pipe(ft.targets, (func(_r0 []FType) []FType { return slice.Take((l - 1), _r0) }))
+	l := slice.Length(ft.Targets)
+	return frt.Pipe(ft.Targets, (func(_r0 []FType) []FType { return slice.Take((l - 1), _r0) }))
 }
 
 func freturn(ft FuncType) FType {
-	return slice.Last(ft.targets)
+	return slice.Last(ft.Targets)
 }
 
 func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
-	last := slice.Last(ft.targets)
+	last := slice.Last(ft.Targets)
 	args := fargs(ft)
 	bw := buf.New()
 	buf.Write(bw, "func (")
@@ -152,15 +152,15 @@ func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
 }
 
 func recordTypeToGo(frec RecordType) string {
-	return frec.name
+	return frec.Name
 }
 
 func frStructName(frec RecordType) string {
-	return frec.name
+	return frec.Name
 }
 
 func namePairMatch(targetName string, pair NameTypePair) bool {
-	return frt.OpEqual(targetName, pair.name)
+	return frt.OpEqual(targetName, pair.Name)
 }
 
 func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
@@ -171,29 +171,29 @@ func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
 }
 
 func frGetField(frec RecordType, fieldName string) NameTypePair {
-	return lookupPairByName(fieldName, frec.fields)
+	return lookupPairByName(fieldName, frec.Fields)
 }
 
 func npName(pair NameTypePair) string {
-	return pair.name
+	return pair.Name
 }
 
 func frMatch(frec RecordType, fieldNames []string) bool {
-	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(frec.fields)), (func() bool {
+	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(frec.Fields)), (func() bool {
 		return false
 	}), (func() bool {
 		sortedInput := frt.Pipe(fieldNames, slice.Sort)
-		sortedFName := frt.Pipe(slice.Map(npName, frec.fields), slice.Sort)
+		sortedFName := frt.Pipe(slice.Map(npName, frec.Fields), slice.Sort)
 		return frt.OpEqual(sortedInput, sortedFName)
 	}))
 }
 
 func funionToGo(fu UnionType) string {
-	return fu.name
+	return fu.Name
 }
 
 func lookupCase(fu UnionType, caseName string) NameTypePair {
-	return lookupPairByName(caseName, fu.cases)
+	return lookupPairByName(caseName, fu.Cases)
 }
 
 func unionCSName(unionName string, caseName string) string {
@@ -201,20 +201,20 @@ func unionCSName(unionName string, caseName string) string {
 }
 
 func fSliceToGo(fs SliceType, toGo func(FType) string) string {
-	return ("[]" + toGo(fs.elemType))
+	return ("[]" + toGo(fs.ElemType))
 }
 
 func fTupleToGo(toGo func(FType) string, ft TupleType) string {
-	args := frt.Pipe(slice.Map(toGo, ft.elemTypes), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
+	args := frt.Pipe(slice.Map(toGo, ft.ElemTypes), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
 	return frt.Sprintf1("frt.Tuple2[%s]", args)
 }
 
 func faResolve(fat FieldAccessType) FType {
-	switch _v23 := (fat.recType).(type) {
+	switch _v23 := (fat.RecType).(type) {
 	case FType_FRecord:
 		rt := _v23.Value
-		field := frGetField(rt, fat.fieldName)
-		return field.ftype
+		field := frGetField(rt, fat.FieldName)
+		return field.Ftype
 	default:
 		return frt.Pipe(fat, New_FType_FFieldAccess)
 	}
@@ -252,7 +252,7 @@ func FTypeToGo(ft FType) string {
 		return "FieldAccess_Unresoled"
 	case FType_FTypeVar:
 		fp := _v24.Value
-		return fp.name
+		return fp.Name
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

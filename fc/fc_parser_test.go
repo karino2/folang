@@ -786,15 +786,15 @@ let hoge () =
 type FType =
 | FInt
 | FSlice of SliceType
-and SliceType = {elemType: FType}
+and SliceType = {ElemType: FType}
 
 let hoge () =
-  let rec = FSlice {elemType=FInt}
+  let rec = FSlice {ElemType=FInt}
   match rec with
-  | FSlice s-> s.elemType
+  | FSlice s-> s.ElemType
   | _ -> FInt
 `,
-			[]string{"Value SliceType", "elemType FType", "hoge() FType", "s.elemType"},
+			[]string{"Value SliceType", "ElemType FType", "hoge() FType", "s.ElemType"},
 		},
 		// pipe to unit func test.
 		{

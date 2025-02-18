@@ -15,6 +15,7 @@ func printUsage() {
 }
 
 func transpileOne(parser ParseState, file string) frt.Tuple2[ParseState, bool] {
+	frt.Printf1("transpile: %s\n", file)
 	src, ok := frt.Destr(sys.ReadFile(file))
 	return frt.IfElse(ok, (func() frt.Tuple2[ParseState, bool] {
 		ps2, stmts := frt.Destr(frt.Pipe(psSetNewSrc(src, parser), ParseAll))

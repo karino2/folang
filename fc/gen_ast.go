@@ -1,28 +1,28 @@
 package main
 
 type GoEvalExpr struct {
-	goStmt  string
-	typeArg FType
+	GoStmt  string
+	TypeArg FType
 }
 
 type Var struct {
-	name  string
-	ftype FType
+	Name  string
+	Ftype FType
 }
 
 type FieldAccess struct {
-	targetExpr Expr
-	fieldName  string
+	TargetExpr Expr
+	FieldName  string
 }
 
 type MatchPattern struct {
-	caseId  string
-	varName string
+	CaseId  string
+	VarName string
 }
 
 type FuncFactory struct {
-	tparams []string
-	targets []FType
+	Tparams []string
+	Targets []FType
 }
 
 type Expr interface {
@@ -128,37 +128,37 @@ type Expr_EReturnableExpr struct {
 func New_Expr_EReturnableExpr(v ReturnableExpr) Expr { return Expr_EReturnableExpr{v} }
 
 type FunCall struct {
-	targetFunc Var
-	args       []Expr
+	TargetFunc Var
+	Args       []Expr
 }
 type BinOpCall struct {
-	op    string
-	rtype FType
-	lhs   Expr
-	rhs   Expr
+	Op    string
+	Rtype FType
+	Lhs   Expr
+	Rhs   Expr
 }
 type NEPair struct {
-	name string
-	expr Expr
+	Name string
+	Expr Expr
 }
 type RecordGen struct {
-	fieldsNV   []NEPair
-	recordType RecordType
+	FieldsNV   []NEPair
+	RecordType RecordType
 }
 type Block struct {
-	stmts     []Stmt
-	finalExpr Expr
+	Stmts     []Stmt
+	FinalExpr Expr
 }
 type LazyBlock struct {
-	block Block
+	Block Block
 }
 type MatchRule struct {
-	pattern MatchPattern
-	body    Block
+	Pattern MatchPattern
+	Body    Block
 }
 type MatchExpr struct {
-	target Expr
-	rules  []MatchRule
+	Target Expr
+	Rules  []MatchRule
 }
 type ReturnableExpr interface {
 	ReturnableExpr_Union()
@@ -253,21 +253,21 @@ type RootStmt_RSLetFuncDef struct {
 func New_RootStmt_RSLetFuncDef(v LetFuncDef) RootStmt { return RootStmt_RSLetFuncDef{v} }
 
 type LetFuncDef struct {
-	fvar   Var
-	params []Var
-	body   Block
+	Fvar   Var
+	Params []Var
+	Body   Block
 }
 type RootFuncDef struct {
-	tparams []string
-	lfd     LetFuncDef
+	Tparams []string
+	Lfd     LetFuncDef
 }
 type LetVarDef struct {
-	lvar Var
-	rhs  Expr
+	Lvar Var
+	Rhs  Expr
 }
 type LetDestVarDef struct {
-	lvars []Var
-	rhs   Expr
+	Lvars []Var
+	Rhs   Expr
 }
 type LLetVarDef interface {
 	LLetVarDef_Union()
@@ -289,17 +289,17 @@ type LLetVarDef_LLDestVarDef struct {
 func New_LLetVarDef_LLDestVarDef(v LetDestVarDef) LLetVarDef { return LLetVarDef_LLDestVarDef{v} }
 
 type PackageInfo struct {
-	name     string
-	funcInfo funcFacDict
-	typeInfo extTypeDict
+	Name     string
+	FuncInfo funcFacDict
+	TypeInfo extTypeDict
 }
 type RecordDef struct {
-	name   string
-	fields []NameTypePair
+	Name   string
+	Fields []NameTypePair
 }
 type UnionDef struct {
-	name  string
-	cases []NameTypePair
+	Name  string
+	Cases []NameTypePair
 }
 type DefStmt interface {
 	DefStmt_Union()
@@ -321,11 +321,11 @@ type DefStmt_DUnionDef struct {
 func New_DefStmt_DUnionDef(v UnionDef) DefStmt { return DefStmt_DUnionDef{v} }
 
 type MultipleDefs struct {
-	defs []DefStmt
+	Defs []DefStmt
 }
 
 func NewPackageInfo(name string) PackageInfo {
 	ffd := newFFD()
 	etd := newETD()
-	return PackageInfo{name: name, funcInfo: ffd, typeInfo: etd}
+	return PackageInfo{Name: name, FuncInfo: ffd, TypeInfo: etd}
 }

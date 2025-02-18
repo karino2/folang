@@ -74,8 +74,11 @@ panic("Union pattern fail. Never reached here.")
 }})()`
 
 	got := MyExprToGo(meToExpr(matchExpr))
-	if want != got {
-		t.Errorf("want %s, got %s", want, got)
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(got, want, false)
+
+	if len(diffs) != 1 {
+		t.Errorf("diff found: %s", dmp.DiffPrettyText(diffs))
 	}
 }
 

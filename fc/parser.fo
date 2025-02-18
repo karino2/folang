@@ -46,7 +46,7 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
     let (ps2, et) = psConsume LSBRACKET ps
                     |> psConsume RSBRACKET
                     |> pTerm
-    {SliceType.elemType=et}
+    {SliceType.ElemType=et}
     |> FSlice
     |> withPs ps2
   | IDENTIFIER ->
@@ -88,7 +88,7 @@ let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseSt
                       |> pAtom
     if (psCurrentTT ps3) = ASTER then
       frt.Panic "More than three elem tuple, NYI"
-    {elemTypes=[ft;ft2]}
+    {ElemTypes=[ft;ft2]}
     |> FTuple
     |> withPs ps3
   else
@@ -116,7 +116,7 @@ let parseType (ps:ParseState) : ParseState*FType =
   if (slice.Length tps) = 1 then
     slice.Head tps |> withPs ps2
   else
-    FFunc {FuncType.targets=tps}
+    FFunc {FuncType.Targets=tps}
     |> withPs ps2
 
 type Param =
@@ -140,7 +140,7 @@ let parseParam (ps:ParseState) =
                     |> psConsume COLON
                     |> parseType
                     |> CnvL (psConsume RPAREN)
-    let v = {Var.name=vname; ftype=tp}
+    let v = {Var.Name=vname; Ftype=tp}
     scDefVar ps3.scope vname v
     (ps3, (PVar v))
 
@@ -169,11 +169,11 @@ let parseGoEval (ps:ParseState) =
   | LT ->
     let (ps3, ft) = psConsume LT ps2 |> parseType |> CnvL (psConsume GT)
     let (ps4, s) = psStringValNx ps3
-    let ge = {goStmt=s; typeArg=ft}
+    let ge = {GoStmt=s; TypeArg=ft}
     (ps4, EGoEvalExpr ge)
   | STRING ->
     let (ps3, s) = psStringValNx ps2
-    let ge = {goStmt=s; typeArg=FUnit}
+    let ge = {GoStmt=s; TypeArg=FUnit}
     (ps3, EGoEvalExpr ge)
   | _ ->
     frt.Panic "Wrong arg for GoEval"
@@ -181,8 +181,8 @@ let parseGoEval (ps:ParseState) =
 
 
 type fiInfo = {
-  recName: string; // "" if not specified.
-  nePair: NEPair;
+  RecName: string; // "" if not specified.
+  NePair: NEPair;
 }
 
 /*
@@ -199,25 +199,25 @@ let parseFiIni (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   if psCurIs DOT ps2 then
     let (ps3, fname2) = psConsume DOT ps2 |> psIdentNameNxL
     let (ps4, expr) = psConsume EQ ps3 |> psSkipEOL |> parseE
-    let fi = {name=fname2;expr=expr}
-    (ps4, {recName=fname; nePair=fi})
+    let fi = {Name=fname2;Expr=expr}
+    (ps4, {RecName=fname; NePair=fi})
   else
     let (ps3, expr) = ps2 |> psConsume EQ |> psSkipEOL |> parseE
-    let fi = {name=fname;expr=expr}
-    (ps3, {recName=""; nePair=fi})
+    let fi = {Name=fname;Expr=expr}
+    (ps3, {RecName=""; NePair=fi})
 
 let notEmpty (s:string) =
   s <> ""
 
 type fiListInfo = {
-  recName: string; // "" if not specified.
-  nePairs: []NEPair;
+  RecName: string; // "" if not specified.
+  NePairs: []NEPair;
 }
 
 let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*fiListInfo =
   let (ps2, fii) = parseFiIni parseE ps
-  let nep = fii.nePair
-  let recN = fii.recName
+  let nep = fii.NePair
+  let recN = fii.RecName
   /*
   slice.Map frt.Snd nepTup
   let recs = slice.Map frt.Fst nepTup
@@ -225,22 +225,22 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
   let recN = if slice.IsEmpty recs then "" else slice.Head recs
   */
   if (psCurrentTT ps2) = RBRACE then
-    (ps2, {recName=recN; nePairs=[nep]})
+    (ps2, {RecName=recN; NePairs=[nep]})
   else
     let (ps3, fiInfos) = psConsume SEMICOLON ps2
                       |> parseFieldInitializers parseE
-    let recN2 = fiInfos.recName
-    let neps = fiInfos.nePairs
+    let recN2 = fiInfos.RecName
+    let neps = fiInfos.NePairs
     let neps2 = slice.PushHead nep neps
     let recN3 = if recN <> "" then recN else recN2
-    (ps3, {recName=recN3; nePairs=neps2})
+    (ps3, {RecName=recN3; NePairs=neps2})
 
 let NEPToName (nvp:NEPair) =
-  nvp.name
+  nvp.Name
 
 let retRecordGen (ok:bool) (rtype: RecordType) (neps: []NEPair) (ps:ParseState) =
   if ok then
-    {fieldsNV=neps; recordType=rtype}
+    {FieldsNV=neps; RecordType=rtype}
     |> ERecordGen |> withPs ps
   else
     frt.Panic "can't find record type."
@@ -258,8 +258,8 @@ let retRecordGen (ok:bool) (rtype: RecordType) (neps: []NEPair) (ps:ParseState) 
 */
 let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, fiInfos) = psConsume LBRACE ps |> parseFieldInitializers parseE |> CnvL (psConsume RBRACE)
-  let neps = fiInfos.nePairs
-  let recName = fiInfos.recName
+  let neps = fiInfos.NePairs
+  let recName = fiInfos.RecName
   if recName = "" then
     let (rtype, ok) = slice.Map NEPToName neps |> scLookupRecord ps2.scope
     retRecordGen ok rtype neps ps2
@@ -286,7 +286,7 @@ let refVar (vname:string) (ps:ParseState) =
 let parseFAAfterDot (ps:ParseState) (cur:Expr) : (ParseState*Expr) =
   let (ps2, fname) =  psConsume DOT ps
                       |> psIdentNameNx
-  let fexpr = {targetExpr=cur; fieldName=fname}
+  let fexpr = {TargetExpr=cur; FieldName=fname}
               |> EFieldAccess
   if psCurIs DOT ps2 then
     parseFAAfterDot ps2 fexpr
@@ -412,8 +412,8 @@ let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Pars
                       |> psSkipEOL
                       |> pBlock
     //  return &MatchRule{&MatchPattern{"_", ""}, block}
-    let mp = {caseId="_"; varName=""}
-    {pattern=mp; body=block}
+    let mp = {CaseId="_"; VarName=""}
+    {Pattern=mp; Body=block}
     |> withPs ps3
   | _ -> // normal case
     let (ps3, cname) = psIdentNameNx ps2
@@ -431,10 +431,10 @@ let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Pars
       // currently, match expect union type
       let fu = GoEval<UnionType> "tt.(FType_FUnion).Value"
       let cp = lookupCase fu cname
-      scDefVar ps5.scope vname {Var.name=vname; ftype=cp.ftype}
+      scDefVar ps5.scope vname {Var.Name=vname; Ftype=cp.Ftype}
     let (ps6, block) = pBlock ps5
-    let mp = {caseId=cname; varName=vname}
-    {pattern=mp; body=block}
+    let mp = {CaseId=cname; VarName=vname}
+    {Pattern=mp; Body=block}
     |> withPs ps6
 
 let insideOffside (ps:ParseState) =
@@ -455,7 +455,7 @@ let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Par
 let parseMatchExpr (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) =
   let (ps2, target) = psConsume MATCH ps |> pExpr |> CnvL (psConsume WITH) |> CnvL psSkipEOL
   let (ps3, rules) = parseMatchRules pBlock target ps2
-  {target=target; rules=rules} |> withPs ps3
+  {Target=target; Rules=rules} |> withPs ps3
 
 // expr (; expr)*
 let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
@@ -483,7 +483,7 @@ let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
 
 let exprOnlyBlock (expr:Expr) =
    let emp = GoEval<[]Stmt> "[]Stmt{}"
-   {Block.stmts=emp; finalExpr=expr}
+   {Block.Stmts=emp; FinalExpr=expr}
   
 
 /*
@@ -567,7 +567,7 @@ let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseSta
       let tail = slice.Tail es
       match head with
       | EVar v ->
-        let fc = {targetFunc=v; args=tail}
+        let fc = {TargetFunc=v; Args=tail}
         (ps2, EFunCall fc)
       | _ ->
         frt.Panic "Funcall head is not var"
@@ -583,11 +583,11 @@ let parseBinAfter (pEwithMinPrec: int->ParseState->ParseState*Expr) (minPrec: in
   if psCurIsBinOp ps2 then
     let btk = psCurrentTT ps2
     let bop = lookupBinOpNF btk
-    if bop.precedence < minPrec then
+    if bop.Precedence < minPrec then
       (ps, cur)
     else
       let (ps3, rhs) = psConsume btk ps2
-                       |> pEwithMinPrec (bop.precedence+1)
+                       |> pEwithMinPrec (bop.Precedence+1)
       let tvgen = psTypeVarGen ps3
       newBinOpCall tvgen btk bop cur rhs
       |> parseBinAfter pEwithMinPrec minPrec ps3
@@ -650,7 +650,7 @@ let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseSt
   let stmts = slice.PopLast sls
   match last with
   | SExprStmt e ->
-    (ps2, {Block.stmts=stmts; finalExpr=e})
+    (ps2, {Block.Stmts=stmts; FinalExpr=e})
   | _ ->
     frt.Panic "block of last is not expr"
     // dummy
@@ -667,9 +667,9 @@ let parseBlock (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : Parse
 let parseLLOneVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> CnvL (psConsume EQ)
   let (ps3, rhs) = pExpr ps2
-  let v = {Var.name=vname; ftype=(ExprToType rhs)}
+  let v = {Var.Name=vname; Ftype=(ExprToType rhs)}
   scDefVar ps3.scope vname v
-  {LetVarDef.lvar=v; rhs=rhs}
+  {LetVarDef.Lvar=v; Rhs=rhs}
   |> LLOneVarDef
   |> withPs ps3
 
@@ -682,8 +682,8 @@ let psIdentOrUSNameNx (ps:ParseState) =
     (ps2, "_")
 
 let defVarIfNecessary (sc:Scope) (v:Var) =
-  if v.name <> "_" then
-    scDefVar sc v.name v
+  if v.Name <> "_" then
+    scDefVar sc v.Name v
 
 /*
   Destructuring, only support pair for a while like:
@@ -703,12 +703,12 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let rtype = ExprToType rhs
   match rtype with
   | FTuple tup ->
-    let v1 = {Var.name=vname1; ftype= slice.Head tup.elemTypes}
-    let v2 = {Var.name=vname2; ftype= slice.Last tup.elemTypes}
+    let v1 = {Var.Name=vname1; Ftype= slice.Head tup.ElemTypes}
+    let v2 = {Var.Name=vname2; Ftype= slice.Last tup.ElemTypes}
     defVarIfNecessary ps4.scope v1
     defVarIfNecessary ps4.scope v2
     let vs = [v1; v2]
-    {LetDestVarDef.lvars=vs; rhs=rhs}
+    {LetDestVarDef.Lvars=vs; Rhs=rhs}
     |> LLDestVarDef
     |> withPs ps4
   | FTypeVar _ ->
@@ -722,24 +722,24 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
                 FUnit
               else
                 tpgen () |> FTypeVar
-    let v1 = {Var.name=vname1; ftype=vt1}
-    let v2 = {Var.name=vname2; ftype=vt2}
+    let v1 = {Var.Name=vname1; Ftype=vt1}
+    let v2 = {Var.Name=vname2; Ftype=vt2}
     defVarIfNecessary ps4.scope v1
     defVarIfNecessary ps4.scope v2
     let vs = [v1; v2]
-    {LetDestVarDef.lvars=vs; rhs=rhs}
+    {LetDestVarDef.Lvars=vs; Rhs=rhs}
     |> LLDestVarDef
     |> withPs ps4
   | _ ->
     frt.Panic "Destructuring let, but rhs is not tuple. NYI."
     let dummy = GoEval<[]Var> "[]Var{}"
-    (ps2, LLDestVarDef {LetDestVarDef.lvars=dummy; rhs=EUnit})
+    (ps2, LLDestVarDef {LetDestVarDef.Lvars=dummy; Rhs=EUnit})
 
 // I want to make this func as factory.
 // But currently, last arg () is not supported.
 // So I return Var here and handle in wrapper.go for a while.
 let lfdToFuncVar (lfd:LetFuncDef) =
-  lfd.fvar
+  lfd.Fvar
 
 /*
   LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
@@ -756,8 +756,8 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
                            (ps3, tvf) 
   let paramTypes = slice.Map vToT params
   let defTargets = slice.PushLast rtypeDef paramTypes
-  let defFt = {FuncType.targets=defTargets} |> FFunc
-  let defVar = {Var.name=fname; ftype=defFt}
+  let defFt = {FuncType.Targets=defTargets} |> FFunc
+  let defVar = {Var.Name=fname; Ftype=defFt}
   scDefVar ps4.scope fname defVar
   let (ps5, block) = psConsume EQ ps4 |> psSkipEOL |> parseBlock pLet |> CnvL psPopScope
   // build lfd func var here for a while.
@@ -767,19 +767,15 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
                 else
                   paramTypes
                   |> slice.PushLast rtype
-  let ft = {FuncType.targets=targets} |> FFunc
-  let fnvar = {Var.name=fname; ftype=ft}
-  {fvar=fnvar; params=params; body=block}
+  let ft = {FuncType.Targets=targets} |> FFunc
+  let fnvar = {Var.Name=fname; Ftype=ft}
+  {Fvar=fnvar; Params=params; Body=block}
   |> withPs ps5
-
-let tvToN (tv:TypeVar) =
-  tv.name
 
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
-  let tnames = tvaListAlloced ps.tva |> slice.Map tvToN
-  let rfd = Infer tnames lfd
-  lfdToFuncVar rfd.lfd |> scDefVar ps2.scope rfd.lfd.fvar.name 
+  let rfd = Infer ps.tva lfd
+  lfdToFuncVar rfd.Lfd |> scDefVar ps2.scope rfd.Lfd.Fvar.Name 
   (ps2, rfd)
 
 /*
@@ -824,7 +820,7 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
 let parseFieldDef (ps:ParseState) =
   let fname = psIdentName ps
   let (ps2, tp) = psNextNOL ps |> psConsume COLON |> parseType
-  let ntp = {NameTypePair.name=fname; ftype=tp}
+  let ntp = {NameTypePair.Name=fname; Ftype=tp}
   (ps2, ntp)
 
 
@@ -847,7 +843,7 @@ let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
 */
 let parseRecordDef (tname:string) (ps:ParseState) =
   let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE)
-  let rd = {RecordDef.name=tname; fields=ntps}
+  let rd = {RecordDef.Name=tname; Fields=ntps}
   // register record typedef.
   psRegRecDefToTDCtx rd ps2
   (ps2, rd)
@@ -862,12 +858,12 @@ let parseOneCaseDef (ps:ParseState) =
   match psCurrentTT ps2 with
   | OF ->
     let (ps3, tp) = psConsume OF ps2 |> parseType
-    let cs = {NameTypePair.name=cname; ftype=tp}
+    let cs = {NameTypePair.Name=cname; Ftype=tp}
     (ps3, cs)
   | _ ->
     // no "of", unit case.
     let ps3 = psConsume EOL ps2
-    let cs = {NameTypePair.name=cname; ftype=FUnit}
+    let cs = {NameTypePair.Name=cname; Ftype=FUnit}
     (ps3, cs)
 
 let parseCaseDefs (ps:ParseState) : ParseState*[]NameTypePair =
@@ -884,7 +880,7 @@ let parseCaseDefs (ps:ParseState) : ParseState*[]NameTypePair =
 */
 let parseUnionDef (tname:string) (ps:ParseState) =
   let (ps2, css) = parseCaseDefs ps
-  let ud = {UnionDef.name=tname; cases=css}
+  let ud = {UnionDef.Name=tname; Cases=css}
   psRegUdToTDCtx ud ps2
   (ps2, ud)
 
@@ -924,7 +920,7 @@ let parseTypeDefBodyList (ps:ParseState) : ParseState*[]DefStmt =
 // TYPE_DEF = 'type' TYPE_DEF_BODY_LIST
 let parseTypeDef (ps:ParseState) =
   let (ps2, defList) = psEnterTypeDef ps |> psPushScope |> psConsume TYPE |> parseTypeDefBodyList |> CnvL psPopScope |> CnvL psLeaveTypeDef
-  let mdefs = {defs=defList}
+  let mdefs = {Defs=defList}
   let nmdefs = resolveFwrdDecl mdefs ps2
   psRegMdTypes nmdefs ps2
   nmdefs
@@ -959,7 +955,7 @@ let parseTypeParams (ps:ParseState) : ParseState*[]string =
     (ps2, [tname])
 
 let regTypeVar (ps:ParseState) (tname:string) =
-  FTypeVar {TypeVar.name=tname}
+  FTypeVar {TypeVar.Name=tname}
   |> scRegisterType ps.scope tname
 
 let psRegTypeVars (ps:ParseState) (tnames:[]string) =
@@ -980,7 +976,7 @@ let parseExtFuncDef (pi:PackageInfo) (ps:ParseState) =
   psRegTypeVars ps3 tnames
   let (ps4, fts) = psConsume COLON ps3
                    |> parseTypeArrows parseType
-  let ff = {tparams=tnames; targets=fts}
+  let ff = {Tparams=tnames; Targets=fts}
   piRegFF pi fname ff ps4
   ps4
 
@@ -1036,6 +1032,8 @@ let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     frt.Panic "Unknown stmt"
     parsePackage ps // never reached this line.
 
+
+// this recursive is too deep for golang.
 let parseRootStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]RootStmt =
   let ps2 = psSkipEOL ps
   if (psCurrentTT ps2) = EOF then
@@ -1046,3 +1044,14 @@ let parseRootStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
     let (ps4, rest) = parseRootStmts pExpr ps3
     let ss = slice.PushHead one rest
     (ps4, ss)
+
+
+let IsParseEnd (ps:ParseState) =
+  psSkipEOL ps
+  |> psCurIs EOF
+
+// call after cheking IsParseEnd.
+let ParseStmtOne (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*RootStmt =
+  psSkipEOL ps
+  |> parseRootOneStmt pExpr |> CnvL psSkipEOL
+  

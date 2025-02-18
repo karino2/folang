@@ -48,7 +48,7 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], pTerm f
 		}))
 	case TokenType_LSBRACKET:
 		ps2, et := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LSBRACKET, ps), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RSBRACKET, _r0) })), pTerm))
-		return frt.Pipe(frt.Pipe(SliceType{elemType: et}, New_FType_FSlice), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps2, _r0) }))
+		return frt.Pipe(frt.Pipe(SliceType{ElemType: et}, New_FType_FSlice), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps2, _r0) }))
 	case TokenType_IDENTIFIER:
 		tname := tk.stringVal
 		ps3 := psNext(ps)
@@ -93,7 +93,7 @@ func parseTermType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 		frt.IfOnly(frt.OpEqual(psCurrentTT(ps3), New_TokenType_ASTER), (func() {
 			frt.Panic("More than three elem tuple, NYI")
 		}))
-		return frt.Pipe(frt.Pipe(TupleType{elemTypes: ([]FType{ft, ft2})}, New_FType_FTuple), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps3, _r0) }))
+		return frt.Pipe(frt.Pipe(TupleType{ElemTypes: ([]FType{ft, ft2})}, New_FType_FTuple), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps3, _r0) }))
 	}), (func() frt.Tuple2[ParseState, FType] {
 		return frt.NewTuple2(ps2, ft)
 	}))
@@ -115,7 +115,7 @@ func parseType(ps ParseState) frt.Tuple2[ParseState, FType] {
 	return frt.IfElse(frt.OpEqual(slice.Length(tps), 1), (func() frt.Tuple2[ParseState, FType] {
 		return frt.Pipe(slice.Head(tps), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps2, _r0) }))
 	}), (func() frt.Tuple2[ParseState, FType] {
-		return frt.Pipe(New_FType_FFunc(FuncType{targets: tps}), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps2, _r0) }))
+		return frt.Pipe(New_FType_FFunc(FuncType{Targets: tps}), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps2, _r0) }))
 	}))
 }
 
@@ -149,7 +149,7 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 		ps3, tp := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psNext(ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) })), parseType), (func(_r0 frt.Tuple2[ParseState, FType]) frt.Tuple2[ParseState, FType] {
 			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
 		})))
-		v := Var{name: vname, ftype: tp}
+		v := Var{Name: vname, Ftype: tp}
 		scDefVar(ps3.scope, vname, v)
 		return frt.NewTuple2(ps3, New_Param_PVar(v))
 	}
@@ -157,12 +157,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v812 := (prm1).(type) {
+	switch _v816 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v812.Value
+		v := _v816.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -185,11 +185,11 @@ func parseGoEval(ps ParseState) frt.Tuple2[ParseState, Expr] {
 			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_GT, _r0) }), _r0)
 		})))
 		ps4, s := frt.Destr(psStringValNx(ps3))
-		ge := GoEvalExpr{goStmt: s, typeArg: ft}
+		ge := GoEvalExpr{GoStmt: s, TypeArg: ft}
 		return frt.NewTuple2(ps4, New_Expr_EGoEvalExpr(ge))
 	case TokenType_STRING:
 		ps3, s := frt.Destr(psStringValNx(ps2))
-		ge := GoEvalExpr{goStmt: s, typeArg: New_FType_FUnit}
+		ge := GoEvalExpr{GoStmt: s, TypeArg: New_FType_FUnit}
 		return frt.NewTuple2(ps3, New_Expr_EGoEvalExpr(ge))
 	default:
 		frt.Panic("Wrong arg for GoEval")
@@ -198,8 +198,8 @@ func parseGoEval(ps ParseState) frt.Tuple2[ParseState, Expr] {
 }
 
 type fiInfo struct {
-	recName string
-	nePair  NEPair
+	RecName string
+	NePair  NEPair
 }
 
 func parseFiIni(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, fiInfo] {
@@ -207,12 +207,12 @@ func parseFiIni(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSt
 	return frt.IfElse(psCurIs(New_TokenType_DOT, ps2), (func() frt.Tuple2[ParseState, fiInfo] {
 		ps3, fname2 := frt.Destr(frt.Pipe(psConsume(New_TokenType_DOT, ps2), psIdentNameNxL))
 		ps4, expr := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_EQ, ps3), psSkipEOL), parseE))
-		fi := NEPair{name: fname2, expr: expr}
-		return frt.NewTuple2(ps4, fiInfo{recName: fname, nePair: fi})
+		fi := NEPair{Name: fname2, Expr: expr}
+		return frt.NewTuple2(ps4, fiInfo{RecName: fname, NePair: fi})
 	}), (func() frt.Tuple2[ParseState, fiInfo] {
 		ps3, expr := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(ps2, (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_EQ, _r0) })), psSkipEOL), parseE))
-		fi := NEPair{name: fname, expr: expr}
-		return frt.NewTuple2(ps3, fiInfo{recName: "", nePair: fi})
+		fi := NEPair{Name: fname, Expr: expr}
+		return frt.NewTuple2(ps3, fiInfo{RecName: "", NePair: fi})
 	}))
 }
 
@@ -221,37 +221,37 @@ func notEmpty(s string) bool {
 }
 
 type fiListInfo struct {
-	recName string
-	nePairs []NEPair
+	RecName string
+	NePairs []NEPair
 }
 
 func parseFieldInitializers(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, fiListInfo] {
 	ps2, fii := frt.Destr(parseFiIni(parseE, ps))
-	nep := fii.nePair
-	recN := fii.recName
+	nep := fii.NePair
+	recN := fii.RecName
 	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_RBRACE), (func() frt.Tuple2[ParseState, fiListInfo] {
-		return frt.NewTuple2(ps2, fiListInfo{recName: recN, nePairs: ([]NEPair{nep})})
+		return frt.NewTuple2(ps2, fiListInfo{RecName: recN, NePairs: ([]NEPair{nep})})
 	}), (func() frt.Tuple2[ParseState, fiListInfo] {
 		ps3, fiInfos := frt.Destr(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, fiListInfo] { return parseFieldInitializers(parseE, _r0) })))
-		recN2 := fiInfos.recName
-		neps := fiInfos.nePairs
+		recN2 := fiInfos.RecName
+		neps := fiInfos.NePairs
 		neps2 := slice.PushHead(nep, neps)
 		recN3 := frt.IfElse(frt.OpNotEqual(recN, ""), (func() string {
 			return recN
 		}), (func() string {
 			return recN2
 		}))
-		return frt.NewTuple2(ps3, fiListInfo{recName: recN3, nePairs: neps2})
+		return frt.NewTuple2(ps3, fiListInfo{RecName: recN3, NePairs: neps2})
 	}))
 }
 
 func NEPToName(nvp NEPair) string {
-	return nvp.name
+	return nvp.Name
 }
 
 func retRecordGen(ok bool, rtype RecordType, neps []NEPair, ps ParseState) frt.Tuple2[ParseState, Expr] {
 	return frt.IfElse(ok, (func() frt.Tuple2[ParseState, Expr] {
-		return frt.Pipe(frt.Pipe(RecordGen{fieldsNV: neps, recordType: rtype}, New_Expr_ERecordGen), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps, _r0) }))
+		return frt.Pipe(frt.Pipe(RecordGen{FieldsNV: neps, RecordType: rtype}, New_Expr_ERecordGen), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps, _r0) }))
 	}), (func() frt.Tuple2[ParseState, Expr] {
 		frt.Panic("can't find record type.")
 		return frt.NewTuple2(ps, New_Expr_EUnit)
@@ -262,8 +262,8 @@ func parseRecordGen(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps Par
 	ps2, fiInfos := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LBRACE, ps), (func(_r0 ParseState) frt.Tuple2[ParseState, fiListInfo] { return parseFieldInitializers(parseE, _r0) })), (func(_r0 frt.Tuple2[ParseState, fiListInfo]) frt.Tuple2[ParseState, fiListInfo] {
 		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RBRACE, _r0) }), _r0)
 	})))
-	neps := fiInfos.nePairs
-	recName := fiInfos.recName
+	neps := fiInfos.NePairs
+	recName := fiInfos.RecName
 	return frt.IfElse(frt.OpEqual(recName, ""), (func() frt.Tuple2[ParseState, Expr] {
 		rtype, ok := frt.Destr(frt.Pipe(slice.Map(NEPToName, neps), (func(_r0 []string) frt.Tuple2[RecordType, bool] { return scLookupRecord(ps2.scope, _r0) })))
 		return retRecordGen(ok, rtype, neps, ps2)
@@ -285,7 +285,7 @@ func refVar(vname string, ps ParseState) Expr {
 
 func parseFAAfterDot(ps ParseState, cur Expr) frt.Tuple2[ParseState, Expr] {
 	ps2, fname := frt.Destr(frt.Pipe(psConsume(New_TokenType_DOT, ps), psIdentNameNx))
-	fexpr := frt.Pipe(FieldAccess{targetExpr: cur, fieldName: fname}, New_Expr_EFieldAccess)
+	fexpr := frt.Pipe(FieldAccess{TargetExpr: cur, FieldName: fname}, New_Expr_EFieldAccess)
 	return frt.IfElse(psCurIs(New_TokenType_DOT, ps2), (func() frt.Tuple2[ParseState, Expr] {
 		return parseFAAfterDot(ps2, fexpr)
 	}), (func() frt.Tuple2[ParseState, Expr] {
@@ -405,8 +405,8 @@ func parseMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], targe
 	switch (psCurrentTT(ps2)).(type) {
 	case TokenType_UNDER_SCORE:
 		ps3, block := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_UNDER_SCORE, ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RARROW, _r0) })), psSkipEOL), pBlock))
-		mp := MatchPattern{caseId: "_", varName: ""}
-		return frt.Pipe(MatchRule{pattern: mp, body: block}, (func(_r0 MatchRule) frt.Tuple2[ParseState, MatchRule] { return withPs(ps3, _r0) }))
+		mp := MatchPattern{CaseId: "_", VarName: ""}
+		return frt.Pipe(MatchRule{Pattern: mp, Body: block}, (func(_r0 MatchRule) frt.Tuple2[ParseState, MatchRule] { return withPs(ps3, _r0) }))
 	default:
 		ps3, cname := frt.Destr(psIdentNameNx(ps2))
 		ps4, vname := frt.Destr((func() frt.Tuple2[ParseState, string] {
@@ -424,11 +424,11 @@ func parseMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], targe
 			tt := ExprToType(target)
 			fu := tt.(FType_FUnion).Value
 			cp := lookupCase(fu, cname)
-			scDefVar(ps5.scope, vname, Var{name: vname, ftype: cp.ftype})
+			scDefVar(ps5.scope, vname, Var{Name: vname, Ftype: cp.Ftype})
 		}))
 		ps6, block := frt.Destr(pBlock(ps5))
-		mp := MatchPattern{caseId: cname, varName: vname}
-		return frt.Pipe(MatchRule{pattern: mp, body: block}, (func(_r0 MatchRule) frt.Tuple2[ParseState, MatchRule] { return withPs(ps6, _r0) }))
+		mp := MatchPattern{CaseId: cname, VarName: vname}
+		return frt.Pipe(MatchRule{Pattern: mp, Body: block}, (func(_r0 MatchRule) frt.Tuple2[ParseState, MatchRule] { return withPs(ps6, _r0) }))
 	}
 }
 
@@ -456,7 +456,7 @@ func parseMatchExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock 
 		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_WITH, _r0) }), _r0)
 	})), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] { return CnvL(psSkipEOL, _r0) })))
 	ps3, rules := frt.Destr(parseMatchRules(pBlock, target, ps2))
-	return frt.Pipe(MatchExpr{target: target, rules: rules}, (func(_r0 MatchExpr) frt.Tuple2[ParseState, MatchExpr] { return withPs(ps3, _r0) }))
+	return frt.Pipe(MatchExpr{Target: target, Rules: rules}, (func(_r0 MatchExpr) frt.Tuple2[ParseState, MatchExpr] { return withPs(ps3, _r0) }))
 }
 
 func parseSemiExprs(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Expr] {
@@ -480,7 +480,7 @@ func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pars
 
 func exprOnlyBlock(expr Expr) Block {
 	emp := []Stmt{}
-	return Block{stmts: emp, finalExpr: expr}
+	return Block{Stmts: emp, FinalExpr: expr}
 }
 
 func parseInlineBlock(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Block] {
@@ -546,10 +546,10 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v820 := (head).(type) {
+			switch _v824 := (head).(type) {
 			case Expr_EVar:
-				v := _v820.Value
-				fc := FunCall{targetFunc: v, args: tail}
+				v := _v824.Value
+				fc := FunCall{TargetFunc: v, Args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
 				frt.Panic("Funcall head is not var")
@@ -569,10 +569,10 @@ func parseBinAfter(pEwithMinPrec func(int, ParseState) frt.Tuple2[ParseState, Ex
 	return frt.IfElse(psCurIsBinOp(ps2), (func() frt.Tuple2[ParseState, Expr] {
 		btk := psCurrentTT(ps2)
 		bop := lookupBinOpNF(btk)
-		return frt.IfElse((bop.precedence < minPrec), (func() frt.Tuple2[ParseState, Expr] {
+		return frt.IfElse((bop.Precedence < minPrec), (func() frt.Tuple2[ParseState, Expr] {
 			return frt.NewTuple2(ps, cur)
 		}), (func() frt.Tuple2[ParseState, Expr] {
-			ps3, rhs := frt.Destr(frt.Pipe(psConsume(btk, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, Expr] { return pEwithMinPrec((bop.precedence + 1), _r0) })))
+			ps3, rhs := frt.Destr(frt.Pipe(psConsume(btk, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, Expr] { return pEwithMinPrec((bop.Precedence + 1), _r0) })))
 			tvgen := psTypeVarGen(ps3)
 			return frt.Pipe(newBinOpCall(tvgen, btk, bop, cur, rhs), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return parseBinAfter(pEwithMinPrec, minPrec, ps3, _r0) }))
 		}))
@@ -632,10 +632,10 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v822 := (last).(type) {
+	switch _v826 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v822.Value
-		return frt.NewTuple2(ps2, Block{stmts: stmts, finalExpr: e})
+		e := _v826.Value
+		return frt.NewTuple2(ps2, Block{Stmts: stmts, FinalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")
 		return frt.Pipe(emptyBlock(), (func(_r0 Block) frt.Tuple2[ParseState, Block] { return withPs(ps2, _r0) }))
@@ -654,9 +654,9 @@ func parseLLOneVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pa
 		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_EQ, _r0) }), _r0)
 	})))
 	ps3, rhs := frt.Destr(pExpr(ps2))
-	v := Var{name: vname, ftype: ExprToType(rhs)}
+	v := Var{Name: vname, Ftype: ExprToType(rhs)}
 	scDefVar(ps3.scope, vname, v)
-	return frt.Pipe(frt.Pipe(LetVarDef{lvar: v, rhs: rhs}, New_LLetVarDef_LLOneVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps3, _r0) }))
+	return frt.Pipe(frt.Pipe(LetVarDef{Lvar: v, Rhs: rhs}, New_LLetVarDef_LLOneVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps3, _r0) }))
 }
 
 func psIdentOrUSNameNx(ps ParseState) frt.Tuple2[ParseState, string] {
@@ -669,8 +669,8 @@ func psIdentOrUSNameNx(ps ParseState) frt.Tuple2[ParseState, string] {
 }
 
 func defVarIfNecessary(sc Scope, v Var) {
-	frt.IfOnly(frt.OpNotEqual(v.name, "_"), (func() {
-		scDefVar(sc, v.name, v)
+	frt.IfOnly(frt.OpNotEqual(v.Name, "_"), (func() {
+		scDefVar(sc, v.Name, v)
 	}))
 }
 
@@ -685,15 +685,15 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 	})))
 	ps4, rhs := frt.Destr(pExpr(ps3))
 	rtype := ExprToType(rhs)
-	switch _v823 := (rtype).(type) {
+	switch _v827 := (rtype).(type) {
 	case FType_FTuple:
-		tup := _v823.Value
-		v1 := Var{name: vname1, ftype: slice.Head(tup.elemTypes)}
-		v2 := Var{name: vname2, ftype: slice.Last(tup.elemTypes)}
+		tup := _v827.Value
+		v1 := Var{Name: vname1, Ftype: slice.Head(tup.ElemTypes)}
+		v2 := Var{Name: vname2, Ftype: slice.Last(tup.ElemTypes)}
 		defVarIfNecessary(ps4.scope, v1)
 		defVarIfNecessary(ps4.scope, v2)
 		vs := ([]Var{v1, v2})
-		return frt.Pipe(frt.Pipe(LetDestVarDef{lvars: vs, rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps4, _r0) }))
+		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vs, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps4, _r0) }))
 	case FType_FTypeVar:
 		tpgen := psTypeVarGen(ps4)
 		vt1 := frt.IfElse(frt.OpEqual(vname1, "_"), (func() FType {
@@ -706,21 +706,21 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 		}), (func() FType {
 			return frt.Pipe(tpgen(), New_FType_FTypeVar)
 		}))
-		v1 := Var{name: vname1, ftype: vt1}
-		v2 := Var{name: vname2, ftype: vt2}
+		v1 := Var{Name: vname1, Ftype: vt1}
+		v2 := Var{Name: vname2, Ftype: vt2}
 		defVarIfNecessary(ps4.scope, v1)
 		defVarIfNecessary(ps4.scope, v2)
 		vs := ([]Var{v1, v2})
-		return frt.Pipe(frt.Pipe(LetDestVarDef{lvars: vs, rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps4, _r0) }))
+		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vs, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps4, _r0) }))
 	default:
 		frt.Panic("Destructuring let, but rhs is not tuple. NYI.")
 		dummy := []Var{}
-		return frt.NewTuple2(ps2, New_LLetVarDef_LLDestVarDef(LetDestVarDef{lvars: dummy, rhs: New_Expr_EUnit}))
+		return frt.NewTuple2(ps2, New_LLetVarDef_LLDestVarDef(LetDestVarDef{Lvars: dummy, Rhs: New_Expr_EUnit}))
 	}
 }
 
 func lfdToFuncVar(lfd LetFuncDef) Var {
-	return lfd.fvar
+	return lfd.Fvar
 }
 
 func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, LetFuncDef] {
@@ -736,8 +736,8 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 	})))
 	paramTypes := slice.Map(vToT, params)
 	defTargets := slice.PushLast(rtypeDef, paramTypes)
-	defFt := frt.Pipe(FuncType{targets: defTargets}, New_FType_FFunc)
-	defVar := Var{name: fname, ftype: defFt}
+	defFt := frt.Pipe(FuncType{Targets: defTargets}, New_FType_FFunc)
+	defVar := Var{Name: fname, Ftype: defFt}
 	scDefVar(ps4.scope, fname, defVar)
 	ps5, block := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_EQ, ps4), psSkipEOL), (func(_r0 ParseState) frt.Tuple2[ParseState, Block] { return parseBlock(pLet, _r0) })), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return CnvL(psPopScope, _r0) })))
 	rtype := frt.Pipe(blockToExpr(block), ExprToType)
@@ -746,20 +746,15 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 	}), (func() []FType {
 		return frt.Pipe(paramTypes, (func(_r0 []FType) []FType { return slice.PushLast(rtype, _r0) }))
 	}))
-	ft := frt.Pipe(FuncType{targets: targets}, New_FType_FFunc)
-	fnvar := Var{name: fname, ftype: ft}
-	return frt.Pipe(LetFuncDef{fvar: fnvar, params: params, body: block}, (func(_r0 LetFuncDef) frt.Tuple2[ParseState, LetFuncDef] { return withPs(ps5, _r0) }))
-}
-
-func tvToN(tv TypeVar) string {
-	return tv.name
+	ft := frt.Pipe(FuncType{Targets: targets}, New_FType_FFunc)
+	fnvar := Var{Name: fname, Ftype: ft}
+	return frt.Pipe(LetFuncDef{Fvar: fnvar, Params: params, Body: block}, (func(_r0 LetFuncDef) frt.Tuple2[ParseState, LetFuncDef] { return withPs(ps5, _r0) }))
 }
 
 func parseRootLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, RootFuncDef] {
 	ps2, lfd := frt.Destr(parseLetFuncDef(pLet, ps))
-	tnames := frt.Pipe(tvaListAlloced(ps.tva), (func(_r0 []TypeVar) []string { return slice.Map(tvToN, _r0) }))
-	rfd := Infer(tnames, lfd)
-	frt.PipeUnit(lfdToFuncVar(rfd.lfd), (func(_r0 Var) { scDefVar(ps2.scope, rfd.lfd.fvar.name, _r0) }))
+	rfd := Infer(ps.tva, lfd)
+	frt.PipeUnit(lfdToFuncVar(rfd.Lfd), (func(_r0 Var) { scDefVar(ps2.scope, rfd.Lfd.Fvar.Name, _r0) }))
 	return frt.NewTuple2(ps2, rfd)
 }
 
@@ -798,7 +793,7 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 func parseFieldDef(ps ParseState) frt.Tuple2[ParseState, NameTypePair] {
 	fname := psIdentName(ps)
 	ps2, tp := frt.Destr(frt.Pipe(frt.Pipe(psNextNOL(ps), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) })), parseType))
-	ntp := NameTypePair{name: fname, ftype: tp}
+	ntp := NameTypePair{Name: fname, Ftype: tp}
 	return frt.NewTuple2(ps2, ntp)
 }
 
@@ -822,7 +817,7 @@ func parseRecordDef(tname string, ps ParseState) frt.Tuple2[ParseState, RecordDe
 	ps2, ntps := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LBRACE, ps), parseFieldDefs), (func(_r0 frt.Tuple2[ParseState, []NameTypePair]) frt.Tuple2[ParseState, []NameTypePair] {
 		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RBRACE, _r0) }), _r0)
 	})))
-	rd := RecordDef{name: tname, fields: ntps}
+	rd := RecordDef{Name: tname, Fields: ntps}
 	psRegRecDefToTDCtx(rd, ps2)
 	return frt.NewTuple2(ps2, rd)
 }
@@ -832,11 +827,11 @@ func parseOneCaseDef(ps ParseState) frt.Tuple2[ParseState, NameTypePair] {
 	switch (psCurrentTT(ps2)).(type) {
 	case TokenType_OF:
 		ps3, tp := frt.Destr(frt.Pipe(psConsume(New_TokenType_OF, ps2), parseType))
-		cs := NameTypePair{name: cname, ftype: tp}
+		cs := NameTypePair{Name: cname, Ftype: tp}
 		return frt.NewTuple2(ps3, cs)
 	default:
 		ps3 := psConsume(New_TokenType_EOL, ps2)
-		cs := NameTypePair{name: cname, ftype: New_FType_FUnit}
+		cs := NameTypePair{Name: cname, Ftype: New_FType_FUnit}
 		return frt.NewTuple2(ps3, cs)
 	}
 }
@@ -855,7 +850,7 @@ func parseCaseDefs(ps ParseState) frt.Tuple2[ParseState, []NameTypePair] {
 
 func parseUnionDef(tname string, ps ParseState) frt.Tuple2[ParseState, UnionDef] {
 	ps2, css := frt.Destr(parseCaseDefs(ps))
-	ud := UnionDef{name: tname, cases: css}
+	ud := UnionDef{Name: tname, Cases: css}
 	psRegUdToTDCtx(ud, ps2)
 	return frt.NewTuple2(ps2, ud)
 }
@@ -901,7 +896,7 @@ func parseTypeDef(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
 	})), (func(_r0 frt.Tuple2[ParseState, []DefStmt]) frt.Tuple2[ParseState, []DefStmt] {
 		return CnvL(psLeaveTypeDef, _r0)
 	})))
-	mdefs := MultipleDefs{defs: defList}
+	mdefs := MultipleDefs{Defs: defList}
 	nmdefs := resolveFwrdDecl(mdefs, ps2)
 	psRegMdTypes(nmdefs, ps2)
 	return frt.Pipe(frt.Pipe(nmdefs, New_RootStmt_RSMultipleDefs), (func(_r0 RootStmt) frt.Tuple2[ParseState, RootStmt] { return withPs(ps2, _r0) }))
@@ -926,7 +921,7 @@ func parseTypeParams(ps ParseState) frt.Tuple2[ParseState, []string] {
 }
 
 func regTypeVar(ps ParseState, tname string) {
-	frt.PipeUnit(New_FType_FTypeVar(TypeVar{name: tname}), (func(_r0 FType) { scRegisterType(ps.scope, tname, _r0) }))
+	frt.PipeUnit(New_FType_FTypeVar(TypeVar{Name: tname}), (func(_r0 FType) { scRegisterType(ps.scope, tname, _r0) }))
 }
 
 func psRegTypeVars(ps ParseState, tnames []string) {
@@ -944,7 +939,7 @@ func parseExtFuncDef(pi PackageInfo, ps ParseState) ParseState {
 	})))
 	psRegTypeVars(ps3, tnames)
 	ps4, fts := frt.Destr(frt.Pipe(psConsume(New_TokenType_COLON, ps3), (func(_r0 ParseState) frt.Tuple2[ParseState, []FType] { return parseTypeArrows(parseType, _r0) })))
-	ff := FuncFactory{tparams: tnames, targets: fts}
+	ff := FuncFactory{Tparams: tnames, Targets: fts}
 	piRegFF(pi, fname, ff, ps4)
 	return ps4
 }
@@ -1014,5 +1009,15 @@ func parseRootStmts(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pars
 		ps4, rest := frt.Destr(parseRootStmts(pExpr, ps3))
 		ss := slice.PushHead(one, rest)
 		return frt.NewTuple2(ps4, ss)
+	}))
+}
+
+func IsParseEnd(ps ParseState) bool {
+	return frt.Pipe(psSkipEOL(ps), (func(_r0 ParseState) bool { return psCurIs(New_TokenType_EOF, _r0) }))
+}
+
+func ParseStmtOne(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, RootStmt] {
+	return frt.Pipe(frt.Pipe(psSkipEOL(ps), (func(_r0 ParseState) frt.Tuple2[ParseState, RootStmt] { return parseRootOneStmt(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, RootStmt]) frt.Tuple2[ParseState, RootStmt] {
+		return CnvL(psSkipEOL, _r0)
 	}))
 }

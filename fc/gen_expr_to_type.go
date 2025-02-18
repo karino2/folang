@@ -5,28 +5,28 @@ import "github.com/karino2/folang/pkg/frt"
 import "github.com/karino2/folang/pkg/slice"
 
 func faToType(eToT func(Expr) FType, fa FieldAccess) FType {
-	tart := eToT(fa.targetExpr)
+	tart := eToT(fa.TargetExpr)
 	switch _v40 := (tart).(type) {
 	case FType_FRecord:
 		rt := _v40.Value
-		field := frGetField(rt, fa.fieldName)
-		return field.ftype
+		field := frGetField(rt, fa.FieldName)
+		return field.Ftype
 	default:
-		return frt.Pipe(FieldAccessType{recType: tart, fieldName: fa.fieldName}, New_FType_FFieldAccess)
+		return frt.Pipe(FieldAccessType{RecType: tart, FieldName: fa.FieldName}, New_FType_FFieldAccess)
 	}
 }
 
 func lblockReturnType(toT func(Expr) FType, lb LazyBlock) FType {
-	return toT(lb.block.finalExpr)
+	return toT(lb.Block.FinalExpr)
 }
 
 func lblockToType(toT func(Expr) FType, lb LazyBlock) FType {
 	rtype := lblockReturnType(toT, lb)
-	return New_FType_FFunc(FuncType{targets: ([]FType{New_FType_FUnit, rtype})})
+	return New_FType_FFunc(FuncType{Targets: ([]FType{New_FType_FUnit, rtype})})
 }
 
 func blockReturnType(toT func(Expr) FType, block Block) FType {
-	return toT(block.finalExpr)
+	return toT(block.FinalExpr)
 }
 
 func blockToType(toT func(Expr) FType, b Block) FType {
@@ -60,8 +60,8 @@ func exprToBlock(bexpr Expr) Block {
 }
 
 func meToType(toT func(Expr) FType, me MatchExpr) FType {
-	frule := frt.Pipe(me.rules, slice.Head)
-	return frt.Pipe(frt.Pipe(frule.body, blockToExpr), toT)
+	frule := frt.Pipe(me.Rules, slice.Head)
+	return frt.Pipe(frt.Pipe(frule.Body, blockToExpr), toT)
 }
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
@@ -78,8 +78,8 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 }
 
 func fcToFuncType(fc FunCall) FuncType {
-	tfv := fc.targetFunc
-	ft := tfv.ftype
+	tfv := fc.TargetFunc
+	ft := tfv.Ftype
 	switch _v44 := (ft).(type) {
 	case FType_FFunc:
 		ft := _v44.Value
@@ -92,15 +92,15 @@ func fcToFuncType(fc FunCall) FuncType {
 func fcToType(fc FunCall) FType {
 	ft := fcToFuncType(fc)
 	tlen := frt.Pipe(fargs(ft), slice.Length)
-	alen := slice.Length(fc.args)
+	alen := slice.Length(fc.Args)
 	return frt.IfElse(frt.OpEqual(alen, tlen), (func() FType {
 		return freturn(ft)
 	}), (func() FType {
 		if alen > tlen {
 			panic("too many arugments")
 		}
-		newts := slice.Skip(alen, ft.targets)
-		return New_FType_FFunc(FuncType{targets: newts})
+		newts := slice.Skip(alen, ft.Targets)
+		return New_FType_FFunc(FuncType{Targets: newts})
 	}))
 }
 
@@ -108,7 +108,7 @@ func ExprToType(expr Expr) FType {
 	switch _v45 := (expr).(type) {
 	case Expr_EGoEvalExpr:
 		ge := _v45.Value
-		return ge.typeArg
+		return ge.TypeArg
 	case Expr_EStringLiteral:
 		return New_FType_FString
 	case Expr_EIntImm:
@@ -122,19 +122,19 @@ func ExprToType(expr Expr) FType {
 		return faToType(ExprToType, fa)
 	case Expr_EVar:
 		v := _v45.Value
-		return v.ftype
+		return v.Ftype
 	case Expr_ESlice:
 		s := _v45.Value
 		etp := frt.Pipe(slice.Head(s), ExprToType)
-		st := SliceType{elemType: etp}
+		st := SliceType{ElemType: etp}
 		return New_FType_FSlice(st)
 	case Expr_ETupleExpr:
 		es := _v45.Value
 		ts := slice.Map(ExprToType, es)
-		return frt.Pipe(TupleType{elemTypes: ts}, New_FType_FTuple)
+		return frt.Pipe(TupleType{ElemTypes: ts}, New_FType_FTuple)
 	case Expr_ERecordGen:
 		rg := _v45.Value
-		return New_FType_FRecord(rg.recordType)
+		return New_FType_FRecord(rg.RecordType)
 	case Expr_ELazyBlock:
 		lb := _v45.Value
 		return lblockToType(ExprToType, lb)
@@ -146,7 +146,7 @@ func ExprToType(expr Expr) FType {
 		return fcToType(fc)
 	case Expr_EBinOpCall:
 		bc := _v45.Value
-		return bc.rtype
+		return bc.Rtype
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

@@ -9,18 +9,18 @@ import "github.com/karino2/folang/pkg/buf"
 import "github.com/karino2/folang/pkg/strings"
 
 func rgFVToGo(toGo func(Expr) string, fvPair NEPair) string {
-	fn := fvPair.name
-	fv := fvPair.expr
+	fn := fvPair.Name
+	fv := fvPair.Expr
 	fvGo := toGo(fv)
 	return ((fn + ": ") + fvGo)
 }
 
 func rgToGo(toGo func(Expr) string, rg RecordGen) string {
-	rtype := rg.recordType
+	rtype := rg.RecordType
 	b := buf.New()
 	frt.PipeUnit(frStructName(rtype), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "{")
-	fvGo := frt.Pipe(frt.Pipe(rg.fieldsNV, (func(_r0 []NEPair) []string {
+	fvGo := frt.Pipe(frt.Pipe(rg.FieldsNV, (func(_r0 []NEPair) []string {
 		return slice.Map((func(_r0 NEPair) string { return rgFVToGo(toGo, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
 	buf.Write(b, fvGo)
@@ -68,28 +68,28 @@ func wrapFunCall(toGo func(FType) string, rtype FType, goReturnBody string) stri
 }
 
 func blockToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(ReturnableExpr) string, block Block) string {
-	return buildReturn(sToGo, eToGo, reToGoRet, block.stmts, block.finalExpr)
+	return buildReturn(sToGo, eToGo, reToGoRet, block.Stmts, block.FinalExpr)
 }
 
 func blockToGo(sToGo func(Stmt) string, eToGo func(Expr) string, reToGoRet func(ReturnableExpr) string, block Block) string {
 	goRet := blockToGoReturn(sToGo, eToGo, reToGoRet, block)
-	rtype := ExprToType(block.finalExpr)
+	rtype := ExprToType(block.FinalExpr)
 	return wrapFunCall(FTypeToGo, rtype, goRet)
 }
 
 func lbToGo(bToRet func(Block) string, lb LazyBlock) string {
-	returnBody := bToRet(lb.block)
-	rtype := ExprToType(lb.block.finalExpr)
+	returnBody := bToRet(lb.Block)
+	rtype := ExprToType(lb.Block.FinalExpr)
 	return wrapFunc(FTypeToGo, rtype, returnBody)
 }
 
 func mpToCaseHeader(uname string, mp MatchPattern, tmpVarName string) string {
 	b := buf.New()
 	buf.Write(b, "case ")
-	frt.PipeUnit(unionCSName(uname, mp.caseId), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(unionCSName(uname, mp.CaseId), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ":\n")
-	frt.IfOnly((frt.OpNotEqual(mp.varName, "_") && frt.OpNotEqual(mp.varName, "")), (func() {
-		buf.Write(b, mp.varName)
+	frt.IfOnly((frt.OpNotEqual(mp.VarName, "_") && frt.OpNotEqual(mp.VarName, "")), (func() {
+		buf.Write(b, mp.VarName)
 		buf.Write(b, " := ")
 		buf.Write(b, tmpVarName)
 		buf.Write(b, ".Value")
@@ -100,43 +100,43 @@ func mpToCaseHeader(uname string, mp MatchPattern, tmpVarName string) string {
 
 func mrToCase(btogRet func(Block) string, uname string, tmpVarName string, mr MatchRule) string {
 	b := buf.New()
-	mp := mr.pattern
-	cheader := frt.IfElse(frt.OpEqual(mp.caseId, "_"), (func() string {
+	mp := mr.Pattern
+	cheader := frt.IfElse(frt.OpEqual(mp.CaseId, "_"), (func() string {
 		return "default:\n"
 	}), (func() string {
 		return mpToCaseHeader(uname, mp, tmpVarName)
 	}))
 	buf.Write(b, cheader)
-	frt.PipeUnit(btogRet(mr.body), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(btogRet(mr.Body), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n")
 	return buf.String(b)
 }
 
 func mrHasNoCaseVar(mr MatchRule) bool {
-	pat := mr.pattern
-	return ((frt.OpEqual(pat.caseId, "_") || frt.OpEqual(pat.varName, "")) || frt.OpEqual(pat.varName, "_"))
+	pat := mr.Pattern
+	return ((frt.OpEqual(pat.CaseId, "_") || frt.OpEqual(pat.VarName, "")) || frt.OpEqual(pat.VarName, "_"))
 }
 
 func meHasCaseVar(me MatchExpr) bool {
-	return frt.OpNot(slice.Forall(mrHasNoCaseVar, me.rules))
+	return frt.OpNot(slice.Forall(mrHasNoCaseVar, me.Rules))
 }
 
 func mrIsDefault(mr MatchRule) bool {
-	pat := mr.pattern
-	return frt.OpEqual(pat.caseId, "_")
+	pat := mr.Pattern
+	return frt.OpEqual(pat.CaseId, "_")
 }
 
 func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) string {
-	ttype := ExprToType(me.target)
+	ttype := ExprToType(me.Target)
 	uttype := ttype.(FType_FUnion).Value
 	hasCaseVar := meHasCaseVar(me)
-	hasDefault := slice.Forany(mrIsDefault, me.rules)
+	hasDefault := slice.Forany(mrIsDefault, me.Rules)
 	tmpVarName := frt.IfElse(hasCaseVar, (func() string {
 		return uniqueTmpVarName()
 	}), (func() string {
 		return ""
 	}))
-	mrtocase := (func(_r0 MatchRule) string { return mrToCase(btogRet, uttype.name, tmpVarName, _r0) })
+	mrtocase := (func(_r0 MatchRule) string { return mrToCase(btogRet, uttype.Name, tmpVarName, _r0) })
 	b := buf.New()
 	buf.Write(b, "switch ")
 	frt.IfOnly(hasCaseVar, (func() {
@@ -144,9 +144,9 @@ func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchEx
 		buf.Write(b, " := ")
 	}))
 	buf.Write(b, "(")
-	frt.PipeUnit(toGo(me.target), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(toGo(me.Target), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ").(type){\n")
-	frt.PipeUnit(frt.Pipe(slice.Map(mrtocase, me.rules), (func(_r0 []string) string { return strings.Concat("", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(slice.Map(mrtocase, me.Rules), (func(_r0 []string) string { return strings.Concat("", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	frt.IfOnly(frt.OpNot(hasDefault), (func() {
 		buf.Write(b, "default:\npanic(\"Union pattern fail. Never reached here.\")\n")
 	}))
@@ -207,7 +207,7 @@ func ntpairToParam(tGo func(FType) string, ntp frt.Tuple2[string, FType]) string
 func fcPartialApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall) string {
 	funcType := fcToFuncType(fc)
 	fargTypes := fargs(funcType)
-	argNum := slice.Length(fc.args)
+	argNum := slice.Length(fc.Args)
 	restTypes := slice.Skip(argNum, fargTypes)
 	restParamNames := slice.Mapi(ftiToParamName, restTypes)
 	b := buf.New()
@@ -223,9 +223,9 @@ func fcPartialApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall)
 		frt.PipeUnit(tGo(fret), (func(_r0 string) { buf.Write(b, _r0) }))
 		buf.Write(b, "{ return ")
 	}))
-	buf.Write(b, fc.targetFunc.name)
+	buf.Write(b, fc.TargetFunc.Name)
 	buf.Write(b, "(")
-	frt.PipeUnit(frt.Pipe(slice.Map(eGo, fc.args), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(slice.Map(eGo, fc.Args), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ", ")
 	frt.PipeUnit(strings.Concat(", ", restParamNames), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ") })")
@@ -233,9 +233,9 @@ func fcPartialApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall)
 }
 
 func fcUnitArgOnly(fc FunCall) bool {
-	al := slice.Length(fc.args)
+	al := slice.Length(fc.Args)
 	return frt.IfElse(frt.OpEqual(al, 1), (func() bool {
-		return frt.OpEqual(New_Expr_EUnit, slice.Head(fc.args))
+		return frt.OpEqual(New_Expr_EUnit, slice.Head(fc.Args))
 	}), (func() bool {
 		return false
 	}))
@@ -243,10 +243,10 @@ func fcUnitArgOnly(fc FunCall) bool {
 
 func fcFullApplyGo(eGo func(Expr) string, fc FunCall) string {
 	b := buf.New()
-	buf.Write(b, fc.targetFunc.name)
+	buf.Write(b, fc.TargetFunc.Name)
 	buf.Write(b, "(")
 	frt.IfOnly(frt.OpNot(fcUnitArgOnly(fc)), (func() {
-		frt.PipeUnit(frt.Pipe(slice.Map(eGo, fc.args), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+		frt.PipeUnit(frt.Pipe(slice.Map(eGo, fc.Args), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	}))
 	buf.Write(b, ")")
 	return buf.String(b)
@@ -255,7 +255,7 @@ func fcFullApplyGo(eGo func(Expr) string, fc FunCall) string {
 func fcToGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall) string {
 	funcType := fcToFuncType(fc)
 	fargTypes := fargs(funcType)
-	al := slice.Length(fc.args)
+	al := slice.Length(fc.Args)
 	tal := slice.Length(fargTypes)
 	frt.IfOnly((al > tal), (func() {
 		panic("Too many argument")
@@ -289,14 +289,14 @@ func tupleToGo(eGo func(Expr) string, exprs []Expr) string {
 func binOpToGo(eGo func(Expr) string, binOp BinOpCall) string {
 	b := buf.New()
 	buf.Write(b, "(")
-	frt.PipeUnit(frt.Pipe(frt.Pipe(([]Expr{binOp.lhs, binOp.rhs}), (func(_r0 []Expr) []string { return slice.Map(eGo, _r0) })), (func(_r0 []string) string { return strings.Concat(binOp.op, _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(frt.Pipe(([]Expr{binOp.Lhs, binOp.Rhs}), (func(_r0 []Expr) []string { return slice.Map(eGo, _r0) })), (func(_r0 []string) string { return strings.Concat(binOp.Op, _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ")")
 	return buf.String(b)
 }
 
 func faToGo(eGo func(Expr) string, fa FieldAccess) string {
-	target := eGo(fa.targetExpr)
-	return ((target + ".") + fa.fieldName)
+	target := eGo(fa.TargetExpr)
+	return ((target + ".") + fa.FieldName)
 }
 
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
@@ -308,7 +308,7 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 		return frt.Sprintf1("%t", b)
 	case Expr_EGoEvalExpr:
 		ge := _v123.Value
-		return reinterpretEscape(ge.goStmt)
+		return reinterpretEscape(ge.GoStmt)
 	case Expr_EStringLiteral:
 		s := _v123.Value
 		return frt.Sprintf1("\"%s\"", s)
@@ -322,7 +322,7 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 		return faToGo(eToGo, fa)
 	case Expr_EVar:
 		v := _v123.Value
-		return v.name
+		return v.Name
 	case Expr_ESlice:
 		es := _v123.Value
 		return sliceToGo(FTypeToGo, eToGo, es)

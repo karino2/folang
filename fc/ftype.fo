@@ -8,7 +8,7 @@ import strings
 /*
   Type variable, used for type inference and type parameter.
 */
-type TypeVar = {name: string}
+type TypeVar = {Name: string}
 
 type FType =
 | FInt
@@ -23,23 +23,23 @@ type FType =
 | FTuple of TupleType
 | FFieldAccess of FieldAccessType
 | FTypeVar of TypeVar
-and SliceType = {elemType: FType}
-and FuncType = {targets: []FType}
-and FieldAccessType = {recType: FType; fieldName: string}
-and TupleType = {elemTypes: []FType}
-and NameTypePair = {name: string; ftype: FType}
-and RecordType = {name: string; fields: []NameTypePair}
-and UnionType = {name: string; cases: []NameTypePair}
+and SliceType = {ElemType: FType}
+and FuncType = {Targets: []FType}
+and FieldAccessType = {RecType: FType; FieldName: string}
+and TupleType = {ElemTypes: []FType}
+and NameTypePair = {Name: string; Ftype: FType}
+and RecordType = {Name: string; Fields: []NameTypePair}
+and UnionType = {Name: string; Cases: []NameTypePair}
 
 let fargs (ft:FuncType) =
-  let l = slice.Length ft.targets
-  ft.targets |> slice.Take (l-1)
+  let l = slice.Length ft.Targets
+  ft.Targets |> slice.Take (l-1)
 
 let freturn (ft:FuncType) =
-  slice.Last ft.targets
+  slice.Last ft.Targets
 
 let funcTypeToGo (ft:FuncType) (toGo:FType->string) =
-  let last = slice.Last ft.targets
+  let last = slice.Last ft.Targets
   let args = fargs ft
   let bw = buf.New ()
   buf.Write bw "func ("
@@ -52,13 +52,13 @@ let funcTypeToGo (ft:FuncType) (toGo:FType->string) =
   buf.String bw
 
 let recordTypeToGo (frec: RecordType) =
-  frec.name
+  frec.Name
 
 let frStructName (frec: RecordType) =
-  frec.name
+  frec.Name
 
 let namePairMatch (targetName :string) (pair: NameTypePair) =
-  targetName = pair.name
+  targetName = pair.Name
 
 let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
   // let res = pairs |> slice.Filter (fun x-> x.Name == fieldName)
@@ -66,45 +66,45 @@ let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
   slice.Head res
 
 let frGetField (frec: RecordType) (fieldName: string) =
-  lookupPairByName fieldName frec.fields
+  lookupPairByName fieldName frec.Fields
 
 let npName (pair:NameTypePair) =
-  pair.name
+  pair.Name
 
 let frMatch (frec: RecordType) (fieldNames: []string)=
-  if (slice.Length fieldNames) <> (slice.Length frec.fields) then
+  if (slice.Length fieldNames) <> (slice.Length frec.Fields) then
     false
   else
     // let sortedInput = slice.Sort fieldNames
     let sortedInput = fieldNames |> slice.Sort
-    let sortedFName = slice.Map npName frec.fields
+    let sortedFName = slice.Map npName frec.Fields
                       |> slice.Sort
     sortedInput = sortedFName
 
 
 let funionToGo (fu: UnionType) =
-  fu.name
+  fu.Name
 
 let lookupCase (fu: UnionType) (caseName: string) =
-  lookupPairByName caseName fu.cases
+  lookupPairByName caseName fu.Cases
 
 // IntOrString_I
 let unionCSName (unionName: string) (caseName: string) =
   unionName + "_" + caseName
 
 let fSliceToGo (fs: SliceType) (toGo:FType->string) =
-  "[]" + (toGo fs.elemType)
+  "[]" + (toGo fs.ElemType)
 
 // only support two tuple for a while
 let fTupleToGo (toGo:FType->string) (ft:TupleType) =
-  let args = slice.Map toGo ft.elemTypes |> strings.Concat ", "
+  let args = slice.Map toGo ft.ElemTypes |> strings.Concat ", "
   frt.Sprintf1 "frt.Tuple2[%s]" args
 
 let faResolve (fat:FieldAccessType) =
-  match fat.recType with
+  match fat.RecType with
   | FRecord rt ->
-    let field = frGetField rt fat.fieldName
-    field.ftype
+    let field = frGetField rt fat.FieldName
+    field.Ftype
   | _ -> fat |> FFieldAccess
 
 let FTypeToGo (ft:FType) : string =
@@ -120,4 +120,4 @@ let FTypeToGo (ft:FType) : string =
   | FSlice fs -> fSliceToGo fs FTypeToGo
   | FTuple ft -> fTupleToGo FTypeToGo ft
   | FFieldAccess _ -> "FieldAccess_Unresoled" // must be removed during type resolution.
-  | FTypeVar fp -> fp.name
+  | FTypeVar fp -> fp.Name

@@ -17,60 +17,60 @@ func pmToGo(pn string) string {
 }
 
 func paramsToGo(pm Var) string {
-	ts := FTypeToGo(pm.ftype)
-	return ((pm.name + " ") + ts)
+	ts := FTypeToGo(pm.Ftype)
+	return ((pm.Name + " ") + ts)
 }
 
 func lfdParamsToGo(lfd LetFuncDef) string {
-	return frt.Pipe(frt.Pipe(lfd.params, (func(_r0 []Var) []string { return slice.Map(paramsToGo, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
+	return frt.Pipe(frt.Pipe(lfd.Params, (func(_r0 []Var) []string { return slice.Map(paramsToGo, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
 }
 
 func lfdToGo(bToGoRet func(Block) string, lfd LetFuncDef) string {
 	b := buf.New()
 	buf.Write(b, "func ")
-	buf.Write(b, lfd.fvar.name)
+	buf.Write(b, lfd.Fvar.Name)
 	buf.Write(b, "(")
 	frt.PipeUnit(lfdParamsToGo(lfd), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ") ")
-	frt.PipeUnit(frt.Pipe(blockToType(ExprToType, lfd.body), FTypeToGo), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(blockToType(ExprToType, lfd.Body), FTypeToGo), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "{\n")
-	frt.PipeUnit(bToGoRet(lfd.body), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(bToGoRet(lfd.Body), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n}")
 	return buf.String(b)
 }
 
 func rfdToGo(bToGoRet func(Block) string, rfd RootFuncDef) string {
-	return lfdToGo(bToGoRet, rfd.lfd)
+	return lfdToGo(bToGoRet, rfd.Lfd)
 }
 
 func lvdToGo(eToGo func(Expr) string, lvd LetVarDef) string {
-	rhs := eToGo(lvd.rhs)
-	return ((lvd.lvar.name + " := ") + rhs)
+	rhs := eToGo(lvd.Rhs)
+	return ((lvd.Lvar.Name + " := ") + rhs)
 }
 
 func vToN(v Var) string {
-	return v.name
+	return v.Name
 }
 
 func ldvdToGo(eToGo func(Expr) string, ldvd LetDestVarDef) string {
 	b := buf.New()
-	frt.PipeUnit(frt.Pipe(slice.Map(vToN, ldvd.lvars), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(slice.Map(vToN, ldvd.Lvars), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, " := frt.Destr(")
-	frt.PipeUnit(eToGo(ldvd.rhs), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(eToGo(ldvd.Rhs), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ")")
 	return buf.String(b)
 }
 
 func rdffieldToGo(field NameTypePair) string {
-	return ((("  " + field.name) + " ") + FTypeToGo(field.ftype))
+	return ((("  " + field.Name) + " ") + FTypeToGo(field.Ftype))
 }
 
 func rdfToGo(rdf RecordDef) string {
 	b := buf.New()
 	buf.Write(b, "type ")
-	buf.Write(b, rdf.name)
+	buf.Write(b, rdf.Name)
 	buf.Write(b, " struct {\n")
-	frt.PipeUnit(frt.Pipe(frt.Pipe(rdf.fields, (func(_r0 []NameTypePair) []string { return slice.Map(rdffieldToGo, _r0) })), (func(_r0 []string) string { return strings.Concat("\n", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(frt.Pipe(rdf.Fields, (func(_r0 []NameTypePair) []string { return slice.Map(rdffieldToGo, _r0) })), (func(_r0 []string) string { return strings.Concat("\n", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n}")
 	return buf.String(b)
 }
@@ -78,35 +78,35 @@ func rdfToGo(rdf RecordDef) string {
 func udUnionDef(ud UnionDef) string {
 	b := buf.New()
 	buf.Write(b, "type ")
-	buf.Write(b, ud.name)
+	buf.Write(b, ud.Name)
 	buf.Write(b, " interface {\n")
 	buf.Write(b, "  ")
-	buf.Write(b, ud.name)
+	buf.Write(b, ud.Name)
 	buf.Write(b, "_Union()\n")
 	buf.Write(b, "}\n")
 	return buf.String(b)
 }
 
 func csToConformMethod(uname string, method string, cas NameTypePair) string {
-	csname := unionCSName(uname, cas.name)
+	csname := unionCSName(uname, cas.Name)
 	return ((("func (" + csname) + ") ") + method)
 }
 
 func udCSConformMethods(ud UnionDef) string {
-	method := (ud.name + "_Union(){}\n")
-	return frt.Pipe(frt.Pipe(ud.cases, (func(_r0 []NameTypePair) []string {
-		return slice.Map((func(_r0 NameTypePair) string { return csToConformMethod(ud.name, method, _r0) }), _r0)
+	method := (ud.Name + "_Union(){}\n")
+	return frt.Pipe(frt.Pipe(ud.Cases, (func(_r0 []NameTypePair) []string {
+		return slice.Map((func(_r0 NameTypePair) string { return csToConformMethod(ud.Name, method, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) }))
 }
 
 func udCSDef(ud UnionDef, cas NameTypePair) string {
 	b := buf.New()
 	buf.Write(b, "type ")
-	frt.PipeUnit(unionCSName(ud.name, cas.name), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(unionCSName(ud.Name, cas.Name), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, " struct {\n")
-	frt.IfOnly(frt.OpNotEqual(cas.ftype, New_FType_FUnit), (func() {
+	frt.IfOnly(frt.OpNotEqual(cas.Ftype, New_FType_FUnit), (func() {
 		buf.Write(b, "  Value ")
-		frt.PipeUnit(FTypeToGo(cas.ftype), (func(_r0 string) { buf.Write(b, _r0) }))
+		frt.PipeUnit(FTypeToGo(cas.Ftype), (func(_r0 string) { buf.Write(b, _r0) }))
 		buf.Write(b, "\n")
 	}))
 	buf.Write(b, "}\n")
@@ -114,7 +114,7 @@ func udCSDef(ud UnionDef, cas NameTypePair) string {
 }
 
 func csConstructorName(unionName string, cas NameTypePair) string {
-	return ("New_" + unionCSName(unionName, cas.name))
+	return ("New_" + unionCSName(unionName, cas.Name))
 }
 
 func csConstructFunc(uname string, cas NameTypePair) string {
@@ -122,11 +122,11 @@ func csConstructFunc(uname string, cas NameTypePair) string {
 	buf.Write(b, "func ")
 	frt.PipeUnit(csConstructorName(uname, cas), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "(v ")
-	frt.PipeUnit(FTypeToGo(cas.ftype), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(FTypeToGo(cas.Ftype), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ") ")
 	buf.Write(b, uname)
 	buf.Write(b, " { return ")
-	buf.Write(b, unionCSName(uname, cas.name))
+	buf.Write(b, unionCSName(uname, cas.Name))
 	buf.Write(b, "{v} }\n")
 	return buf.String(b)
 }
@@ -138,13 +138,13 @@ func csConstructVar(uname string, cas NameTypePair) string {
 	buf.Write(b, " ")
 	buf.Write(b, uname)
 	buf.Write(b, " = ")
-	buf.Write(b, unionCSName(uname, cas.name))
+	buf.Write(b, unionCSName(uname, cas.Name))
 	buf.Write(b, "{}\n")
 	return buf.String(b)
 }
 
 func csConstruct(uname string, cas NameTypePair) string {
-	return frt.IfElse(frt.OpEqual(cas.ftype, New_FType_FUnit), (func() string {
+	return frt.IfElse(frt.OpEqual(cas.Ftype, New_FType_FUnit), (func() string {
 		return csConstructVar(uname, cas)
 	}), (func() string {
 		return csConstructFunc(uname, cas)
@@ -153,7 +153,7 @@ func csConstruct(uname string, cas NameTypePair) string {
 
 func caseToGo(ud UnionDef, cas NameTypePair) string {
 	sdf := udCSDef(ud, cas)
-	csdf := csConstruct(ud.name, cas)
+	csdf := csConstruct(ud.Name, cas)
 	return (((sdf + "\n") + csdf) + "\n")
 }
 
@@ -163,7 +163,7 @@ func udfToGo(ud UnionDef) string {
 	buf.Write(b, "\n")
 	frt.PipeUnit(udCSConformMethods(ud), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n")
-	frt.PipeUnit(frt.Pipe(frt.Pipe(ud.cases, (func(_r0 []NameTypePair) []string {
+	frt.PipeUnit(frt.Pipe(frt.Pipe(ud.Cases, (func(_r0 []NameTypePair) []string {
 		return slice.Map((func(_r0 NameTypePair) string { return caseToGo(ud, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	return buf.String(b)
@@ -183,7 +183,7 @@ func dsToGo(ds DefStmt) string {
 }
 
 func mdToGo(md MultipleDefs) string {
-	return frt.Pipe(frt.Pipe(md.defs, (func(_r0 []DefStmt) []string { return slice.Map(dsToGo, _r0) })), (func(_r0 []string) string { return strings.Concat("\n", _r0) }))
+	return frt.Pipe(frt.Pipe(md.Defs, (func(_r0 []DefStmt) []string { return slice.Map(dsToGo, _r0) })), (func(_r0 []string) string { return strings.Concat("\n", _r0) }))
 }
 
 func StmtToGo(stmt Stmt) string {

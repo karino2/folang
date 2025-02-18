@@ -17,27 +17,27 @@ func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 		return transTV(tv)
 	case FType_FSlice:
 		ts := _v253.Value
-		et := recurse(ts.elemType)
-		return New_FType_FSlice(SliceType{elemType: et})
+		et := recurse(ts.ElemType)
+		return New_FType_FSlice(SliceType{ElemType: et})
 	case FType_FTuple:
 		ftup := _v253.Value
-		nts := slice.Map(recurse, ftup.elemTypes)
-		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
+		nts := slice.Map(recurse, ftup.ElemTypes)
+		return frt.Pipe(TupleType{ElemTypes: nts}, New_FType_FTuple)
 	case FType_FFieldAccess:
 		fa := _v253.Value
-		nrec := recurse(fa.recType)
-		return frt.Pipe(FieldAccessType{recType: nrec, fieldName: fa.fieldName}, faResolve)
+		nrec := recurse(fa.RecType)
+		return frt.Pipe(FieldAccessType{RecType: nrec, FieldName: fa.FieldName}, faResolve)
 	case FType_FFunc:
 		fnt := _v253.Value
-		nts := slice.Map(recurse, fnt.targets)
-		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
+		nts := slice.Map(recurse, fnt.Targets)
+		return frt.Pipe(FuncType{Targets: nts}, New_FType_FFunc)
 	default:
 		return ftp
 	}
 }
 
 func tpReplaceOne(tvd TypeVarDict, tv TypeVar) FType {
-	return frt.Pipe(tvdLookupNF(tvd, tv.name), New_FType_FTypeVar)
+	return frt.Pipe(tvdLookupNF(tvd, tv.Name), New_FType_FTypeVar)
 }
 
 func tpreplace(tvd TypeVarDict, ft FType) FType {
@@ -45,25 +45,25 @@ func tpreplace(tvd TypeVarDict, ft FType) FType {
 }
 
 func GenFunc(ff FuncFactory, tvgen func() TypeVar) FuncType {
-	tvd := frt.Pipe(slice.Map((func(_r0 string) frt.Tuple2[string, TypeVar] { return tpname2tvtp(tvgen, _r0) }), ff.tparams), toTVDict)
-	ntargets := slice.Map((func(_r0 FType) FType { return tpreplace(tvd, _r0) }), ff.targets)
-	return FuncType{targets: ntargets}
+	tvd := frt.Pipe(slice.Map((func(_r0 string) frt.Tuple2[string, TypeVar] { return tpname2tvtp(tvgen, _r0) }), ff.Tparams), toTVDict)
+	ntargets := slice.Map((func(_r0 FType) FType { return tpreplace(tvd, _r0) }), ff.Targets)
+	return FuncType{Targets: ntargets}
 }
 
 func GenFuncVar(vname string, ff FuncFactory, tvgen func() TypeVar) Var {
 	funct := GenFunc(ff, tvgen)
 	ft := New_FType_FFunc(funct)
-	return Var{name: vname, ftype: ft}
+	return Var{Name: vname, Ftype: ft}
 }
 
 func genBuiltinFunCall(tvgen func() TypeVar, fname string, tpnames []string, targetTPs []FType, args []Expr) Expr {
-	ff := FuncFactory{tparams: tpnames, targets: targetTPs}
+	ff := FuncFactory{Tparams: tpnames, Targets: targetTPs}
 	fvar := GenFuncVar(fname, ff, tvgen)
-	return frt.Pipe(FunCall{targetFunc: fvar, args: args}, New_Expr_EFunCall)
+	return frt.Pipe(FunCall{TargetFunc: fvar, Args: args}, New_Expr_EFunCall)
 }
 
 func newTvf(name string) FType {
-	return frt.Pipe(TypeVar{name: name}, New_FType_FTypeVar)
+	return frt.Pipe(TypeVar{Name: name}, New_FType_FTypeVar)
 }
 
 type TypeDefCtx struct {
@@ -172,7 +172,7 @@ func psInsideTypeDef(ps ParseState) bool {
 func tdctxTVFAlloc(tdctx TypeDefCtx, name string) FType {
 	gen := tvaToTypeVarGen(tdctx.tva)
 	tvar := gen()
-	sdPut(tdctx.allocedDict, tvar.name, name)
+	sdPut(tdctx.allocedDict, tvar.Name, name)
 	return frt.Pipe(tvar, New_FType_FTypeVar)
 }
 
@@ -295,42 +295,42 @@ func udToFUt(ud UnionDef) FType {
 }
 
 func csRegisterCtor(sc Scope, ud UnionDef, cas NameTypePair) {
-	ctorName := csConstructorName(ud.name, cas)
+	ctorName := csConstructorName(ud.Name, cas)
 	ut := udToFUt(ud)
 	v := (func() Var {
-		switch (cas.ftype).(type) {
+		switch (cas.Ftype).(type) {
 		case FType_FUnit:
-			return Var{name: ctorName, ftype: ut}
+			return Var{Name: ctorName, Ftype: ut}
 		default:
-			tps := ([]FType{cas.ftype, ut})
-			funcTp := New_FType_FFunc(FuncType{targets: tps})
-			return Var{name: ctorName, ftype: funcTp}
+			tps := ([]FType{cas.Ftype, ut})
+			funcTp := New_FType_FFunc(FuncType{Targets: tps})
+			return Var{Name: ctorName, Ftype: funcTp}
 		}
 	})()
-	scDefVar(sc, cas.name, v)
+	scDefVar(sc, cas.Name, v)
 }
 
 func udRegisterCsCtors(sc Scope, ud UnionDef) {
-	frt.PipeUnit(ud.cases, (func(_r0 []NameTypePair) { slice.Iter((func(_r0 NameTypePair) { csRegisterCtor(sc, ud, _r0) }), _r0) }))
+	frt.PipeUnit(ud.Cases, (func(_r0 []NameTypePair) { slice.Iter((func(_r0 NameTypePair) { csRegisterCtor(sc, ud, _r0) }), _r0) }))
 }
 
 func piFullName(pi PackageInfo, name string) string {
-	return frt.IfElse(frt.OpEqual(pi.name, "_"), (func() string {
+	return frt.IfElse(frt.OpEqual(pi.Name, "_"), (func() string {
 		return name
 	}), (func() string {
-		return ((pi.name + ".") + name)
+		return ((pi.Name + ".") + name)
 	}))
 }
 
 func piRegEType(pi PackageInfo, tname string) FType {
 	fullName := piFullName(pi, tname)
 	etype := New_FType_FExtType(fullName)
-	etdPut(pi.typeInfo, tname, fullName)
+	etdPut(pi.TypeInfo, tname, fullName)
 	return etype
 }
 
 func piRegFF(pi PackageInfo, fname string, ff FuncFactory, ps ParseState) ParseState {
-	ffdPut(pi.funcInfo, fname, ff)
+	ffdPut(pi.FuncInfo, fname, ff)
 	scRegisterVarFac(ps.scope, fname, (func(_r0 func() TypeVar) Var { return GenFuncVar(fname, ff, _r0) }))
 	return ps
 }
@@ -347,18 +347,18 @@ func regET(sc Scope, etp frt.Tuple2[string, string]) {
 }
 
 func piRegAll(pi PackageInfo, sc Scope) {
-	frt.PipeUnit(ffdKVs(pi.funcInfo), (func(_r0 []frt.Tuple2[string, FuncFactory]) {
+	frt.PipeUnit(ffdKVs(pi.FuncInfo), (func(_r0 []frt.Tuple2[string, FuncFactory]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, FuncFactory]) { regFF(pi, sc, _r0) }), _r0)
 	}))
-	frt.PipeUnit(etdKVs(pi.typeInfo), (func(_r0 []frt.Tuple2[string, string]) {
+	frt.PipeUnit(etdKVs(pi.TypeInfo), (func(_r0 []frt.Tuple2[string, string]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, string]) { regET(sc, _r0) }), _r0)
 	}))
 }
 
 type BinOpInfo struct {
-	precedence int
-	goFuncName string
-	isBoolOp   bool
+	Precedence int
+	GoFuncName string
+	IsBoolOp   bool
 }
 
 func newEqNeq(tvgen func() TypeVar, goFname string, lhs Expr, rhs Expr) Expr {
@@ -375,7 +375,7 @@ func newPipeCallNormal(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	t1type := newTvf(t1name)
 	t2name := "T2"
 	t2type := newTvf(t2name)
-	secFncT := New_FType_FFunc(FuncType{targets: ([]FType{t1type, t2type})})
+	secFncT := New_FType_FFunc(FuncType{Targets: ([]FType{t1type, t2type})})
 	names := ([]string{t1name, t2name})
 	tps := ([]FType{t1type, secFncT, t2type})
 	args := ([]Expr{lhs, rhs})
@@ -385,7 +385,7 @@ func newPipeCallNormal(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	t1name := "T1"
 	t1type := newTvf(t1name)
-	secFncT := New_FType_FFunc(FuncType{targets: ([]FType{t1type, New_FType_FUnit})})
+	secFncT := New_FType_FFunc(FuncType{Targets: ([]FType{t1type, New_FType_FUnit})})
 	names := ([]string{t1name})
 	tps := ([]FType{t1type, secFncT, New_FType_FUnit})
 	args := ([]Expr{lhs, rhs})
@@ -409,12 +409,12 @@ func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 }
 
 func newBinOpNormal(binfo BinOpInfo, lhs Expr, rhs Expr) Expr {
-	rtype := frt.IfElse(binfo.isBoolOp, (func() FType {
+	rtype := frt.IfElse(binfo.IsBoolOp, (func() FType {
 		return New_FType_FBool
 	}), (func() FType {
 		return ExprToType(rhs)
 	}))
-	return frt.Pipe(BinOpCall{op: binfo.goFuncName, rtype: rtype, lhs: lhs, rhs: rhs}, New_Expr_EBinOpCall)
+	return frt.Pipe(BinOpCall{Op: binfo.GoFuncName, Rtype: rtype, Lhs: lhs, Rhs: rhs}, New_Expr_EBinOpCall)
 }
 
 func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr, rhs Expr) Expr {
@@ -422,9 +422,9 @@ func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr,
 	case TokenType_PIPE:
 		return newPipeCall(tvgen, lhs, rhs)
 	case TokenType_EQ:
-		return newEqNeq(tvgen, binfo.goFuncName, lhs, rhs)
+		return newEqNeq(tvgen, binfo.GoFuncName, lhs, rhs)
 	case TokenType_BRACKET:
-		return newEqNeq(tvgen, binfo.goFuncName, lhs, rhs)
+		return newEqNeq(tvgen, binfo.GoFuncName, lhs, rhs)
 	default:
 		return newBinOpNormal(binfo, lhs, rhs)
 	}
@@ -432,7 +432,7 @@ func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr,
 
 func newFnTp(argType FType, retType FType) FType {
 	tgs := ([]FType{argType, retType})
-	return frt.Pipe(FuncType{targets: tgs}, New_FType_FFunc)
+	return frt.Pipe(FuncType{Targets: tgs}, New_FType_FFunc)
 }
 
 func emptySS() []string {
@@ -440,8 +440,8 @@ func emptySS() []string {
 }
 
 func newIfElseCall(tvgen func() TypeVar, cond Expr, tbody Block, fbody Block) Expr {
-	ltbody := frt.Pipe(LazyBlock{block: tbody}, New_Expr_ELazyBlock)
-	lfbody := frt.Pipe(LazyBlock{block: fbody}, New_Expr_ELazyBlock)
+	ltbody := frt.Pipe(LazyBlock{Block: tbody}, New_Expr_ELazyBlock)
+	lfbody := frt.Pipe(LazyBlock{Block: fbody}, New_Expr_ELazyBlock)
 	retType := blockReturnType(ExprToType, tbody)
 	fname := (func() string {
 		switch (retType).(type) {
@@ -459,7 +459,7 @@ func newIfElseCall(tvgen func() TypeVar, cond Expr, tbody Block, fbody Block) Ex
 }
 
 func newIfOnlyCall(tvgen func() TypeVar, cond Expr, tbody Block) Expr {
-	ltbody := frt.Pipe(LazyBlock{block: tbody}, New_Expr_ELazyBlock)
+	ltbody := frt.Pipe(LazyBlock{Block: tbody}, New_Expr_ELazyBlock)
 	emptyS := emptySS()
 	args := ([]Expr{cond, ltbody})
 	ft := newFnTp(New_FType_FUnit, New_FType_FUnit)
@@ -481,23 +481,23 @@ func rdToRecType(rd RecordDef) RecordType {
 func psRegRecDefToTDCtx(rd RecordDef, ps ParseState) {
 	recT := rdToRecType(rd)
 	scRegisterRecType(ps.scope, recT)
-	tdPut(ps.tdctx.defined, recT.name, New_FType_FRecord(recT))
+	tdPut(ps.tdctx.defined, recT.Name, New_FType_FRecord(recT))
 }
 
 func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
 	sc := ps.scope
 	udRegisterCsCtors(sc, ud)
 	fut := udToFUt(ud)
-	scRegisterType(sc, ud.name, fut)
-	tdPut(ps.tdctx.defined, ud.name, fut)
+	scRegisterType(sc, ud.Name, fut)
+	tdPut(ps.tdctx.defined, ud.Name, fut)
 }
 
 func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
-	switch _v259 := (ntp.ftype).(type) {
+	switch _v259 := (ntp.Ftype).(type) {
 	case FType_FTypeVar:
 		tv := _v259.Value
 		nt := transV(tv)
-		return NameTypePair{name: ntp.name, ftype: nt}
+		return NameTypePair{Name: ntp.Name, Ftype: nt}
 	default:
 		return ntp
 	}
@@ -507,19 +507,19 @@ func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
 	switch _v260 := (df).(type) {
 	case DefStmt_DRecordDef:
 		rd := _v260.Value
-		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), rd.fields)
-		return frt.Pipe(RecordDef{name: rd.name, fields: nfields}, New_DefStmt_DRecordDef)
+		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), rd.Fields)
+		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
 		ud := _v260.Value
-		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), ud.cases)
-		return frt.Pipe(UnionDef{name: ud.name, cases: ncases}, New_DefStmt_DUnionDef)
+		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), ud.Cases)
+		return frt.Pipe(UnionDef{Name: ud.Name, Cases: ncases}, New_DefStmt_DUnionDef)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
 }
 
 func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
-	rname, ok := frt.Destr(sdLookup(tdctx.allocedDict, tv.name))
+	rname, ok := frt.Destr(sdLookup(tdctx.allocedDict, tv.Name))
 	return frt.IfElse(ok, (func() FType {
 		nt, ok2 := frt.Destr(tdLookup(tdctx.defined, rname))
 		return frt.IfElse(ok2, (func() FType {
@@ -534,13 +534,13 @@ func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
 }
 
 func resolveFwrdDecl(md MultipleDefs, ps ParseState) MultipleDefs {
-	return frt.IfElse(frt.OpEqual(slice.Length(md.defs), 1), (func() MultipleDefs {
+	return frt.IfElse(frt.OpEqual(slice.Length(md.Defs), 1), (func() MultipleDefs {
 		return md
 	}), (func() MultipleDefs {
 		transV := (func(_r0 TypeVar) FType { return transVByTDCtx(ps.tdctx, _r0) })
 		transD := (func(_r0 DefStmt) DefStmt { return transDefStmt(transV, _r0) })
-		ndefs := slice.Map(transD, md.defs)
-		return MultipleDefs{defs: ndefs}
+		ndefs := slice.Map(transD, md.Defs)
+		return MultipleDefs{Defs: ndefs}
 	}))
 }
 
@@ -553,12 +553,12 @@ func scRegDefStmtType(sc Scope, df DefStmt) {
 		ud := _v261.Value
 		udRegisterCsCtors(sc, ud)
 		fut := udToFUt(ud)
-		scRegisterType(sc, ud.name, fut)
+		scRegisterType(sc, ud.Name, fut)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
 }
 
 func psRegMdTypes(md MultipleDefs, ps ParseState) {
-	slice.Iter((func(_r0 DefStmt) { scRegDefStmtType(ps.scope, _r0) }), md.defs)
+	slice.Iter((func(_r0 DefStmt) { scRegDefStmtType(ps.scope, _r0) }), md.Defs)
 }

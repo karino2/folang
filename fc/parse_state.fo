@@ -27,46 +27,46 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
   match ftp with
   | FTypeVar tv -> transTV tv
   | FSlice ts ->
-    let et = recurse ts.elemType
-    FSlice {SliceType.elemType = et}
+    let et = recurse ts.ElemType
+    FSlice {SliceType.ElemType = et}
   | FTuple ftup ->
-    let nts = slice.Map recurse ftup.elemTypes
-    {TupleType.elemTypes=nts}
+    let nts = slice.Map recurse ftup.ElemTypes
+    {TupleType.ElemTypes=nts}
     |> FTuple
   | FFieldAccess fa ->
-    let nrec = recurse fa.recType
-    {recType=nrec; fieldName=fa.fieldName}
+    let nrec = recurse fa.RecType
+    {RecType=nrec; FieldName=fa.FieldName}
     |> faResolve
   | FFunc fnt ->
-    let nts = slice.Map recurse fnt.targets
-    {FuncType.targets=nts}
+    let nts = slice.Map recurse fnt.Targets
+    {FuncType.Targets=nts}
     |> FFunc
   | _ -> ftp
 
 let tpReplaceOne (tvd:TypeVarDict) (tv:TypeVar) =
-  tvdLookupNF tvd tv.name |> FTypeVar
+  tvdLookupNF tvd tv.Name |> FTypeVar
 
 let tpreplace (tvd:TypeVarDict) (ft:FType) =
   transTypeVarFType (tpReplaceOne tvd) ft
 
 let GenFunc (ff:FuncFactory) (tvgen: ()->TypeVar) =
-  let tvd = slice.Map (tpname2tvtp tvgen) ff.tparams |> toTVDict
-  let ntargets = slice.Map (tpreplace tvd) ff.targets
-  {FuncType.targets=ntargets}
+  let tvd = slice.Map (tpname2tvtp tvgen) ff.Tparams |> toTVDict
+  let ntargets = slice.Map (tpreplace tvd) ff.Targets
+  {FuncType.Targets=ntargets}
 
 let GenFuncVar (vname:string) (ff:FuncFactory) (tvgen: ()->TypeVar) =
   let funct = GenFunc ff tvgen
   let ft = FFunc funct
-  {Var.name=vname; ftype=ft}
+  {Var.Name=vname; Ftype=ft}
 
 let genBuiltinFunCall (tvgen: ()->TypeVar) (fname:string) (tpnames: []string) (targetTPs:[]FType) (args:[]Expr) =
-  let ff = {tparams=tpnames; targets=targetTPs}
+  let ff = {Tparams=tpnames; Targets=targetTPs}
   let fvar = GenFuncVar fname ff tvgen
-  {targetFunc=fvar; args=args}
+  {TargetFunc=fvar; Args=args}
   |> EFunCall
 
 let newTvf (name:string) =
-   {TypeVar.name=name}
+   {TypeVar.Name=name}
    |> FTypeVar
 
 
@@ -208,7 +208,7 @@ let psInsideTypeDef (ps:ParseState) =
 let tdctxTVFAlloc (tdctx:TypeDefCtx) (name:string) =
   let gen = tvaToTypeVarGen tdctx.tva
   let tvar = gen ()
-  sdPut tdctx.allocedDict tvar.name name
+  sdPut tdctx.allocedDict tvar.Name name
   tvar |> FTypeVar
 
 
@@ -319,19 +319,19 @@ let udToFUt (ud:UnionDef) =
 let csConstructorName  (unionName: string) (cas: NameTypePair) =
 */
 let csRegisterCtor (sc:Scope) (ud: UnionDef) (cas: NameTypePair) =
-  let ctorName = csConstructorName ud.name cas
+  let ctorName = csConstructorName ud.Name cas
   let ut = udToFUt ud
-  let v = match cas.ftype with
+  let v = match cas.Ftype with
           | FUnit ->
-            {Var.name=ctorName; ftype=ut}
+            {Var.Name=ctorName; Ftype=ut}
           | _ ->
-            let tps = [cas.ftype; ut]
-            let funcTp = FFunc {targets=tps}
-            {Var.name=ctorName; ftype=funcTp}
-  scDefVar sc cas.name v
+            let tps = [cas.Ftype; ut]
+            let funcTp = FFunc {Targets=tps}
+            {Var.Name=ctorName; Ftype=funcTp}
+  scDefVar sc cas.Name v
 
 let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
-  ud.cases |> slice.Iter (csRegisterCtor sc ud)
+  ud.Cases |> slice.Iter (csRegisterCtor sc ud)
 
 
 /*
@@ -345,20 +345,20 @@ package_info _ =
   let etdKVs: extTypeDict->[]string*string
 
 let piFullName (pi:PackageInfo) (name:string) =
-  if pi.name = "_" then
+  if pi.Name = "_" then
     name
   else
-    pi.name + "." + name
+    pi.Name + "." + name
 
 let piRegEType (pi:PackageInfo) (tname:string) =
   let fullName = piFullName pi tname
   let etype = FExtType fullName
-  etdPut pi.typeInfo tname fullName
+  etdPut pi.TypeInfo tname fullName
   etype
 
 // register function factory
 let piRegFF (pi:PackageInfo) (fname:string) (ff:FuncFactory) (ps:ParseState) =
-  ffdPut pi.funcInfo fname ff
+  ffdPut pi.FuncInfo fname ff
   scRegisterVarFac ps.scope fname (GenFuncVar fname ff)
   ps
 
@@ -376,16 +376,16 @@ let regET (sc:Scope) (etp:string*string) =
   PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
 */
 let piRegAll (pi:PackageInfo) (sc:Scope) =
-  ffdKVs pi.funcInfo
+  ffdKVs pi.FuncInfo
   |> slice.Iter (regFF pi sc)
-  etdKVs pi.typeInfo
+  etdKVs pi.TypeInfo
   |> slice.Iter (regET sc)
 
 /*
   BinOp related
 */
 
-type BinOpInfo = {precedence: int; goFuncName: string; isBoolOp: bool}
+type BinOpInfo = {Precedence: int; GoFuncName: string; IsBoolOp: bool}
 
 package_info _ =
   let lookupBinOp: TokenType->BinOpInfo*bool
@@ -408,7 +408,7 @@ let newPipeCallNormal (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =
   let t1type = newTvf t1name
   let t2name = "T2"
   let t2type = newTvf t2name
-  let secFncT = FFunc {FuncType.targets=[t1type;t2type]}
+  let secFncT = FFunc {FuncType.Targets=[t1type;t2type]}
   let names =  [t1name; t2name]
   let tps = [t1type; secFncT; t2type]
   let args = [lhs;rhs]
@@ -420,7 +420,7 @@ frt.PipeUnit<T>: T->(T->())->()
 let newPipeCallUnit (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
   let t1name = "T1"
   let t1type = newTvf t1name
-  let secFncT = FFunc {FuncType.targets=[t1type;FUnit]}
+  let secFncT = FFunc {FuncType.Targets=[t1type;FUnit]}
   let names =  [t1name]
   let tps = [t1type; secFncT; FUnit]
   let args = [lhs;rhs]
@@ -447,20 +447,20 @@ let newPipeCall (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =
 
 // BinOpCall = {op: string; rtype: FType; lhs: Expr; rhs: Expr}
 let newBinOpNormal (binfo:BinOpInfo) (lhs: Expr) (rhs:Expr) =
-  let rtype = if binfo.isBoolOp then FBool else (ExprToType rhs)
-  {op=binfo.goFuncName; rtype=rtype; lhs=lhs; rhs=rhs}
+  let rtype = if binfo.IsBoolOp then FBool else (ExprToType rhs)
+  {Op=binfo.GoFuncName; Rtype=rtype; Lhs=lhs; Rhs=rhs}
   |> EBinOpCall
 
 let newBinOpCall (tvgen: ()->TypeVar) (tk:TokenType) (binfo: BinOpInfo) (lhs: Expr) (rhs:Expr) =
   match tk with
   | PIPE -> newPipeCall tvgen lhs rhs
-  | EQ -> newEqNeq tvgen binfo.goFuncName lhs rhs
-  | BRACKET -> newEqNeq tvgen binfo.goFuncName lhs rhs
+  | EQ -> newEqNeq tvgen binfo.GoFuncName lhs rhs
+  | BRACKET -> newEqNeq tvgen binfo.GoFuncName lhs rhs
   | _ -> newBinOpNormal binfo lhs rhs
 
 let newFnTp (argType:FType) (retType:FType) =
   let tgs = [argType;retType]
-  {FuncType.targets=tgs}
+  {FuncType.Targets=tgs}
   |> FFunc
 
 let emptySS () =
@@ -470,8 +470,8 @@ let emptySS () =
   if else call.
 */
 let newIfElseCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) (fbody: Block) =
-  let ltbody = {LazyBlock.block=tbody} |> ELazyBlock
-  let lfbody = {LazyBlock.block=fbody} |> ELazyBlock
+  let ltbody = {LazyBlock.Block=tbody} |> ELazyBlock
+  let lfbody = {LazyBlock.Block=fbody} |> ELazyBlock
   let retType = blockReturnType ExprToType tbody
   let fname = match retType with
               | FUnit -> "frt.IfElseUnit"
@@ -483,7 +483,7 @@ let newIfElseCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) (fbody: Block
   genBuiltinFunCall tvgen fname emptyS tps args
   
 let newIfOnlyCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) =
-  let ltbody = {LazyBlock.block=tbody} |> ELazyBlock
+  let ltbody = {LazyBlock.Block=tbody} |> ELazyBlock
   let emptyS = emptySS ()
   let args = [cond; ltbody]
   let ft = newFnTp FUnit FUnit
@@ -504,45 +504,45 @@ let newUnaryNotCall (tvgen: ()->TypeVar) (cond: Expr) =
 let rdToRecType (rd:RecordDef) =
   // golang complaint:
   // S1016 - Use a type conversion instead of manually copying struct fields 
-  // {RecordType.name=rd.name; fields=rd.fields}
+  // {RecordType.Name=rd.Name; Fields=rd.Fields}
   GoEval<RecordType> "RecordType(rd)"
 
 let psRegRecDefToTDCtx (rd:RecordDef) (ps:ParseState) =
   let recT = rdToRecType rd
   scRegisterRecType ps.scope recT
-  tdPut ps.tdctx.defined recT.name (FRecord recT)
+  tdPut ps.tdctx.defined recT.Name (FRecord recT)
 
 let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
   let sc = ps.scope
   udRegisterCsCtors sc ud
   let fut = udToFUt ud
-  scRegisterType sc ud.name fut
-  tdPut ps.tdctx.defined ud.name fut
+  scRegisterType sc ud.Name fut
+  tdPut ps.tdctx.defined ud.Name fut
 
 /*
   MultipleDefs resolve forward declaration, etc.
 */
 let transVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
-  match ntp.ftype with
+  match ntp.Ftype with
   | FTypeVar tv ->
     let nt = transV tv
-    {NameTypePair.name=ntp.name; ftype=nt}
+    {NameTypePair.Name=ntp.Name; Ftype=nt}
   | _ ->
     ntp
 
 let transDefStmt (transV: TypeVar->FType) (df: DefStmt) =
   match df with
   | DRecordDef rd ->
-    let nfields = slice.Map (transVNTPair transV) rd.fields
-    {RecordDef.name=rd.name; fields=nfields}
+    let nfields = slice.Map (transVNTPair transV) rd.Fields
+    {RecordDef.Name=rd.Name; Fields=nfields}
     |> DRecordDef
   | DUnionDef ud ->
-    let ncases = slice.Map (transVNTPair transV) ud.cases
-    {UnionDef.name=ud.name; cases=ncases}
+    let ncases = slice.Map (transVNTPair transV) ud.Cases
+    {UnionDef.Name=ud.Name; Cases=ncases}
     |> DUnionDef
 
 let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
-  let (rname, ok) = sdLookup tdctx.allocedDict tv.name
+  let (rname, ok) = sdLookup tdctx.allocedDict tv.Name
   if ok then
     let (nt, ok2) = tdLookup tdctx.defined rname
     if ok2 then
@@ -554,13 +554,13 @@ let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
     FTypeVar tv
 
 let resolveFwrdDecl (md:MultipleDefs) (ps:ParseState) =
-  if (slice.Length md.defs) = 1 then
+  if (slice.Length md.Defs) = 1 then
     md
   else
     let transV = transVByTDCtx ps.tdctx
     let transD = transDefStmt transV
-    let ndefs = slice.Map transD md.defs
-    {defs=ndefs}
+    let ndefs = slice.Map transD md.Defs
+    {Defs=ndefs}
 
 let scRegDefStmtType (sc:Scope) (df: DefStmt) =
   match df with
@@ -570,9 +570,9 @@ let scRegDefStmtType (sc:Scope) (df: DefStmt) =
   | DUnionDef ud ->
     udRegisterCsCtors sc ud
     let fut = udToFUt ud
-    scRegisterType sc ud.name fut
+    scRegisterType sc ud.Name fut
 
 
 let psRegMdTypes (md:MultipleDefs) (ps:ParseState) =
-  slice.Iter (scRegDefStmtType ps.scope) md.defs
+  slice.Iter (scRegDefStmtType ps.scope) md.Defs
 

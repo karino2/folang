@@ -16,11 +16,15 @@ func newFInt() FType {
 	return New_FType_FInt
 }
 
+func uniRel(tname string, tp FType) UniRel {
+	return UniRel{tname, tp}
+}
+
 func TestBuildResolver(t *testing.T) {
 	rels := []UniRel{
-		{"_T3", newTVF("_T1")},
-		{"_T2", newTVF("_T1")},
-		{"_T2", newFInt()},
+		uniRel("_T3", newTVF("_T1")),
+		uniRel("_T2", newTVF("_T1")),
+		uniRel("_T2", newFInt()),
 	}
 	resv := buildResolver(rels)
 	got := resolveType(resv, newTVF("_T3"))

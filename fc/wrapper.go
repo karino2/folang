@@ -457,7 +457,7 @@ func scLookupVarFac(s Scope, name string) frt.Tuple2[func(func() TypeVar) Var, b
 }
 
 func scRegisterRecType(s Scope, recType RecordType) {
-	rname := recType.name
+	rname := recType.Name
 	s.recordMap[rname] = recType
 	s.typeMap[rname] = New_FType_FRecord(recType)
 }
@@ -564,6 +564,9 @@ func (tva *typeVarAllocator) Reset() {
 func (tva *typeVarAllocator) genVarName() string {
 	vname := fmt.Sprintf("%s%d", tva.prefix, tva.seqId)
 	tva.seqId++
+	if tva.seqId > 100 {
+		panic("Too many type var alloc.")
+	}
 	return vname
 }
 
@@ -620,7 +623,7 @@ func newEquivSet0() EquivSet {
 
 func NewEquivSet(itype TypeVar) EquivSet {
 	s := newEquivSet0()
-	s.dict[itype.name] = true
+	s.dict[itype.Name] = true
 	return s
 }
 
@@ -726,7 +729,14 @@ func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
 }
 
 func ParseAll(ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
-	return parseRootStmts(parseExprFacade, ps)
+	var res []RootStmt
+	var stmt RootStmt
+	ps2 := ps
+	for !IsParseEnd(ps2) {
+		ps2, stmt = frt.Destr(ParseStmtOne(parseExprFacade, ps2))
+		res = append(res, stmt)
+	}
+	return frt.NewTuple2(ps2, res)
 }
 
 // for test backward compat.

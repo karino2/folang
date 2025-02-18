@@ -51,11 +51,11 @@ func TestRecordGetField(t *testing.T) {
 	rec := RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}
 	hpair := frGetField(rec, "hoge")
 	ipair := frGetField(rec, "ika")
-	if hpair.name != "hoge" || hpair.ftype != New_FType_FString {
+	if hpair.Name != "hoge" || hpair.Ftype != New_FType_FString {
 		t.Errorf("wrong hoge field: %v", hpair)
 	}
 
-	if ipair.name != "ika" || ipair.ftype != New_FType_FInt {
+	if ipair.Name != "ika" || ipair.Ftype != New_FType_FInt {
 		t.Errorf("wrong ika field: %v", hpair)
 	}
 }

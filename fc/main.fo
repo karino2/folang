@@ -20,6 +20,7 @@ package_info filepath =
 
 
 let transpileOne (parser: ParseState) (file:string) =
+  frt.Printf1 "transpile: %s\n" file
   let (src, ok) = sys.ReadFile file
   if ok then
     let (ps2, stmts) = psSetNewSrc src parser 
