@@ -1,0 +1,5 @@
+package_info sys =
+  let Args: ()->[]string
+  let ReadFile: string->string*bool
+  let WriteFile: string->string->bool
+

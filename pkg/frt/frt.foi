@@ -6,4 +6,6 @@ package_info frt =
   let Snd<T, U> : T*U->U
   let Assert : bool->string->()
   let Panic : string->()
+  let Panicf1<T>: string->T->()
+
 

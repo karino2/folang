@@ -92,3 +92,8 @@ func Assert(cond bool, msg string) {
 func Panic(msg string) {
 	panic(msg)
 }
+
+func Panicf1[T any](fmt string, arg T) {
+	msg := Sprintf1(fmt, arg)
+	panic(msg)
+}

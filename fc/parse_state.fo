@@ -152,6 +152,9 @@ let initParse (src: string) =
   let tdctx = {tva=tva2; insideTD=false; defined=defdict; allocedDict= adict}
   newParse tkz scope offside tva tdctx
 
+let psSetNewSrc (src: string) (ps:ParseState) =
+  let tkz = newTkz src
+  psWithTkz ps tkz
 
 let psTypeVarGen (ps:ParseState) =
   tvaToTypeVarGen ps.tva

@@ -6,6 +6,8 @@ package_info frt =
   let Snd<T, U> : T*U->U
   let Assert : bool->string->()
   let Panic : string->()
+  let Panicf1<T>: string->T->()
+
 
 package_info buf =
   type Buffer
@@ -40,4 +42,10 @@ package_info strings =
   let Concat: string->[]string->string
   let Length: string->int
   let AppendTail: string->string->string
+  let HasSuffix: string->string->bool
+  let TrimSuffix: string->string->string
+package_info sys =
+  let Args: ()->[]string
+  let ReadFile: string->string*bool
+  let WriteFile: string->string->bool
 

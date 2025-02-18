@@ -20,3 +20,5 @@ require (
 replace github.com/karino2/folang/pkg/slice => ../pkg/slice
 
 replace github.com/karino2/folang/pkg/strings => ../pkg/strings
+
+replace github.com/karino2/folang/pkg/sys => ../pkg/sys

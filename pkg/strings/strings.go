@@ -1,6 +1,9 @@
 package strings
 
-import "bytes"
+import (
+	"bytes"
+	syssr "strings"
+)
 
 func Concat(sep string, strs []string) string {
 	var buf bytes.Buffer
@@ -20,4 +23,12 @@ func Length(str string) int {
 
 func AppendTail(tail string, s string) string {
 	return s + tail
+}
+
+func HasSuffix(suffix string, s string) bool {
+	return syssr.HasSuffix(s, suffix)
+}
+
+func TrimSuffix(suffix string, s string) string {
+	return syssr.TrimSuffix(s, suffix)
 }

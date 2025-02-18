@@ -109,6 +109,11 @@ func initParse(src string) ParseState {
 	return newParse(tkz, scope, offside, tva, tdctx)
 }
 
+func psSetNewSrc(src string, ps ParseState) ParseState {
+	tkz := newTkz(src)
+	return psWithTkz(ps, tkz)
+}
+
 func psTypeVarGen(ps ParseState) func() TypeVar {
 	return tvaToTypeVarGen(ps.tva)
 }

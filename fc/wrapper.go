@@ -436,9 +436,6 @@ func scRegisterVarFac(s Scope, name string, fac func(func() TypeVar) Var) {
 	s.varFacMap[name] = fac
 }
 
-/*
- */
-
 // currently, we can't support Result because of absence of generic type.
 // We use golang style convention though F# convention is bool is first.
 func scLookupVarFac(s Scope, name string) frt.Tuple2[func(func() TypeVar) Var, bool] {
@@ -704,4 +701,30 @@ func sdPut(dic SDict, key string, v string) {
 
 func sdLookup(dic SDict, key string) frt.Tuple2[string, bool] {
 	return dictLookup(dic, key)
+}
+
+/*
+Facade:
+Resolve mutual recursive in golang layer (NYI for and letfunc def).
+*/
+func parseLetFacade(ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
+	return parseLetVarDef(parseExprFacade, ps)
+}
+
+func parseBlockFacade(ps ParseState) frt.Tuple2[ParseState, Block] {
+	return parseBlock(parseLetFacade, ps)
+}
+
+func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
+	return parseExpr(parseBlockFacade, ps)
+}
+
+func ParseAll(ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
+	return parseRootStmts(parseExprFacade, ps)
+}
+
+// for test backward compat.
+func parseAll(ps ParseState) (ParseState, []RootStmt) {
+	res := ParseAll(ps)
+	return frt.Destr(res)
 }

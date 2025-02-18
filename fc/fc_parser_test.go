@@ -3,8 +3,6 @@ package main
 import (
 	"strings"
 	"testing"
-
-	"github.com/karino2/folang/pkg/frt"
 )
 
 func TestParsePackage(t *testing.T) {
@@ -40,26 +38,6 @@ func TestParseParams(t *testing.T) {
 	if tt != New_TokenType_EQ {
 		t.Errorf("want EQ, got %T", tt)
 	}
-}
-
-/*
-Resolve mutual recursive in golang layer (NYI for and letfunc def).
-*/
-func parseLetFacade(ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
-	return parseLetVarDef(parseExprFacade, ps)
-}
-
-func parseBlockFacade(ps ParseState) frt.Tuple2[ParseState, Block] {
-	return parseBlock(parseLetFacade, ps)
-}
-
-func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
-	return parseExpr(parseBlockFacade, ps)
-}
-
-func parseAll(ps ParseState) (ParseState, []RootStmt) {
-	res := parseRootStmts(parseExprFacade, ps)
-	return frt.Destr(res)
 }
 
 func TestParseTwoFunc(t *testing.T) {
