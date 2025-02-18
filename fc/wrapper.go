@@ -328,8 +328,14 @@ func scanTokenAt(buf string, pos int) Token {
 		if isCharAt(buf, pos+1, '>') {
 			return newStLikeToken(New_TokenType_BRACKET, pos, "<>")
 		}
+		if isCharAt(buf, pos+1, '=') {
+			return newStLikeToken(New_TokenType_LE, pos, "<=")
+		}
 		return newOneCharToken(New_TokenType_LT, pos, b)
 	case b == '>':
+		if isCharAt(buf, pos+1, '=') {
+			return newStLikeToken(New_TokenType_GE, pos, ">=")
+		}
 		return newOneCharToken(New_TokenType_GT, pos, b)
 	case b == '+':
 		return newOneCharToken(New_TokenType_PLUS, pos, b)
