@@ -63,6 +63,12 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
       let (res, ok) = scLookupType ps3.scope fullName
       if ok then
         (ps4, res)
+      elif psInsideTypeDef ps4 then
+        // unknown type inside type def.
+        // This might be defined in later 'and'
+        // So return typevar of TypeVarCtx and replace later
+        let tvarf = tdctxTVFAlloc ps4.tdctx fullName
+        (ps4, tvarf)
       else
         frt.Panic("type not found.")
         (ps4, FUnit)
@@ -814,11 +820,6 @@ let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
       parseFieldDefs ps3
       |> CnvR (slice.PushHead ntp)
 
-let rdToRecType (rd:RecordDef) =
-  // golang complaint:
-  // S1016 - Use a type conversion instead of manually copying struct fields 
-  // {RecordType.name=rd.name; fields=rd.fields}
-  GoEval<RecordType> "RecordType(rd)"
 
 /*
   RECORD_DEF = '{' FIELD_DEFS '}'
@@ -828,7 +829,7 @@ let parseRecordDef (tname:string) (ps:ParseState) =
   let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE)
   let rd = {RecordDef.name=tname; fields=ntps}
   // register record typedef.
-  rdToRecType rd |> scRegisterRecType ps2.scope
+  psRegRecDefToTDCtx rd ps2
   (ps2, rd)
 
 /*
@@ -864,25 +865,51 @@ let parseCaseDefs (ps:ParseState) : ParseState*[]NameTypePair =
 let parseUnionDef (tname:string) (ps:ParseState) =
   let (ps2, css) = parseCaseDefs ps
   let ud = {UnionDef.name=tname; cases=css}
-  udRegisterToScope ps2.scope ud
+  psRegUdToTDCtx ud ps2
   (ps2, ud)
-  
 
-// TYPE_DEF = 'type' ID '=' (RECORD_DEF | UNION_DEF)
-//
-// RECORD_DEF = '{' FIELD_DEFS '}'
-//
-// UNION_DEF = '|'...
-let parseTypeDef (ps:ParseState) =
-  let (ps2, tname) = psConsume TYPE ps |> psIdentNameNxL |> CnvL (psConsume EQ) |> CnvL psSkipEOL
+let emptyDefStmt () =
+  let rd = GoEval<RecordDef> "RecordDef{}"
+  rd |> DRecordDef
+
+/*
+  TYPE_DEF_BODY = ID '=' (RECORD_DEF | UNION_DEF)
+  RECORD_DEF = '{' FIELD_DEFS '}'
+  UNION_DEF = '|'...
+*/
+let parseTypeDefBody (ps:ParseState) = 
+  let (ps2, tname) = psIdentNameNxL ps |> CnvL (psConsume EQ) |> CnvL psSkipEOL
   match psCurrentTT ps2 with
   | LBRACE ->
-    parseRecordDef tname ps2 |> CnvR DRecordDef |> CnvR RSDefStmt
+    parseRecordDef tname ps2 |> CnvR DRecordDef
   | BAR ->
-    parseUnionDef tname ps2  |> CnvR DUnionDef |> CnvR RSDefStmt
+    parseUnionDef tname ps2  |> CnvR DUnionDef
   | _ ->
     frt.Panic "NYI"
-    (ps2, (RSImport "dummy"))
+    (ps2, (emptyDefStmt ()))
+
+/*
+  TYPE_DEF_BODY_LIST = TYPE_DEF_BODY ('and' TYPE_DEF_BODY)*
+*/
+let parseTypeDefBodyList (ps:ParseState) : ParseState*[]DefStmt =
+  let (ps2, df) = parseTypeDefBody ps |> CnvL psSkipEOL
+  if psCurIs AND ps2 then
+    psConsume AND ps2
+    |> parseTypeDefBodyList
+    |> CnvR (slice.PushHead df)
+  else
+    (ps2, [df])
+
+//  
+// TYPE_DEF = 'type' TYPE_DEF_BODY_LIST
+let parseTypeDef (ps:ParseState) =
+  let (ps2, defList) = psEnterTypeDef ps |> psPushScope |> psConsume TYPE |> parseTypeDefBodyList |> CnvL psPopScope |> CnvL psLeaveTypeDef
+  let mdefs = {defs=defList}
+  let nmdefs = resolveFwrdDecl mdefs ps2
+  psRegMdTypes nmdefs ps2
+  nmdefs
+  |> RSMultipleDefs
+  |> withPs ps2
 
 /*
   PackageInfo related:

@@ -543,13 +543,14 @@ func CnvR[T any, U any](fn func(T) U, prev frt.Tuple2[ParseState, T]) frt.Tuple2
 
 type typeVarAllocator struct {
 	seqId     int
+	prefix    string
 	allocated []TypeVar
 }
 
 type TypeVarAllocator = *typeVarAllocator
 
-func NewTypeVarAllocator() TypeVarAllocator {
-	return &typeVarAllocator{0, []TypeVar{}}
+func NewTypeVarAllocator(prefix string) TypeVarAllocator {
+	return &typeVarAllocator{0, prefix, []TypeVar{}}
 }
 
 func (tva *typeVarAllocator) Reset() {
@@ -558,7 +559,7 @@ func (tva *typeVarAllocator) Reset() {
 }
 
 func (tva *typeVarAllocator) genVarName() string {
-	vname := fmt.Sprintf("_T%d", tva.seqId)
+	vname := fmt.Sprintf("%s%d", tva.prefix, tva.seqId)
 	tva.seqId++
 	return vname
 }
@@ -674,4 +675,33 @@ var binOpMap = map[TokenType]BinOpInfo{
 
 func lookupBinOp(tk TokenType) frt.Tuple2[BinOpInfo, bool] {
 	return dictLookup(binOpMap, tk)
+}
+
+/*
+TypeDict related
+*/
+type TypeDict = map[string]FType
+
+func newTD() TypeDict {
+	return make(TypeDict)
+}
+func tdPut(dic TypeDict, key string, v FType) {
+	dictPut(dic, key, v)
+}
+
+func tdLookup(dic TypeDict, key string) frt.Tuple2[FType, bool] {
+	return dictLookup(dic, key)
+}
+
+type SDict = map[string]string
+
+func newSD() SDict {
+	return make(SDict)
+}
+func sdPut(dic SDict, key string, v string) {
+	dictPut(dic, key, v)
+}
+
+func sdLookup(dic SDict, key string) frt.Tuple2[string, bool] {
+	return dictLookup(dic, key)
 }

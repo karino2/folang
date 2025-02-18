@@ -11,20 +11,20 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v238 := (ftp).(type) {
+	switch _v245 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v238.Value
+		tv := _v245.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v238.Value
+		ts := _v245.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FTuple:
-		ftup := _v238.Value
+		ftup := _v245.Value
 		nts := slice.Map(recurse, ftup.elemTypes)
 		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
 	case FType_FFunc:
-		fnt := _v238.Value
+		fnt := _v245.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -62,27 +62,51 @@ func newTvf(name string) FType {
 	return frt.Pipe(TypeVar{name: name}, New_FType_FTypeVar)
 }
 
+type TypeDefCtx struct {
+	tva         TypeVarAllocator
+	insideTD    bool
+	defined     TypeDict
+	allocedDict SDict
+}
+
 type ParseState struct {
 	tkz        Tokenizer
 	scope      Scope
 	offsideCol []int
 	tva        TypeVarAllocator
+	tdctx      TypeDefCtx
 }
 
-func newParse(tkz Tokenizer, scope Scope, offCols []int, tva TypeVarAllocator) ParseState {
-	return ParseState{tkz: tkz, scope: scope, offsideCol: offCols, tva: tva}
+func newParse(tkz Tokenizer, scope Scope, offCols []int, tva TypeVarAllocator, tdctx TypeDefCtx) ParseState {
+	return ParseState{tkz: tkz, scope: scope, offsideCol: offCols, tva: tva, tdctx: tdctx}
 }
 
 func psWithTkz(org ParseState, tkz Tokenizer) ParseState {
-	return newParse(tkz, org.scope, org.offsideCol, org.tva)
+	return newParse(tkz, org.scope, org.offsideCol, org.tva, org.tdctx)
 }
 
 func psWithScope(org ParseState, nsc Scope) ParseState {
-	return newParse(org.tkz, nsc, org.offsideCol, org.tva)
+	return newParse(org.tkz, nsc, org.offsideCol, org.tva, org.tdctx)
 }
 
 func psWithOffside(org ParseState, offs []int) ParseState {
-	return newParse(org.tkz, org.scope, offs, org.tva)
+	return newParse(org.tkz, org.scope, offs, org.tva, org.tdctx)
+}
+
+func psWithTDCtx(org ParseState, ntdctx TypeDefCtx) ParseState {
+	return newParse(org.tkz, org.scope, org.offsideCol, org.tva, ntdctx)
+}
+
+func initParse(src string) ParseState {
+	tkz := newTkz(src)
+	scope := NewScope()
+	offside := ([]int{0})
+	tva := NewTypeVarAllocator("_T")
+	tva2 := NewTypeVarAllocator("_P")
+	defdict := newTD()
+	adict := newSD()
+	tdctx := TypeDefCtx{tva: tva2, insideTD: false, defined: defdict, allocedDict: adict}
+	return newParse(tkz, scope, offside, tva, tdctx)
 }
 
 func psTypeVarGen(ps ParseState) func() TypeVar {
@@ -117,12 +141,30 @@ func psPopOffside(ps ParseState) ParseState {
 	return frt.Pipe(slice.PopLast(ps.offsideCol), (func(_r0 []int) ParseState { return psWithOffside(ps, _r0) }))
 }
 
-func initParse(src string) ParseState {
-	tkz := newTkz(src)
-	scope := NewScope()
-	offside := ([]int{0})
-	tva := NewTypeVarAllocator()
-	return newParse(tkz, scope, offside, tva)
+func psEnterTypeDef(ps ParseState) ParseState {
+	old := ps.tdctx
+	ntd := newTD()
+	nald := newSD()
+	ntdctx := TypeDefCtx{tva: old.tva, insideTD: true, defined: ntd, allocedDict: nald}
+	tvaReset(ntdctx.tva)
+	return psWithTDCtx(ps, ntdctx)
+}
+
+func psLeaveTypeDef(ps ParseState) ParseState {
+	old := ps.tdctx
+	ntdctx := TypeDefCtx{tva: old.tva, insideTD: false, defined: old.defined, allocedDict: old.allocedDict}
+	return psWithTDCtx(ps, ntdctx)
+}
+
+func psInsideTypeDef(ps ParseState) bool {
+	return ps.tdctx.insideTD
+}
+
+func tdctxTVFAlloc(tdctx TypeDefCtx, name string) FType {
+	gen := tvaToTypeVarGen(tdctx.tva)
+	tvar := gen()
+	sdPut(tdctx.allocedDict, tvar.name, name)
+	return frt.Pipe(tvar, New_FType_FTypeVar)
 }
 
 func psCurrent(ps ParseState) Token {
@@ -263,11 +305,6 @@ func udRegisterCsCtors(sc Scope, ud UnionDef) {
 	frt.PipeUnit(ud.cases, (func(_r0 []NameTypePair) { slice.Iter((func(_r0 NameTypePair) { csRegisterCtor(sc, ud, _r0) }), _r0) }))
 }
 
-func udRegisterToScope(sc Scope, ud UnionDef) {
-	udRegisterCsCtors(sc, ud)
-	frt.PipeUnit(udToFUt(ud), (func(_r0 FType) { scRegisterType(sc, ud.name, _r0) }))
-}
-
 func piFullName(pi PackageInfo, name string) string {
 	return frt.IfElse(frt.OpEqual(pi.name, "_"), (func() string {
 		return name
@@ -348,9 +385,9 @@ func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 
 func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	rht := ExprToType(rhs)
-	switch _v240 := (rht).(type) {
+	switch _v247 := (rht).(type) {
 	case FType_FFunc:
-		ft := _v240.Value
+		ft := _v247.Value
 		switch (freturn(ft)).(type) {
 		case FType_FUnit:
 			return newPipeCallUnit(tvgen, lhs, rhs)
@@ -426,4 +463,93 @@ func newUnaryNotCall(tvgen func() TypeVar, cond Expr) Expr {
 	args := ([]Expr{cond})
 	tps := ([]FType{New_FType_FBool, New_FType_FBool})
 	return genBuiltinFunCall(tvgen, "frt.OpNot", emptyS, tps, args)
+}
+
+func rdToRecType(rd RecordDef) RecordType {
+	return RecordType(rd)
+}
+
+func psRegRecDefToTDCtx(rd RecordDef, ps ParseState) {
+	recT := rdToRecType(rd)
+	scRegisterRecType(ps.scope, recT)
+	tdPut(ps.tdctx.defined, recT.name, New_FType_FRecord(recT))
+}
+
+func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
+	sc := ps.scope
+	udRegisterCsCtors(sc, ud)
+	fut := udToFUt(ud)
+	scRegisterType(sc, ud.name, fut)
+	tdPut(ps.tdctx.defined, ud.name, fut)
+}
+
+func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
+	switch _v251 := (ntp.ftype).(type) {
+	case FType_FTypeVar:
+		tv := _v251.Value
+		nt := transV(tv)
+		return NameTypePair{name: ntp.name, ftype: nt}
+	default:
+		return ntp
+	}
+}
+
+func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
+	switch _v252 := (df).(type) {
+	case DefStmt_DRecordDef:
+		rd := _v252.Value
+		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), rd.fields)
+		return frt.Pipe(RecordDef{name: rd.name, fields: nfields}, New_DefStmt_DRecordDef)
+	case DefStmt_DUnionDef:
+		ud := _v252.Value
+		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), ud.cases)
+		return frt.Pipe(UnionDef{name: ud.name, cases: ncases}, New_DefStmt_DUnionDef)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
+	rname, ok := frt.Destr(sdLookup(tdctx.allocedDict, tv.name))
+	return frt.IfElse(ok, (func() FType {
+		nt, ok2 := frt.Destr(tdLookup(tdctx.defined, rname))
+		return frt.IfElse(ok2, (func() FType {
+			return nt
+		}), (func() FType {
+			frt.Panic("Unresolved foward decl type")
+			return nt
+		}))
+	}), (func() FType {
+		return New_FType_FTypeVar(tv)
+	}))
+}
+
+func resolveFwrdDecl(md MultipleDefs, ps ParseState) MultipleDefs {
+	return frt.IfElse(frt.OpEqual(slice.Length(md.defs), 1), (func() MultipleDefs {
+		return md
+	}), (func() MultipleDefs {
+		transV := (func(_r0 TypeVar) FType { return transVByTDCtx(ps.tdctx, _r0) })
+		transD := (func(_r0 DefStmt) DefStmt { return transDefStmt(transV, _r0) })
+		ndefs := slice.Map(transD, md.defs)
+		return MultipleDefs{defs: ndefs}
+	}))
+}
+
+func scRegDefStmtType(sc Scope, df DefStmt) {
+	switch _v253 := (df).(type) {
+	case DefStmt_DRecordDef:
+		rd := _v253.Value
+		frt.PipeUnit(rdToRecType(rd), (func(_r0 RecordType) { scRegisterRecType(sc, _r0) }))
+	case DefStmt_DUnionDef:
+		ud := _v253.Value
+		udRegisterCsCtors(sc, ud)
+		fut := udToFUt(ud)
+		scRegisterType(sc, ud.name, fut)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func psRegMdTypes(md MultipleDefs, ps ParseState) {
+	slice.Iter((func(_r0 DefStmt) { scRegDefStmtType(ps.scope, _r0) }), md.defs)
 }

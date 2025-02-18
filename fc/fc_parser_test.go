@@ -775,6 +775,22 @@ let hoge () =
 `,
 			[]string{"buf.Buffer", "return buf.New()"},
 		},
+		{
+			`package main
+
+type FType =
+| FInt
+| FSlice of SliceType
+and SliceType = {elemType: FType}
+
+let hoge () =
+  let rec = FSlice {elemType=FInt}
+  match rec with
+  | FSlice s-> s.elemType
+  | _ -> FInt
+`,
+			[]string{"Value SliceType", "elemType FType", "hoge() FType", "s.elemType"},
+		},
 		// pipe to unit func test.
 		{
 			`package main
@@ -889,13 +905,16 @@ let ika (a:int) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type hoge = {X: string; Y: int}
-type ika = {X: string; Y: int}
+type FType =
+| FInt
+| FSlice of SliceType
+and SliceType = {elemType: FType}
 
-let fuga () =
-   let h = {X="ab"; Y="de"}
-   let i = {ika.X="gh"; Y="jk"}
-   (h, i)
+let hoge () =
+  let rec = FSlice {elemType=FInt}
+  match rec with
+  | FSlice s-> s.elemType
+  | _ -> FInt
 `
 
 	got := transpile(src)

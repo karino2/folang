@@ -84,18 +84,35 @@ package_info _ =
   let scRegisterVarFac: Scope->string->((()->TypeVar)->Var)->()
   let scLookupType: Scope->string->FType*bool
   type TypeVarAllocator
-  let NewTypeVarAllocator: ()->TypeVarAllocator
+  let NewTypeVarAllocator: string->TypeVarAllocator
   let tvaToTypeVarGen: TypeVarAllocator->(()->TypeVar)
   let tvaReset: TypeVarAllocator->()
   let resetUniqueTmpCounter: ()->()
   let tvaListAlloced: TypeVarAllocator->[]TypeVar
+  type TypeDict
+  let newTD: () -> TypeDict
+  let tdLookup: TypeDict->string->FType*bool
+  let tdPut: TypeDict->string->FType->()
+  type SDict
+  let newSD: () -> SDict
+  let sdLookup: SDict->string->string*bool
+  let sdPut: SDict->string->string->()
+
+
+type TypeDefCtx = {
+  tva: TypeVarAllocator;
+  insideTD: bool;
+  defined: TypeDict;
+  // key: tvname, value: fwrdDeclTypename
+  allocedDict: SDict;
+}
 
 type ParseState = {
   tkz: Tokenizer;
   scope: Scope;
   offsideCol: []int;
   tva: TypeVarAllocator;
-  // typeDefCtx
+  tdctx: TypeDefCtx;
 }
 
 
@@ -109,17 +126,32 @@ package_info _ =
   let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
 
 
-let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tva:TypeVarAllocator) =
-  {tkz=tkz; scope=scope; offsideCol=offCols; tva=tva}
+let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tva:TypeVarAllocator) (tdctx:TypeDefCtx) =
+  {tkz=tkz; scope=scope; offsideCol=offCols; tva=tva; tdctx=tdctx}
 
 let psWithTkz (org:ParseState) (tkz:Tokenizer) =
-  newParse tkz org.scope org.offsideCol org.tva
+  newParse tkz org.scope org.offsideCol org.tva org.tdctx
 
 let psWithScope (org:ParseState) (nsc:Scope) =
-  newParse org.tkz nsc org.offsideCol org.tva
+  newParse org.tkz nsc org.offsideCol org.tva org.tdctx
 
 let psWithOffside (org:ParseState) (offs:[]int) =
-  newParse org.tkz org.scope offs org.tva
+  newParse org.tkz org.scope offs org.tva org.tdctx
+
+let psWithTDCtx (org:ParseState) (ntdctx:TypeDefCtx) =
+  newParse org.tkz org.scope org.offsideCol org.tva ntdctx
+
+let initParse (src: string) =
+  let tkz = newTkz src
+  let scope = NewScope ()
+  let offside = [0]
+  let tva = NewTypeVarAllocator "_T"
+  let tva2 = NewTypeVarAllocator "_P"
+  let defdict = newTD ()
+  let adict = newSD ()
+  let tdctx = {tva=tva2; insideTD=false; defined=defdict; allocedDict= adict}
+  newParse tkz scope offside tva tdctx
+
 
 let psTypeVarGen (ps:ParseState) =
   tvaToTypeVarGen ps.tva
@@ -147,12 +179,30 @@ let psPopOffside (ps:ParseState) =
   slice.PopLast ps.offsideCol
   |> psWithOffside ps
 
-let initParse (src: string) =
-  let tkz = newTkz src
-  let scope = NewScope ()
-  let offside = [0]
-  let tva = NewTypeVarAllocator ()
-  newParse tkz scope offside tva
+// reset defined dict and tva here.
+let psEnterTypeDef (ps:ParseState) =
+  let old = ps.tdctx
+  let ntd = newTD ()
+  let nald = newSD ()
+  let ntdctx = {tva=old.tva; insideTD=true; defined=ntd; allocedDict=nald}
+  tvaReset ntdctx.tva
+  psWithTDCtx ps ntdctx
+
+// stay defined dict and tva for further use.
+let psLeaveTypeDef (ps:ParseState) =
+  let old = ps.tdctx
+  let ntdctx = {tva=old.tva; insideTD=false; defined=old.defined; allocedDict=old.allocedDict}
+  psWithTDCtx ps ntdctx
+
+let psInsideTypeDef (ps:ParseState) =
+  ps.tdctx.insideTD
+
+let tdctxTVFAlloc (tdctx:TypeDefCtx) (name:string) =
+  let gen = tvaToTypeVarGen tdctx.tva
+  let tvar = gen ()
+  sdPut tdctx.allocedDict tvar.name name
+  tvar |> FTypeVar
+
 
 let psCurrent (ps:ParseState) =
   ps.tkz.current
@@ -275,9 +325,6 @@ let csRegisterCtor (sc:Scope) (ud: UnionDef) (cas: NameTypePair) =
 let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
   ud.cases |> slice.Iter (csRegisterCtor sc ud)
 
-let udRegisterToScope (sc:Scope) (ud:UnionDef) =
-  udRegisterCsCtors sc ud
-  udToFUt ud |> scRegisterType sc ud.name
 
 /*
 PackageInfo related utility.
@@ -440,3 +487,84 @@ let newUnaryNotCall (tvgen: ()->TypeVar) (cond: Expr) =
   let args = [cond]
   let tps = [FBool; FBool]
   genBuiltinFunCall tvgen "frt.OpNot" emptyS tps args
+
+/*
+  TypeDef related.
+  Register type info to TypeDefCtx, etc.
+*/
+
+let rdToRecType (rd:RecordDef) =
+  // golang complaint:
+  // S1016 - Use a type conversion instead of manually copying struct fields 
+  // {RecordType.name=rd.name; fields=rd.fields}
+  GoEval<RecordType> "RecordType(rd)"
+
+let psRegRecDefToTDCtx (rd:RecordDef) (ps:ParseState) =
+  let recT = rdToRecType rd
+  scRegisterRecType ps.scope recT
+  tdPut ps.tdctx.defined recT.name (FRecord recT)
+
+let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
+  let sc = ps.scope
+  udRegisterCsCtors sc ud
+  let fut = udToFUt ud
+  scRegisterType sc ud.name fut
+  tdPut ps.tdctx.defined ud.name fut
+
+/*
+  MultipleDefs resolve forward declaration, etc.
+*/
+let transVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
+  match ntp.ftype with
+  | FTypeVar tv ->
+    let nt = transV tv
+    {NameTypePair.name=ntp.name; ftype=nt}
+  | _ ->
+    ntp
+
+let transDefStmt (transV: TypeVar->FType) (df: DefStmt) =
+  match df with
+  | DRecordDef rd ->
+    let nfields = slice.Map (transVNTPair transV) rd.fields
+    {RecordDef.name=rd.name; fields=nfields}
+    |> DRecordDef
+  | DUnionDef ud ->
+    let ncases = slice.Map (transVNTPair transV) ud.cases
+    {UnionDef.name=ud.name; cases=ncases}
+    |> DUnionDef
+
+let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
+  let (rname, ok) = sdLookup tdctx.allocedDict tv.name
+  if ok then
+    let (nt, ok2) = tdLookup tdctx.defined rname
+    if ok2 then
+      nt
+    else
+      frt.Panic "Unresolved foward decl type"
+      nt
+  else
+    FTypeVar tv
+
+let resolveFwrdDecl (md:MultipleDefs) (ps:ParseState) =
+  if (slice.Length md.defs) = 1 then
+    md
+  else
+    let transV = transVByTDCtx ps.tdctx
+    let transD = transDefStmt transV
+    let ndefs = slice.Map transD md.defs
+    {defs=ndefs}
+
+let scRegDefStmtType (sc:Scope) (df: DefStmt) =
+  match df with
+  | DRecordDef rd ->
+    rdToRecType rd
+    |>  scRegisterRecType sc
+  | DUnionDef ud ->
+    udRegisterCsCtors sc ud
+    let fut = udToFUt ud
+    scRegisterType sc ud.name fut
+
+
+let psRegMdTypes (md:MultipleDefs) (ps:ParseState) =
+  slice.Iter (scRegDefStmtType ps.scope) md.defs
+
