@@ -9,25 +9,25 @@ import "github.com/karino2/folang/pkg/slice"
 import "github.com/karino2/folang/pkg/strings"
 
 type TypeVar struct {
-  name string
+	name string
 }
 
 type FType interface {
-  FType_Union()
+	FType_Union()
 }
 
-func (FType_FInt) FType_Union(){}
-func (FType_FString) FType_Union(){}
-func (FType_FBool) FType_Union(){}
-func (FType_FUnit) FType_Union(){}
-func (FType_FFunc) FType_Union(){}
-func (FType_FRecord) FType_Union(){}
-func (FType_FUnion) FType_Union(){}
-func (FType_FExtType) FType_Union(){}
-func (FType_FSlice) FType_Union(){}
-func (FType_FPreUsed) FType_Union(){}
-func (FType_FTuple) FType_Union(){}
-func (FType_FTypeVar) FType_Union(){}
+func (FType_FInt) FType_Union()     {}
+func (FType_FString) FType_Union()  {}
+func (FType_FBool) FType_Union()    {}
+func (FType_FUnit) FType_Union()    {}
+func (FType_FFunc) FType_Union()    {}
+func (FType_FRecord) FType_Union()  {}
+func (FType_FUnion) FType_Union()   {}
+func (FType_FExtType) FType_Union() {}
+func (FType_FSlice) FType_Union()   {}
+func (FType_FPreUsed) FType_Union() {}
+func (FType_FTuple) FType_Union()   {}
+func (FType_FTypeVar) FType_Union() {}
 
 type FType_FInt struct {
 }
@@ -50,192 +50,196 @@ type FType_FUnit struct {
 var New_FType_FUnit FType = FType_FUnit{}
 
 type FType_FFunc struct {
-  Value FuncType
+	Value FuncType
 }
 
 func New_FType_FFunc(v FuncType) FType { return FType_FFunc{v} }
 
 type FType_FRecord struct {
-  Value RecordType
+	Value RecordType
 }
 
 func New_FType_FRecord(v RecordType) FType { return FType_FRecord{v} }
 
 type FType_FUnion struct {
-  Value UnionType
+	Value UnionType
 }
 
 func New_FType_FUnion(v UnionType) FType { return FType_FUnion{v} }
 
 type FType_FExtType struct {
-  Value string
+	Value string
 }
 
 func New_FType_FExtType(v string) FType { return FType_FExtType{v} }
 
 type FType_FSlice struct {
-  Value SliceType
+	Value SliceType
 }
 
 func New_FType_FSlice(v SliceType) FType { return FType_FSlice{v} }
 
 type FType_FPreUsed struct {
-  Value string
+	Value string
 }
 
 func New_FType_FPreUsed(v string) FType { return FType_FPreUsed{v} }
 
 type FType_FTuple struct {
-  Value TupleType
+	Value TupleType
 }
 
 func New_FType_FTuple(v TupleType) FType { return FType_FTuple{v} }
 
 type FType_FTypeVar struct {
-  Value TypeVar
+	Value TypeVar
 }
 
 func New_FType_FTypeVar(v TypeVar) FType { return FType_FTypeVar{v} }
 
-
 type SliceType struct {
-  elemType FType
+	elemType FType
 }
 type FuncType struct {
-  targets []FType
+	targets []FType
 }
 type TupleType struct {
-  elemTypes []FType
+	elemTypes []FType
 }
 type NameTypePair struct {
-  name string
-  ftype FType
+	name  string
+	ftype FType
 }
 type RecordType struct {
-  name string
-  fields []NameTypePair
+	name   string
+	fields []NameTypePair
 }
 type UnionType struct {
-  name string
-  cases []NameTypePair
+	name  string
+	cases []NameTypePair
 }
 
-func fargs(ft FuncType) []FType{
-l := slice.Length(ft.targets)
-return frt.Pipe(ft.targets, (func (_r0 []FType) []FType{ return slice.Take((l-1), _r0) }))
+func fargs(ft FuncType) []FType {
+	l := slice.Length(ft.targets)
+	return frt.Pipe(ft.targets, (func(_r0 []FType) []FType { return slice.Take((l - 1), _r0) }))
 }
 
-func freturn(ft FuncType) FType{
-return slice.Last(ft.targets)
+func freturn(ft FuncType) FType {
+	return slice.Last(ft.targets)
 }
 
-func funcTypeToGo(ft FuncType, toGo func (FType) string) string{
-last := slice.Last(ft.targets)
-args := fargs(ft)
-bw := buf.New()
-buf.Write(bw, "func (")
-frt.PipeUnit(frt.Pipe(frt.Pipe(args, (func (_r0 []FType) []string{ return slice.Map(toGo, _r0) })), (func (_r0 []string) string{ return strings.Concat(",", _r0) })), (func (_r0 string) { buf.Write(bw, _r0) }))
-buf.Write(bw, ")")
-ret := (func () string {
-switch (last).(type){
-case FType_FUnit:
-return ""
-default:
-return (" "+toGo(last))
-}})()
-buf.Write(bw, ret)
-return buf.String(bw)
+func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
+	last := slice.Last(ft.targets)
+	args := fargs(ft)
+	bw := buf.New()
+	buf.Write(bw, "func (")
+	frt.PipeUnit(frt.Pipe(frt.Pipe(args, (func(_r0 []FType) []string { return slice.Map(toGo, _r0) })), (func(_r0 []string) string { return strings.Concat(",", _r0) })), (func(_r0 string) { buf.Write(bw, _r0) }))
+	buf.Write(bw, ")")
+	ret := (func() string {
+		switch (last).(type) {
+		case FType_FUnit:
+			return ""
+		default:
+			return (" " + toGo(last))
+		}
+	})()
+	buf.Write(bw, ret)
+	return buf.String(bw)
 }
 
-func recordTypeToGo(frec RecordType) string{
-return frec.name
+func recordTypeToGo(frec RecordType) string {
+	return frec.name
 }
 
-func frStructName(frec RecordType) string{
-return frec.name
+func frStructName(frec RecordType) string {
+	return frec.name
 }
 
-func namePairMatch(targetName string, pair NameTypePair) bool{
-return frt.OpEqual(targetName, pair.name)
+func namePairMatch(targetName string, pair NameTypePair) bool {
+	return frt.OpEqual(targetName, pair.name)
 }
 
-func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair{
-res := frt.Pipe(pairs, (func (_r0 []NameTypePair) []NameTypePair{ return slice.Filter((func (_r0 NameTypePair) bool{ return namePairMatch(targetName, _r0) }), _r0) }))
-return slice.Head(res)
+func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
+	res := frt.Pipe(pairs, (func(_r0 []NameTypePair) []NameTypePair {
+		return slice.Filter((func(_r0 NameTypePair) bool { return namePairMatch(targetName, _r0) }), _r0)
+	}))
+	return slice.Head(res)
 }
 
-func frGetField(frec RecordType, fieldName string) NameTypePair{
-return lookupPairByName(fieldName, frec.fields)
+func frGetField(frec RecordType, fieldName string) NameTypePair {
+	return lookupPairByName(fieldName, frec.fields)
 }
 
-func npName(pair NameTypePair) string{
-return pair.name
+func npName(pair NameTypePair) string {
+	return pair.name
 }
 
-func frMatch(frec RecordType, fieldNames []string) bool{
-return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(frec.fields)), (func () bool {
-return false}), (func () bool {
-sortedInput := frt.Pipe(fieldNames, slice.Sort)
-sortedFName := frt.Pipe(slice.Map(npName, frec.fields), slice.Sort)
-return frt.OpEqual(sortedInput, sortedFName)}))
+func frMatch(frec RecordType, fieldNames []string) bool {
+	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(frec.fields)), (func() bool {
+		return false
+	}), (func() bool {
+		sortedInput := frt.Pipe(fieldNames, slice.Sort)
+		sortedFName := frt.Pipe(slice.Map(npName, frec.fields), slice.Sort)
+		return frt.OpEqual(sortedInput, sortedFName)
+	}))
 }
 
-func funionToGo(fu UnionType) string{
-return fu.name
+func funionToGo(fu UnionType) string {
+	return fu.name
 }
 
-func lookupCase(fu UnionType, caseName string) NameTypePair{
-return lookupPairByName(caseName, fu.cases)
+func lookupCase(fu UnionType, caseName string) NameTypePair {
+	return lookupPairByName(caseName, fu.cases)
 }
 
-func unionCSName(unionName string, caseName string) string{
-return ((unionName+"_")+caseName)
+func unionCSName(unionName string, caseName string) string {
+	return ((unionName + "_") + caseName)
 }
 
-func fSliceToGo(fs SliceType, toGo func (FType) string) string{
-return ("[]"+toGo(fs.elemType))
+func fSliceToGo(fs SliceType, toGo func(FType) string) string {
+	return ("[]" + toGo(fs.elemType))
 }
 
-func fTupleToGo(toGo func (FType) string, ft TupleType) string{
-args := frt.Pipe(slice.Map(toGo, ft.elemTypes), (func (_r0 []string) string{ return strings.Concat(", ", _r0) }))
-return frt.Sprintf1("frt.Tuple2[%s]", args)
+func fTupleToGo(toGo func(FType) string, ft TupleType) string {
+	args := frt.Pipe(slice.Map(toGo, ft.elemTypes), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
+	return frt.Sprintf1("frt.Tuple2[%s]", args)
 }
 
-func FTypeToGo(ft FType) string{
-switch _v1 := (ft).(type){
-case FType_FInt:
-return "int"
-case FType_FBool:
-return "bool"
-case FType_FString:
-return "string"
-case FType_FUnit:
-return ""
-case FType_FFunc:
-ft := _v1.Value
-return funcTypeToGo(ft, FTypeToGo)
-case FType_FRecord:
-fr := _v1.Value
-return recordTypeToGo(fr)
-case FType_FUnion:
-fu := _v1.Value
-return funionToGo(fu)
-case FType_FExtType:
-fe := _v1.Value
-return fe
-case FType_FSlice:
-fs := _v1.Value
-return fSliceToGo(fs, FTypeToGo)
-case FType_FPreUsed:
-fp := _v1.Value
-return fp
-case FType_FTuple:
-ft := _v1.Value
-return fTupleToGo(FTypeToGo, ft)
-case FType_FTypeVar:
-fp := _v1.Value
-return fp.name
-default:
-panic("Union pattern fail. Never reached here.")
-}
+func FTypeToGo(ft FType) string {
+	switch _v21 := (ft).(type) {
+	case FType_FInt:
+		return "int"
+	case FType_FBool:
+		return "bool"
+	case FType_FString:
+		return "string"
+	case FType_FUnit:
+		return ""
+	case FType_FFunc:
+		ft := _v21.Value
+		return funcTypeToGo(ft, FTypeToGo)
+	case FType_FRecord:
+		fr := _v21.Value
+		return recordTypeToGo(fr)
+	case FType_FUnion:
+		fu := _v21.Value
+		return funionToGo(fu)
+	case FType_FExtType:
+		fe := _v21.Value
+		return fe
+	case FType_FSlice:
+		fs := _v21.Value
+		return fSliceToGo(fs, FTypeToGo)
+	case FType_FPreUsed:
+		fp := _v21.Value
+		return fp
+	case FType_FTuple:
+		ft := _v21.Value
+		return fTupleToGo(FTypeToGo, ft)
+	case FType_FTypeVar:
+		fp := _v21.Value
+		return fp.name
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
 }
