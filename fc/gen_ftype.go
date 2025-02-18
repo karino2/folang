@@ -16,18 +16,18 @@ type FType interface {
 	FType_Union()
 }
 
-func (FType_FInt) FType_Union()     {}
-func (FType_FString) FType_Union()  {}
-func (FType_FBool) FType_Union()    {}
-func (FType_FUnit) FType_Union()    {}
-func (FType_FFunc) FType_Union()    {}
-func (FType_FRecord) FType_Union()  {}
-func (FType_FUnion) FType_Union()   {}
-func (FType_FExtType) FType_Union() {}
-func (FType_FSlice) FType_Union()   {}
-func (FType_FPreUsed) FType_Union() {}
-func (FType_FTuple) FType_Union()   {}
-func (FType_FTypeVar) FType_Union() {}
+func (FType_FInt) FType_Union()         {}
+func (FType_FString) FType_Union()      {}
+func (FType_FBool) FType_Union()        {}
+func (FType_FUnit) FType_Union()        {}
+func (FType_FFunc) FType_Union()        {}
+func (FType_FRecord) FType_Union()      {}
+func (FType_FUnion) FType_Union()       {}
+func (FType_FExtType) FType_Union()     {}
+func (FType_FSlice) FType_Union()       {}
+func (FType_FTuple) FType_Union()       {}
+func (FType_FFieldAccess) FType_Union() {}
+func (FType_FTypeVar) FType_Union()     {}
 
 type FType_FInt struct {
 }
@@ -79,17 +79,17 @@ type FType_FSlice struct {
 
 func New_FType_FSlice(v SliceType) FType { return FType_FSlice{v} }
 
-type FType_FPreUsed struct {
-	Value string
-}
-
-func New_FType_FPreUsed(v string) FType { return FType_FPreUsed{v} }
-
 type FType_FTuple struct {
 	Value TupleType
 }
 
 func New_FType_FTuple(v TupleType) FType { return FType_FTuple{v} }
+
+type FType_FFieldAccess struct {
+	Value FieldAccessType
+}
+
+func New_FType_FFieldAccess(v FieldAccessType) FType { return FType_FFieldAccess{v} }
 
 type FType_FTypeVar struct {
 	Value TypeVar
@@ -102,6 +102,10 @@ type SliceType struct {
 }
 type FuncType struct {
 	targets []FType
+}
+type FieldAccessType struct {
+	recType   FType
+	fieldName string
 }
 type TupleType struct {
 	elemTypes []FType
@@ -205,8 +209,19 @@ func fTupleToGo(toGo func(FType) string, ft TupleType) string {
 	return frt.Sprintf1("frt.Tuple2[%s]", args)
 }
 
+func faResolve(fat FieldAccessType) FType {
+	switch _v23 := (fat.recType).(type) {
+	case FType_FRecord:
+		rt := _v23.Value
+		field := frGetField(rt, fat.fieldName)
+		return field.ftype
+	default:
+		return frt.Pipe(fat, New_FType_FFieldAccess)
+	}
+}
+
 func FTypeToGo(ft FType) string {
-	switch _v21 := (ft).(type) {
+	switch _v24 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -216,28 +231,27 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnit:
 		return ""
 	case FType_FFunc:
-		ft := _v21.Value
+		ft := _v24.Value
 		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v21.Value
+		fr := _v24.Value
 		return recordTypeToGo(fr)
 	case FType_FUnion:
-		fu := _v21.Value
+		fu := _v24.Value
 		return funionToGo(fu)
 	case FType_FExtType:
-		fe := _v21.Value
+		fe := _v24.Value
 		return fe
 	case FType_FSlice:
-		fs := _v21.Value
+		fs := _v24.Value
 		return fSliceToGo(fs, FTypeToGo)
-	case FType_FPreUsed:
-		fp := _v21.Value
-		return fp
 	case FType_FTuple:
-		ft := _v21.Value
+		ft := _v24.Value
 		return fTupleToGo(FTypeToGo, ft)
+	case FType_FFieldAccess:
+		return "FieldAccess_Unresoled"
 	case FType_FTypeVar:
-		fp := _v21.Value
+		fp := _v24.Value
 		return fp.name
 	default:
 		panic("Union pattern fail. Never reached here.")

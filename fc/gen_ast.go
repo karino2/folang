@@ -12,7 +12,6 @@ type Var struct {
 
 type FieldAccess struct {
 	targetExpr Expr
-	targetType RecordType
 	fieldName  string
 }
 

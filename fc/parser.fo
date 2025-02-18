@@ -286,17 +286,12 @@ let refVar (vname:string) (ps:ParseState) =
 let parseFAAfterDot (ps:ParseState) (cur:Expr) : (ParseState*Expr) =
   let (ps2, fname) =  psConsume DOT ps
                       |> psIdentNameNx
-  match (ExprToType cur) with
-  | FRecord rtype ->
-    let fexpr = {targetExpr=cur; targetType=rtype; fieldName=fname}
-                 |> EFieldAccess
-    if psCurIs DOT ps2 then
-      parseFAAfterDot ps2 fexpr
-    else
-      (ps2, fexpr)
-  | _ ->
-    frt.Panic "non record type of field access"
-    (ps2, EUnit)
+  let fexpr = {targetExpr=cur; fieldName=fname}
+              |> EFieldAccess
+  if psCurIs DOT ps2 then
+    parseFAAfterDot ps2 fexpr
+  else
+    (ps2, fexpr)
 
 
 
@@ -686,6 +681,10 @@ let psIdentOrUSNameNx (ps:ParseState) =
     let ps2 = psNext ps
     (ps2, "_")
 
+let defVarIfNecessary (sc:Scope) (v:Var) =
+  if v.name <> "_" then
+    scDefVar sc v.name v
+
 /*
   Destructuring, only support pair for a while like:
   let (a, b) = ...
@@ -706,10 +705,27 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   | FTuple tup ->
     let v1 = {Var.name=vname1; ftype= slice.Head tup.elemTypes}
     let v2 = {Var.name=vname2; ftype= slice.Last tup.elemTypes}
-    if vname1 <> "_" then
-      scDefVar ps4.scope vname1 v1
-    if vname2 <> "_" then
-      scDefVar ps4.scope vname2 v2
+    defVarIfNecessary ps4.scope v1
+    defVarIfNecessary ps4.scope v2
+    let vs = [v1; v2]
+    {LetDestVarDef.lvars=vs; rhs=rhs}
+    |> LLDestVarDef
+    |> withPs ps4
+  | FTypeVar _ ->
+    // rhs is TypeVar (unresolved), so assign left vars new TypeVar's and resolve later.
+    let tpgen = psTypeVarGen ps4
+    let vt1 = if vname1 = "_" then
+                FUnit // dont't care, use FUnit
+              else
+                tpgen () |> FTypeVar
+    let vt2 = if vname1 = "_" then
+                FUnit
+              else
+                tpgen () |> FTypeVar
+    let v1 = {Var.name=vname1; ftype=vt1}
+    let v2 = {Var.name=vname2; ftype=vt2}
+    defVarIfNecessary ps4.scope v1
+    defVarIfNecessary ps4.scope v2
     let vs = [v1; v2]
     {LetDestVarDef.lvars=vs; rhs=rhs}
     |> LLDestVarDef
@@ -718,11 +734,6 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     frt.Panic "Destructuring let, but rhs is not tuple. NYI."
     let dummy = GoEval<[]Var> "[]Var{}"
     (ps2, LLDestVarDef {LetDestVarDef.lvars=dummy; rhs=EUnit})
-
-
-
-let vToT (v:Var) =
-  v.ftype
 
 // I want to make this func as factory.
 // But currently, last arg () is not supported.

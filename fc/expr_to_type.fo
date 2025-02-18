@@ -3,10 +3,15 @@ package main
 import frt
 import slice
 
-let faToType (fa:FieldAccess) =
-  let rt = fa.targetType
-  let field = frGetField rt fa.fieldName
-  field.ftype
+let faToType (eToT:Expr->FType) (fa:FieldAccess) =
+  let tart = eToT fa.targetExpr
+  match tart with
+  | FRecord rt ->
+    let field = frGetField rt fa.fieldName
+    field.ftype
+  | _ ->
+    {recType=tart; fieldName=fa.fieldName}
+    |> FFieldAccess
 
 let lblockReturnType (toT: Expr->FType) (lb:LazyBlock) =
   toT lb.block.finalExpr
@@ -77,7 +82,7 @@ let ExprToType (expr:Expr) : FType =
   | EIntImm _ -> FInt
   | EUnit -> FUnit
   | EBoolLiteral _ -> FBool
-  | EFieldAccess fa -> faToType fa
+  | EFieldAccess fa -> faToType ExprToType fa
   | EVar v -> v.ftype
   | ESlice s -> 
     // slice must be all the same type, so use first elem type.

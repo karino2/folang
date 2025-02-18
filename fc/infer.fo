@@ -72,11 +72,26 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
     // Both are not FTypeVar, drill down.
     // Both type must be equal for this layer.
     | FSlice ts2 ->
-      let ts1 = GoEval<SliceType> "lhs.(FType_FSlice).Value"
-      let (rtp, rels) = compositeTp ts1.elemType ts2.elemType
-      {SliceType.elemType=rtp}
-      |> FSlice
-      |> withRels rels
+      match lhs with
+      | FSlice ts1 ->
+        let (rtp, rels) = compositeTp ts1.elemType ts2.elemType
+        {SliceType.elemType=rtp}
+        |> FSlice
+        |> withRels rels
+      | FFieldAccess fa2 ->
+        frt.Panic "right is slice, left is field access, NYI"
+        emptyRels ()
+        |> withTp (FFieldAccess fa2)        
+      | _ ->
+        frt.Panic "right is slice, left is neither slice nor field access."
+        emptyRels ()
+        |> withTp lhs
+    | FFieldAccess fa2 ->
+      let fa1 = GoEval<FieldAccessType> "lhs.(FType_FFieldAccess).Value"
+      let (rtp, rels) = compositeTp fa1.recType fa2.recType
+      {recType=rtp; fieldName=fa1.fieldName}
+      |>faResolve
+      |> withRels rels      
     | FFunc tf2 ->
       let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
       let (tps, rels) = compositeTpList compositeTp tf1.targets tf2.targets
@@ -112,6 +127,14 @@ let unifyVETup (veTup: Var*FType) =
   else
     unifyType v.ftype ft
 
+let vToT (v:Var) =
+  v.ftype
+
+let varsToTupleType (vars: []Var) =
+  let ets = slice.Map vToT vars
+  {elemTypes=ets}
+  |> FTuple
+
 let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
   match stmt with
   | SExprStmt se -> ec se
@@ -129,6 +152,10 @@ let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
           slice.Zip ldvd.lvars ft.elemTypes
           |> slice.Map unifyVETup
           |> slice.Concat
+          |> slice.Append inside
+        | FTypeVar _ ->
+          let lft = varsToTupleType ldvd.lvars
+          unifyType rhtype lft
           |> slice.Append inside
         | _ ->
           frt.Panic "Destructuring of right is not tuple, NYI."
@@ -412,7 +439,10 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   | EStringLiteral _ -> expr
   | EIntImm _ -> expr
   | EUnit -> expr
-  | EFieldAccess _ -> expr
+  | EFieldAccess fa ->
+    let ntarget = transE fa.targetExpr
+    {targetExpr=ntarget; fieldName=fa.fieldName}
+    |> EFieldAccess
 
 /*
   resolve type using transVarExpr utility.

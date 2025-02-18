@@ -11,20 +11,24 @@ func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar
 
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	switch _v245 := (ftp).(type) {
+	switch _v253 := (ftp).(type) {
 	case FType_FTypeVar:
-		tv := _v245.Value
+		tv := _v253.Value
 		return transTV(tv)
 	case FType_FSlice:
-		ts := _v245.Value
+		ts := _v253.Value
 		et := recurse(ts.elemType)
 		return New_FType_FSlice(SliceType{elemType: et})
 	case FType_FTuple:
-		ftup := _v245.Value
+		ftup := _v253.Value
 		nts := slice.Map(recurse, ftup.elemTypes)
 		return frt.Pipe(TupleType{elemTypes: nts}, New_FType_FTuple)
+	case FType_FFieldAccess:
+		fa := _v253.Value
+		nrec := recurse(fa.recType)
+		return frt.Pipe(FieldAccessType{recType: nrec, fieldName: fa.fieldName}, faResolve)
 	case FType_FFunc:
-		fnt := _v245.Value
+		fnt := _v253.Value
 		nts := slice.Map(recurse, fnt.targets)
 		return frt.Pipe(FuncType{targets: nts}, New_FType_FFunc)
 	default:
@@ -390,9 +394,9 @@ func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 
 func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	rht := ExprToType(rhs)
-	switch _v247 := (rht).(type) {
+	switch _v255 := (rht).(type) {
 	case FType_FFunc:
-		ft := _v247.Value
+		ft := _v255.Value
 		switch (freturn(ft)).(type) {
 		case FType_FUnit:
 			return newPipeCallUnit(tvgen, lhs, rhs)
@@ -489,9 +493,9 @@ func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
 }
 
 func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
-	switch _v251 := (ntp.ftype).(type) {
+	switch _v259 := (ntp.ftype).(type) {
 	case FType_FTypeVar:
-		tv := _v251.Value
+		tv := _v259.Value
 		nt := transV(tv)
 		return NameTypePair{name: ntp.name, ftype: nt}
 	default:
@@ -500,13 +504,13 @@ func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
 }
 
 func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
-	switch _v252 := (df).(type) {
+	switch _v260 := (df).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v252.Value
+		rd := _v260.Value
 		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), rd.fields)
 		return frt.Pipe(RecordDef{name: rd.name, fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
-		ud := _v252.Value
+		ud := _v260.Value
 		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), ud.cases)
 		return frt.Pipe(UnionDef{name: ud.name, cases: ncases}, New_DefStmt_DUnionDef)
 	default:
@@ -541,12 +545,12 @@ func resolveFwrdDecl(md MultipleDefs, ps ParseState) MultipleDefs {
 }
 
 func scRegDefStmtType(sc Scope, df DefStmt) {
-	switch _v253 := (df).(type) {
+	switch _v261 := (df).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v253.Value
+		rd := _v261.Value
 		frt.PipeUnit(rdToRecType(rd), (func(_r0 RecordType) { scRegisterRecType(sc, _r0) }))
 	case DefStmt_DUnionDef:
-		ud := _v253.Value
+		ud := _v261.Value
 		udRegisterCsCtors(sc, ud)
 		fut := udToFUt(ud)
 		scRegisterType(sc, ud.name, fut)

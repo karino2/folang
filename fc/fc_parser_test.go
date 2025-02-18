@@ -670,6 +670,33 @@ let hoge () =
 `,
 			"[][]int{",
 		},
+		{
+			`package main
+
+package_info _ =
+  let Head<T> : []T->T
+
+type Item = {f3:string; f4:int}
+
+let hello (is:[]Item) = 
+  let fr = is |> Head
+  fr.f3
+`,
+			"string{",
+		},
+		// destructuring let inference.
+		{
+			`package main
+
+let hoge (a:int) =
+  (123, "abc")
+
+let ika () = 
+  let (a, b) = 123 |> hoge
+  a+123
+`,
+			"ika() int",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -901,14 +928,13 @@ let sum (args: []int) :int =
 }
 func TestParseAddhook(t *testing.T) {
 	src := `package main
-import "fmt"
 
-let hello (msg:string) = 
-    GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
+let hoge (a:int) =
+  (123, "abc")
 
-let main () =
-   hello "World"
-
+let ika () = 
+  let (a, b) = 123 |> hoge
+  a+123
 `
 
 	got := transpile(src)

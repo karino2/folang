@@ -20,6 +20,7 @@ let tpname2tvtp (tvgen: ()->TypeVar) (tpname:string) =
 
 /*
   TransformT FTypeVar and recomposite.
+  FFieldAccess might be resolved.
 */
 let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
   let recurse = transTypeVarFType transTV
@@ -32,6 +33,10 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     let nts = slice.Map recurse ftup.elemTypes
     {TupleType.elemTypes=nts}
     |> FTuple
+  | FFieldAccess fa ->
+    let nrec = recurse fa.recType
+    {recType=nrec; fieldName=fa.fieldName}
+    |> faResolve
   | FFunc fnt ->
     let nts = slice.Map recurse fnt.targets
     {FuncType.targets=nts}
