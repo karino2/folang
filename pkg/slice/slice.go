@@ -146,6 +146,15 @@ func PushHead[T any](elem T, s []T) []T {
 	return append(ret, s...)
 }
 
+func Collect[T any, U any](f func(T) []U, ss []T) []U {
+	var res []U
+	for _, e := range ss {
+		one := f(e)
+		res = append(res, one...)
+	}
+	return res
+}
+
 func Concat[T any](ss [][]T) []T {
 	var res []T
 	for _, s := range ss {

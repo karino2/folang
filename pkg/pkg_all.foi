@@ -24,6 +24,7 @@ package_info slice =
   let PopLast<T>: []T -> []T
   let PushLast<T>: T->[]T->[]T
   let PushHead<T>: T->[]T->[]T
+  let Collect<T, U>: (T->[]U)->[]T->[]U
   let Concat<T>: [][]T->[]T
   let Append<T>: []T->[]T->[]T
   let Take<T> : int->[]T->[]T
