@@ -78,20 +78,33 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
         {SliceType.ElemType=rtp}
         |> FSlice
         |> withRels rels
-      | FFieldAccess fa2 ->
-        frt.Panic "right is slice, left is field access, NYI"
+      | FFieldAccess _ ->
+        // []T1 = FA(T2, "xx") case.
+        // It is difficult to handle.
+        // So just give up for this case.
+        // Hope other relation will resolve all type.
         emptyRels ()
-        |> withTp (FFieldAccess fa2)        
+        |> withTp rhs // slice would be better.
       | _ ->
         frt.Panic "right is slice, left is neither slice nor field access."
         emptyRels ()
         |> withTp lhs
     | FFieldAccess fa2 ->
-      let fa1 = GoEval<FieldAccessType> "lhs.(FType_FFieldAccess).Value"
-      let (rtp, rels) = compositeTp fa1.RecType fa2.RecType
-      {RecType=rtp; FieldName=fa1.FieldName}
-      |>faResolve
-      |> withRels rels      
+      match lhs with
+      | FFieldAccess fa1 ->
+        let (rtp, rels) = compositeTp fa1.RecType fa2.RecType
+        {RecType=rtp; FieldName=fa1.FieldName}
+        |>faResolve
+        |> withRels rels
+      | FSlice _ ->
+        // []T1 = FA(T2, "xx") case.
+        // same as above 
+        emptyRels ()
+        |> withTp lhs
+      | _ ->
+        frt.Panic "unknown case"
+        emptyRels ()
+        |> withTp lhs
     | FFunc tf2 ->
       let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
       let (tps, rels) = compositeTpList compositeTp tf1.Targets tf2.Targets
