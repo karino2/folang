@@ -734,32 +734,41 @@ let lfdToFuncVar (lfd:LetFuncDef) =
   LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
 */
 let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
-  let ps2 = psConsume LET ps
+  let ps2 = psConsume LET ps |> psPushScope
   let fname = psIdentName ps2
   let (ps3, params) = psNext ps2 |> parseParams
-  // TODO: put current func for recursive call.
-  let (ps4, block) = psConsume EQ ps3 |> psSkipEOL |> parseBlock pLet
+  let (ps4, rtypeDef) =  if psCurIs COLON ps3 then
+                           psConsume COLON ps3 |> parseType
+                         else
+                           let tvgen = psTypeVarGen ps3
+                           let tvf = tvgen() |> FTypeVar
+                           (ps3, tvf) 
+  let paramTypes = slice.Map vToT params
+  let defTargets = slice.PushLast rtypeDef paramTypes
+  let defFt = {FuncType.targets=defTargets} |> FFunc
+  let defVar = {Var.name=fname; ftype=defFt}
+  scDefVar ps4.scope fname defVar
+  let (ps5, block) = psConsume EQ ps4 |> psSkipEOL |> parseBlock pLet |> CnvL psPopScope
   // build lfd func var here for a while.
   let rtype = blockToExpr block |> ExprToType
   let targets = if (slice.Length params) = 0 then
                   [FUnit; rtype]
                 else
-                  slice.Map vToT params
+                  paramTypes
                   |> slice.PushLast rtype
   let ft = {FuncType.targets=targets} |> FFunc
   let fnvar = {Var.name=fname; ftype=ft}
   {fvar=fnvar; params=params; body=block}
-  |> withPs ps4
+  |> withPs ps5
 
 let tvToN (tv:TypeVar) =
   tv.name
 
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
-  // resolve lfd here.
-  lfdToFuncVar lfd |> scDefVar ps.scope lfd.fvar.name 
   let tnames = tvaListAlloced ps.tva |> slice.Map tvToN
   let rfd = Infer tnames lfd
+  lfdToFuncVar rfd.lfd |> scDefVar ps2.scope rfd.lfd.fvar.name 
   (ps2, rfd)
 
 /*

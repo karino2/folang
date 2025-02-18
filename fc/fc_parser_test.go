@@ -890,6 +890,25 @@ let ika (a:int) =
 `,
 			[]string{"frt.IfElse(frt.OpEqual(a, 1)", "return frt.IfElse(frt.OpNotEqual(a, 5)"},
 		},
+		{
+			`package main
+
+package_info _ =
+  let IsEmpty<T> : []T->bool
+  let Head<T>: []T->T
+  let Tail<T>: []T->[]T
+
+let sum (args: []int) :int =
+  if IsEmpty args then
+    0
+  else
+    let h = Head args
+    let tail = Tail args
+    h + (sum tail)
+
+`,
+			[]string{"sum(args []int) int{", "sum(tail)"},
+		},
 	}
 
 	for _, test := range tests {
@@ -904,17 +923,14 @@ let ika (a:int) =
 }
 func TestParseAddhook(t *testing.T) {
 	src := `package main
+import "fmt"
 
-type FType =
-| FInt
-| FSlice of SliceType
-and SliceType = {elemType: FType}
+let hello (msg:string) = 
+    GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
 
-let hoge () =
-  let rec = FSlice {elemType=FInt}
-  match rec with
-  | FSlice s-> s.elemType
-  | _ -> FInt
+let main () =
+   hello "World"
+
 `
 
 	got := transpile(src)
