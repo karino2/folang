@@ -1223,6 +1223,25 @@ let ika (a:int) =
 `,
 			[]string{"frt.IfElse(frt.OpEqual(a, 1)", "return frt.IfElse(frt.OpNotEqual(a, 5)"},
 		},
+		{
+			`package main
+
+package_info _ =
+  let IsEmpty<T> : []T->bool
+  let Head<T>: []T->T
+  let Tail<T>: []T->[]T
+
+let sum (args: []int) :int =
+  if IsEmpty args then
+    0
+  else
+    let h = Head args
+    let tail = Tail args
+    h + (sum tail)
+
+`,
+			[]string{"sum(args []int) int{", "sum(tail)"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1240,15 +1259,17 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 package_info _ =
-  let Map<T, U> : (T->U)->[]T->[]U
-  let Snd<T, U>: T*U->U
-  let Concat<T>: [][]T->[]T
+  let IsEmpty<T> : []T->bool
+  let Head<T>: []T->T
+  let Tail<T>: []T->[]T
 
-let hoge () =
-  let s1 = GoEval<[]int> "[]int{1, 2}"
-  let s2 = GoEval<[]int> "[]int{3, 4}"
-  let tups = [(123, s1); (456, s2)]
-  Map Snd tups
+let sum (args: []int) :int =
+  if IsEmpty args then
+    0
+  else
+    let h = Head args
+    let tail = Tail args
+    h + (sum tail)
 
 `
 
