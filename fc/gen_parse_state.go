@@ -490,7 +490,7 @@ func newIfOnlyCall(tvgen func() TypeVar, cond Expr, tbody Block) Expr {
 	emptyS := emptySS()
 	args := ([]Expr{cond, ltbody})
 	ft := newFnTp(New_FType_FUnit, New_FType_FUnit)
-	tps := ([]FType{New_FType_FBool, ft, ft, New_FType_FUnit})
+	tps := ([]FType{New_FType_FBool, ft, New_FType_FUnit})
 	return genBuiltinFunCall(tvgen, "frt.IfOnly", emptyS, tps, args)
 }
 

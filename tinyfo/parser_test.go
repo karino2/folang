@@ -1050,6 +1050,21 @@ let hoge () =
 						"[][]int{",
 					},
 		*/
+		// IfOnly became wrong func type test.
+		{
+			`package main
+
+package_info _ =
+  let Println: string->()
+
+
+let hoge (i:int) =
+  if i <> 3 then
+	  Println "hit"
+
+`,
+			"hoge(i int) {",
+		},
 	}
 
 	for _, test := range tests {
@@ -1259,17 +1274,12 @@ func TestParserAddhook(t *testing.T) {
 	src := `package main
 
 package_info _ =
-  let IsEmpty<T> : []T->bool
-  let Head<T>: []T->T
-  let Tail<T>: []T->[]T
+  let Println: string->()
 
-let sum (args: []int) :int =
-  if IsEmpty args then
-    0
-  else
-    let h = Head args
-    let tail = Tail args
-    h + (sum tail)
+
+let hoge (i:int) =
+  if i <> 3 then
+	  Println "hit"
 
 `
 

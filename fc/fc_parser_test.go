@@ -712,6 +712,21 @@ let hoge (e:Expr) =
 `,
 			"Value []Expr",
 		},
+		// IfOnly became wrong func type test.
+		{
+			`package main
+
+package_info _ =
+  let Println: string->()
+
+
+let hoge (i:int) =
+  if i <> 3 then
+	  Println "hit"
+
+`,
+			"hoge(i int) {",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -944,14 +959,13 @@ let sum (args: []int) :int =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type Expr =
-| EInt of int
-| ESlice of []Expr
+package_info _ =
+  let Println: string->()
 
-let hoge (e:Expr) =
-  match e with
-  | EInt i -> i
-  | ESlice _ -> 123
+
+let hoge (i:int) =
+  if i <> 3 then
+	  Println "hit"
 
 `
 

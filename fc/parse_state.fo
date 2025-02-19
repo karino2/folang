@@ -512,7 +512,7 @@ let newIfOnlyCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) =
   let emptyS = emptySS ()
   let args = [cond; ltbody]
   let ft = newFnTp FUnit FUnit
-  let tps = [FBool; ft; ft; FUnit]
+  let tps = [FBool; ft; FUnit]
   genBuiltinFunCall tvgen "frt.IfOnly" emptyS tps args
 
 let newUnaryNotCall (tvgen: ()->TypeVar) (cond: Expr) =
