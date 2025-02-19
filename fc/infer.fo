@@ -267,11 +267,9 @@ let collectLfdRels (lfd:LetFuncDef) =
 
 package_info _ =
   type EquivSet
-  type EquivInfoDict
   let eqsUnion: EquivSet->EquivSet->EquivSet
   let eqsItems: EquivSet->[]string
   let NewEquivSet: TypeVar->EquivSet
-  let NewEquivInfoDict: ()->EquivInfoDict
 
 /*
   resType is most concrete type for this equiv set.
@@ -302,11 +300,6 @@ let eiInit (tv:TypeVar) =
   let rtype = FTypeVar tv
   {eset=es; resType=rtype}
 
-type Resolver = {eid: EquivInfoDict}
-
-let newResolver () =
-  let neid = NewEquivInfoDict ()
-  {eid=neid}
 
 let rsLookupEI (res:Resolver) (tvname:string) =
   let (ei, ok) = eidLookup res.eid tvname
@@ -345,11 +338,6 @@ let updateResolver (res:Resolver) (rels:[]UniRel) : Resolver =
     res
   else
     updateResolver res nrels
-
-let buildResolver (rels:[]UniRel) =
-  let res = newResolver ()
-  updateResolver res rels
-  res
 
 let rsResolveType (resT:FType->FType) (res:Resolver) (tvname:string) =
   let ei = rsLookupEI res tvname
@@ -492,17 +480,23 @@ let notFound (rsv:Resolver) (key:string) =
     tv.Name = key
   | _ -> false
 
+
+let InferExpr (tvc:TypeVarCtx) (expr:Expr) =
+   let rels = collectExprRel expr
+   updateResolver tvc.resolver rels
+   resolveExprType tvc.resolver expr
+
 /*
   Infer TypeVar's and promote as TypeParameters if necessary, then return RootFuncDef.
 */
-let Infer (tva:TypeVarAllocator) (lfd:LetFuncDef) =
+let InferLfd (tvc:TypeVarCtx) (lfd:LetFuncDef) =
   let rels = collectLfdRels lfd
   // frt.Printf1 "%v\n" rels
-  let rsv = buildResolver rels
+  updateResolver tvc.resolver rels
   // let unresTvs = slice.Filter (notFound rsv) tvnames
   // frt.Printf1 "unres: %v\n" unresTvs
   // assign formal type parameter
   // NYI.
   let tps = GoEval<[]string> "[]string{}"
-  let nlfd = resolveLfd rsv lfd
+  let nlfd = resolveLfd tvc.resolver lfd
   {Tparams=tps; Lfd=nlfd}

@@ -666,7 +666,8 @@ let parseBlock (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : Parse
 */
 let parseLLOneVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> CnvL (psConsume EQ)
-  let (ps3, rhs) = pExpr ps2
+  let (ps3, rhs0) = pExpr ps2
+  let rhs = InferExpr ps3.tvc rhs0
   let v = {Var.Name=vname; Ftype=(ExprToType rhs)}
   scDefVar ps3.scope vname v
   {LetVarDef.Lvar=v; Rhs=rhs}
@@ -699,7 +700,8 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps3, vname2) = psIdentOrUSNameNx ps2
                      |> CnvL (psConsume RPAREN)
                      |> CnvL (psConsume EQ)
-  let (ps4, rhs) = pExpr ps3
+  let (ps4, rhs0) = pExpr ps3
+  let rhs = InferExpr ps4.tvc rhs0
   let rtype = ExprToType rhs
   match rtype with
   | FTuple tup ->
@@ -774,7 +776,7 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
 
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
-  let rfd = Infer ps.tva lfd
+  let rfd = InferLfd ps.tvc lfd
   lfdToFuncVar rfd.Lfd |> scDefVar ps2.scope rfd.Lfd.Fvar.Name 
   (ps2, rfd)
 

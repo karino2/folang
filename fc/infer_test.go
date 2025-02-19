@@ -20,6 +20,12 @@ func uniRel(tname string, tp FType) UniRel {
 	return UniRel{tname, tp}
 }
 
+func buildResolver(rels []UniRel) Resolver {
+	res := newResolver()
+	updateResolver(res, rels)
+	return res
+}
+
 func TestBuildResolver(t *testing.T) {
 	rels := []UniRel{
 		uniRel("_T3", newTVF("_T1")),

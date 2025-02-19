@@ -102,6 +102,8 @@ package_info _ =
   let newSD: () -> SDict
   let sdLookup: SDict->string->string*bool
   let sdPut: SDict->string->string->()
+  type EquivInfoDict
+  let NewEquivInfoDict: ()->EquivInfoDict
 
 
 type TypeDefCtx = {
@@ -112,11 +114,30 @@ type TypeDefCtx = {
   allocedDict: SDict;
 }
 
+type Resolver = {eid: EquivInfoDict}
+
+let newResolver () =
+  let neid = NewEquivInfoDict ()
+  {eid=neid}
+
+type TypeVarCtx = {
+  tva: TypeVarAllocator;
+  resolver: Resolver;
+}
+
+let newTypeVarCtx () =
+  let tva = NewTypeVarAllocator "_T"
+  let res = newResolver ()
+  {tva=tva; resolver=res}
+
+let tvcToTypeVarGen (tvc:TypeVarCtx) =
+  tvaToTypeVarGen tvc.tva
+
 type ParseState = {
   tkz: Tokenizer;
   scope: Scope;
   offsideCol: []int;
-  tva: TypeVarAllocator;
+  tvc: TypeVarCtx;
   tdctx: TypeDefCtx;
 }
 
@@ -131,38 +152,42 @@ package_info _ =
   let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
 
 
-let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tva:TypeVarAllocator) (tdctx:TypeDefCtx) =
-  {tkz=tkz; scope=scope; offsideCol=offCols; tva=tva; tdctx=tdctx}
+let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tvc:TypeVarCtx) (tdctx:TypeDefCtx) =
+  {tkz=tkz; scope=scope; offsideCol=offCols; tvc=tvc; tdctx=tdctx}
 
 let psWithTkz (org:ParseState) (tkz:Tokenizer) =
-  newParse tkz org.scope org.offsideCol org.tva org.tdctx
+  newParse tkz org.scope org.offsideCol org.tvc org.tdctx
 
 let psWithScope (org:ParseState) (nsc:Scope) =
-  newParse org.tkz nsc org.offsideCol org.tva org.tdctx
+  newParse org.tkz nsc org.offsideCol org.tvc org.tdctx
 
 let psWithOffside (org:ParseState) (offs:[]int) =
-  newParse org.tkz org.scope offs org.tva org.tdctx
+  newParse org.tkz org.scope offs org.tvc org.tdctx
 
 let psWithTDCtx (org:ParseState) (ntdctx:TypeDefCtx) =
-  newParse org.tkz org.scope org.offsideCol org.tva ntdctx
+  newParse org.tkz org.scope org.offsideCol org.tvc ntdctx
+
+let psWithTVCtx (org:ParseState) (ntvctx:TypeVarCtx) =
+  newParse org.tkz org.scope org.offsideCol ntvctx org.tdctx
+
 
 let initParse (src: string) =
   let tkz = newTkz src
   let scope = NewScope ()
   let offside = [0]
-  let tva = NewTypeVarAllocator "_T"
   let tva2 = NewTypeVarAllocator "_P"
   let defdict = newTD ()
   let adict = newSD ()
+  let tvctx = newTypeVarCtx ()
   let tdctx = {tva=tva2; insideTD=false; defined=defdict; allocedDict= adict}
-  newParse tkz scope offside tva tdctx
+  newParse tkz scope offside tvctx tdctx
 
 let psSetNewSrc (src: string) (ps:ParseState) =
   let tkz = newTkz src
   psWithTkz ps tkz
 
 let psTypeVarGen (ps:ParseState) =
-  tvaToTypeVarGen ps.tva
+  tvcToTypeVarGen ps.tvc
 
 let psPushScope (org:ParseState) =
   newScope org.scope |> psWithScope org
@@ -300,8 +325,8 @@ let psCurrentTTNxL (ps:ParseState) =
 
 let psResetTmpCtx (ps:ParseState) =
   resetUniqueTmpCounter ()
-  tvaReset ps.tva
-  ps
+  newTypeVarCtx ()
+  |> psWithTVCtx ps
 
 
 /*
