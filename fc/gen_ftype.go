@@ -210,9 +210,9 @@ func fTupleToGo(toGo func(FType) string, ft TupleType) string {
 }
 
 func faResolve(fat FieldAccessType) FType {
-	switch _v23 := (fat.RecType).(type) {
+	switch _v1 := (fat.RecType).(type) {
 	case FType_FRecord:
-		rt := _v23.Value
+		rt := _v1.Value
 		field := frGetField(rt, fat.FieldName)
 		return field.Ftype
 	default:
@@ -221,7 +221,7 @@ func faResolve(fat FieldAccessType) FType {
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v24 := (ft).(type) {
+	switch _v2 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -231,27 +231,27 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnit:
 		return ""
 	case FType_FFunc:
-		ft := _v24.Value
+		ft := _v2.Value
 		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v24.Value
+		fr := _v2.Value
 		return recordTypeToGo(fr)
 	case FType_FUnion:
-		fu := _v24.Value
+		fu := _v2.Value
 		return funionToGo(fu)
 	case FType_FExtType:
-		fe := _v24.Value
+		fe := _v2.Value
 		return fe
 	case FType_FSlice:
-		fs := _v24.Value
+		fs := _v2.Value
 		return fSliceToGo(fs, FTypeToGo)
 	case FType_FTuple:
-		ft := _v24.Value
+		ft := _v2.Value
 		return fTupleToGo(FTypeToGo, ft)
 	case FType_FFieldAccess:
 		return "FieldAccess_Unresoled"
 	case FType_FTypeVar:
-		fp := _v24.Value
+		fp := _v2.Value
 		return fp.Name
 	default:
 		panic("Union pattern fail. Never reached here.")

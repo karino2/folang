@@ -6,9 +6,9 @@ import "github.com/karino2/folang/pkg/slice"
 
 func faToType(eToT func(Expr) FType, fa FieldAccess) FType {
 	tart := eToT(fa.TargetExpr)
-	switch _v40 := (tart).(type) {
+	switch _v1 := (tart).(type) {
 	case FType_FRecord:
-		rt := _v40.Value
+		rt := _v1.Value
 		field := frGetField(rt, fa.FieldName)
 		return field.Ftype
 	default:
@@ -42,12 +42,12 @@ func emptyBlock() Block {
 }
 
 func exprToBlock(bexpr Expr) Block {
-	switch _v41 := (bexpr).(type) {
+	switch _v2 := (bexpr).(type) {
 	case Expr_EReturnableExpr:
-		re := _v41.Value
-		switch _v42 := (re).(type) {
+		re := _v2.Value
+		switch _v3 := (re).(type) {
 		case ReturnableExpr_RBlock:
-			b := _v42.Value
+			b := _v3.Value
 			return b
 		default:
 			frt.Panic("Not block, some ReturnableExpr.")
@@ -65,12 +65,12 @@ func meToType(toT func(Expr) FType, me MatchExpr) FType {
 }
 
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
-	switch _v43 := (rexpr).(type) {
+	switch _v4 := (rexpr).(type) {
 	case ReturnableExpr_RBlock:
-		b := _v43.Value
+		b := _v4.Value
 		return blockToType(toT, b)
 	case ReturnableExpr_RMatchExpr:
-		me := _v43.Value
+		me := _v4.Value
 		return meToType(toT, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -80,9 +80,9 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 func fcToFuncType(fc FunCall) FuncType {
 	tfv := fc.TargetFunc
 	ft := tfv.Ftype
-	switch _v44 := (ft).(type) {
+	switch _v5 := (ft).(type) {
 	case FType_FFunc:
-		ft := _v44.Value
+		ft := _v5.Value
 		return ft
 	default:
 		return FuncType{}
@@ -105,9 +105,9 @@ func fcToType(fc FunCall) FType {
 }
 
 func ExprToType(expr Expr) FType {
-	switch _v45 := (expr).(type) {
+	switch _v6 := (expr).(type) {
 	case Expr_EGoEvalExpr:
-		ge := _v45.Value
+		ge := _v6.Value
 		return ge.TypeArg
 	case Expr_EStringLiteral:
 		return New_FType_FString
@@ -118,34 +118,34 @@ func ExprToType(expr Expr) FType {
 	case Expr_EBoolLiteral:
 		return New_FType_FBool
 	case Expr_EFieldAccess:
-		fa := _v45.Value
+		fa := _v6.Value
 		return faToType(ExprToType, fa)
 	case Expr_EVar:
-		v := _v45.Value
+		v := _v6.Value
 		return v.Ftype
 	case Expr_ESlice:
-		s := _v45.Value
+		s := _v6.Value
 		etp := frt.Pipe(slice.Head(s), ExprToType)
 		st := SliceType{ElemType: etp}
 		return New_FType_FSlice(st)
 	case Expr_ETupleExpr:
-		es := _v45.Value
+		es := _v6.Value
 		ts := slice.Map(ExprToType, es)
 		return frt.Pipe(TupleType{ElemTypes: ts}, New_FType_FTuple)
 	case Expr_ERecordGen:
-		rg := _v45.Value
+		rg := _v6.Value
 		return New_FType_FRecord(rg.RecordType)
 	case Expr_ELazyBlock:
-		lb := _v45.Value
+		lb := _v6.Value
 		return lblockToType(ExprToType, lb)
 	case Expr_EReturnableExpr:
-		re := _v45.Value
+		re := _v6.Value
 		return returnableToType(ExprToType, re)
 	case Expr_EFunCall:
-		fc := _v45.Value
+		fc := _v6.Value
 		return fcToType(fc)
 	case Expr_EBinOpCall:
-		bc := _v45.Value
+		bc := _v6.Value
 		return bc.Rtype
 	default:
 		panic("Union pattern fail. Never reached here.")
