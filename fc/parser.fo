@@ -788,10 +788,19 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   {Fvar=fnvar; Params=params; Body=block}
   |> withPs ps5
 
+let rfdToFuncFactory (rfd:RootFuncDef) =
+  let targets = match rfd.Lfd.Fvar.Ftype with
+                | FFunc ft ->
+                  ft.Targets
+                | _ ->
+                  frt.Panic "root func def let with non func var, bug"
+                  GoEval<[]FType> "[]FType{}"
+  {Tparams=rfd.Tparams; Targets=targets}
+
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let (ps2, lfd) = parseLetFuncDef pLet ps
   let rfd = InferLfd ps.tvc lfd
-  lfdToFuncVar rfd.Lfd |> scDefVar ps2.scope rfd.Lfd.Fvar.Name 
+  rfdToFuncFactory rfd |> scRegFunFac ps2.scope rfd.Lfd.Fvar.Name
   (ps2, rfd)
 
 /*

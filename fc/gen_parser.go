@@ -769,10 +769,24 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 	return frt.Pipe(LetFuncDef{Fvar: fnvar, Params: params, Body: block}, (func(_r0 LetFuncDef) frt.Tuple2[ParseState, LetFuncDef] { return withPs(ps5, _r0) }))
 }
 
+func rfdToFuncFactory(rfd RootFuncDef) FuncFactory {
+	targets := (func() []FType {
+		switch _v5 := (rfd.Lfd.Fvar.Ftype).(type) {
+		case FType_FFunc:
+			ft := _v5.Value
+			return ft.Targets
+		default:
+			frt.Panic("root func def let with non func var, bug")
+			return []FType{}
+		}
+	})()
+	return FuncFactory{Tparams: rfd.Tparams, Targets: targets}
+}
+
 func parseRootLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, RootFuncDef] {
 	ps2, lfd := frt.Destr(parseLetFuncDef(pLet, ps))
 	rfd := InferLfd(ps.tvc, lfd)
-	frt.PipeUnit(lfdToFuncVar(rfd.Lfd), (func(_r0 Var) { scDefVar(ps2.scope, rfd.Lfd.Fvar.Name, _r0) }))
+	frt.PipeUnit(rfdToFuncFactory(rfd), (func(_r0 FuncFactory) { scRegFunFac(ps2.scope, rfd.Lfd.Fvar.Name, _r0) }))
 	return frt.NewTuple2(ps2, rfd)
 }
 

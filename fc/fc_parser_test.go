@@ -987,14 +987,14 @@ let hoge i =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let Print: string->()
+package_info slice =
+  let New<T>: ()->T[]
+  let IsEmpty<T>: []T->bool
 
+let ika () =
+  let s = slice.New<string> ()
+  slice.IsEmpty s
 
-let hoge (uname: string) =
-  if uname <> "_"  then
-	  Print "hoge"
-  123
 `
 
 	got := transpile(src)

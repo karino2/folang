@@ -403,16 +403,19 @@ let piRegEType (pi:PackageInfo) (tname:string) =
   etdPut pi.TypeInfo tname fullName
   etype
 
+let scRegFunFac (sc:Scope) (fname:string) (ff:FuncFactory) =
+  scRegisterVarFac sc fname (GenFuncVar fname ff)
+
 // register function factory
 let piRegFF (pi:PackageInfo) (fname:string) (ff:FuncFactory) (ps:ParseState) =
   ffdPut pi.FuncInfo fname ff
-  scRegisterVarFac ps.scope fname (GenFuncVar fname ff)
+  scRegFunFac ps.scope fname ff
   ps
 
 let regFF (pi:PackageInfo) (sc:Scope) (sff:string*FuncFactory) =
   let (ffname, ff) = sff
   let fullName = piFullName pi ffname 
-  scRegisterVarFac sc fullName (GenFuncVar fullName ff)
+  scRegFunFac sc fullName ff
 
 let regET (sc:Scope) (etp:string*string) =
    let fullName = frt.Snd etp

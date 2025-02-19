@@ -384,16 +384,20 @@ func piRegEType(pi PackageInfo, tname string) FType {
 	return etype
 }
 
+func scRegFunFac(sc Scope, fname string, ff FuncFactory) {
+	scRegisterVarFac(sc, fname, (func(_r0 func() TypeVar) Var { return GenFuncVar(fname, ff, _r0) }))
+}
+
 func piRegFF(pi PackageInfo, fname string, ff FuncFactory, ps ParseState) ParseState {
 	ffdPut(pi.FuncInfo, fname, ff)
-	scRegisterVarFac(ps.scope, fname, (func(_r0 func() TypeVar) Var { return GenFuncVar(fname, ff, _r0) }))
+	scRegFunFac(ps.scope, fname, ff)
 	return ps
 }
 
 func regFF(pi PackageInfo, sc Scope, sff frt.Tuple2[string, FuncFactory]) {
 	ffname, ff := frt.Destr(sff)
 	fullName := piFullName(pi, ffname)
-	scRegisterVarFac(sc, fullName, (func(_r0 func() TypeVar) Var { return GenFuncVar(fullName, ff, _r0) }))
+	scRegFunFac(sc, fullName, ff)
 }
 
 func regET(sc Scope, etp frt.Tuple2[string, string]) {
