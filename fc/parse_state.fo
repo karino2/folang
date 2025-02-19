@@ -9,14 +9,13 @@ import slice
 
 // wrapper types.
 package_info _ =
-  type TypeVarDict
-  let toTVDict: []string*TypeVar->TypeVarDict
-  let tvdLookupNF: TypeVarDict->string->TypeVar
+  type TypeDict
+  let toTDict: []string*FType->TypeDict
+  let tdLookupNF: TypeDict->string->FType
+  let tdLookup: TypeDict->string->FType*bool
 
 
-let tpname2tvtp (tvgen: ()->TypeVar) (tpname:string) =
-  let tv = tvgen ()
-  (tpname, tv)
+
 
 /*
   TransformT FTypeVar and recomposite.
@@ -64,25 +63,46 @@ let collectTVarFType (ft:FType) : []string =
   
 
 
-let tpReplaceOne (tvd:TypeVarDict) (tv:TypeVar) =
-  tvdLookupNF tvd tv.Name |> FTypeVar
+let tpReplaceOne (tdic:TypeDict) (tv:TypeVar) =
+  let (tp, ok) = tdLookup tdic tv.Name
+  if ok then
+    tp
+  else
+    FTypeVar tv
 
-let tpreplace (tvd:TypeVarDict) (ft:FType) =
-  transTypeVarFType (tpReplaceOne tvd) ft
+let tpreplace (tdic:TypeDict) (ft:FType) =
+  transTypeVarFType (tpReplaceOne tdic) ft
 
-let GenFunc (ff:FuncFactory) (tvgen: ()->TypeVar) =
-  let tvd = slice.Map (tpname2tvtp tvgen) ff.Tparams |> toTVDict
-  let ntargets = slice.Map (tpreplace tvd) ff.Targets
+let emptyFtps () =
+  GoEval<[]FType> "[]FType{}"
+
+let tpname2tvtp (tvgen: ()->TypeVar) (slist:[]FType) (i:int) (tpname:string) =
+  if (slice.Len slist) > i then
+    let item = slice.Item i slist
+    (tpname, item)
+  else
+    let tv = tvgen () |> FTypeVar
+    (tpname, tv)
+
+let GenFunc (ff:FuncFactory) (stlist:[]FType) (tvgen: ()->TypeVar) =
+  if (slice.Len stlist) > (slice.Len ff.Tparams) then
+    frt.Panic "Too many type specified."
+  let tdic = slice.Mapi (tpname2tvtp tvgen stlist) ff.Tparams |> toTDict
+  let ntargets = slice.Map (tpreplace tdic) ff.Targets
   {FuncType.Targets=ntargets}
 
-let GenFuncVar (vname:string) (ff:FuncFactory) (tvgen: ()->TypeVar) =
-  let funct = GenFunc ff tvgen
+let GenFuncVar (vname:string) (ff:FuncFactory) (stlist: []FType) (tvgen: ()->TypeVar) =
+  let funct = GenFunc ff stlist tvgen
   let ft = FFunc funct
-  {Var.Name=vname; Ftype=ft}
+  let v = {Var.Name=vname; Ftype=ft}
+  if slice.IsEmpty stlist then
+    VRVar v
+  else
+    VRSVar {SpecVar.Var = v; SpecList=stlist}
 
 let genBuiltinFunCall (tvgen: ()->TypeVar) (fname:string) (tpnames: []string) (targetTPs:[]FType) (args:[]Expr) =
   let ff = {Tparams=tpnames; Targets=targetTPs}
-  let fvar = GenFuncVar fname ff tvgen
+  let fvar = GenFuncVar fname ff (emptyFtps ()) tvgen
   {TargetFunc=fvar; Args=args}
   |> EFunCall
 
@@ -102,12 +122,12 @@ package_info _ =
   let newScope: Scope->Scope
   let popScope: Scope->Scope
   let scDefVar: Scope->string->Var->()
-  let scLookupVarFac: Scope->string->((()->TypeVar)->Var)*bool
+  let scLookupVarFac: Scope->string->([]FType->(()->TypeVar)->VarRef)*bool
   let scRegisterRecType: Scope->RecordType->()
   let scLookupRecord: Scope->[]string->RecordType*bool
   let scLookupRecordByName: Scope->string->RecordType*bool
   let scRegisterType: Scope->string->FType->()
-  let scRegisterVarFac: Scope->string->((()->TypeVar)->Var)->()
+  let scRegisterVarFac: Scope->string->([]FType->(()->TypeVar)->VarRef)->()
   let scLookupType: Scope->string->FType*bool
   type TypeVarAllocator
   let NewTypeVarAllocator: string->TypeVarAllocator
@@ -115,9 +135,7 @@ package_info _ =
   let tvaReset: TypeVarAllocator->()
   let resetUniqueTmpCounter: ()->()
   let tvaListAlloced: TypeVarAllocator->[]TypeVar
-  type TypeDict
   let newTD: () -> TypeDict
-  let tdLookup: TypeDict->string->FType*bool
   let tdPut: TypeDict->string->FType->()
   type SDict
   let newSD: () -> SDict
@@ -350,6 +368,9 @@ let psResetTmpCtx (ps:ParseState) =
   newTypeVarCtx ()
   |> psWithTVCtx ps
 
+
+let psIsNeighborLT (ps:ParseState) =
+   tkzIsNeighborLT ps.tkz
 
 /*
 UnionDef related utility.

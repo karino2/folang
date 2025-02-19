@@ -1,5 +1,7 @@
 package main
 
+import "github.com/karino2/folang/pkg/frt"
+
 type GoEvalExpr struct {
 	GoStmt  string
 	TypeArg FType
@@ -8,6 +10,75 @@ type GoEvalExpr struct {
 type Var struct {
 	Name  string
 	Ftype FType
+}
+
+type SpecVar struct {
+	Var      Var
+	SpecList []FType
+}
+
+type VarRef interface {
+	VarRef_Union()
+}
+
+func (VarRef_VRVar) VarRef_Union()  {}
+func (VarRef_VRSVar) VarRef_Union() {}
+
+type VarRef_VRVar struct {
+	Value Var
+}
+
+func New_VarRef_VRVar(v Var) VarRef { return VarRef_VRVar{v} }
+
+type VarRef_VRSVar struct {
+	Value SpecVar
+}
+
+func New_VarRef_VRSVar(v SpecVar) VarRef { return VarRef_VRSVar{v} }
+
+func varRefName(vr VarRef) string {
+	switch _v1 := (vr).(type) {
+	case VarRef_VRVar:
+		v := _v1.Value
+		return v.Name
+	case VarRef_VRSVar:
+		sv := _v1.Value
+		return sv.Var.Name
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func varRefVar(vr VarRef) Var {
+	switch _v2 := (vr).(type) {
+	case VarRef_VRVar:
+		v := _v2.Value
+		return v
+	case VarRef_VRSVar:
+		sv := _v2.Value
+		return sv.Var
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func varRefVarType(vr VarRef) FType {
+	v := varRefVar(vr)
+	return v.Ftype
+}
+
+func transVarVR(transV func(Var) Var, vr VarRef) VarRef {
+	switch _v3 := (vr).(type) {
+	case VarRef_VRVar:
+		v := _v3.Value
+		return frt.Pipe(transV(v), New_VarRef_VRVar)
+	case VarRef_VRSVar:
+		sv := _v3.Value
+		nv := transV(sv.Var)
+		return frt.Pipe(SpecVar{Var: nv, SpecList: sv.SpecList}, New_VarRef_VRSVar)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
 }
 
 type MatchPattern struct {
@@ -31,7 +102,7 @@ func (Expr_EUnit) Expr_Union()           {}
 func (Expr_EBoolLiteral) Expr_Union()    {}
 func (Expr_EFunCall) Expr_Union()        {}
 func (Expr_EFieldAccess) Expr_Union()    {}
-func (Expr_EVar) Expr_Union()            {}
+func (Expr_EVarRef) Expr_Union()         {}
 func (Expr_ESlice) Expr_Union()          {}
 func (Expr_ERecordGen) Expr_Union()      {}
 func (Expr_ELazyBlock) Expr_Union()      {}
@@ -80,11 +151,11 @@ type Expr_EFieldAccess struct {
 
 func New_Expr_EFieldAccess(v FieldAccess) Expr { return Expr_EFieldAccess{v} }
 
-type Expr_EVar struct {
-	Value Var
+type Expr_EVarRef struct {
+	Value VarRef
 }
 
-func New_Expr_EVar(v Var) Expr { return Expr_EVar{v} }
+func New_Expr_EVarRef(v VarRef) Expr { return Expr_EVarRef{v} }
 
 type Expr_ESlice struct {
 	Value []Expr
@@ -123,7 +194,7 @@ type Expr_EReturnableExpr struct {
 func New_Expr_EReturnableExpr(v ReturnableExpr) Expr { return Expr_EReturnableExpr{v} }
 
 type FunCall struct {
-	TargetFunc Var
+	TargetFunc VarRef
 	Args       []Expr
 }
 type FieldAccess struct {

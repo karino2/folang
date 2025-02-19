@@ -79,7 +79,7 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 
 func fcToFuncType(fc FunCall) FuncType {
 	tfv := fc.TargetFunc
-	ft := tfv.Ftype
+	ft := varRefVarType(tfv)
 	switch _v5 := (ft).(type) {
 	case FType_FFunc:
 		ft := _v5.Value
@@ -120,8 +120,9 @@ func ExprToType(expr Expr) FType {
 	case Expr_EFieldAccess:
 		fa := _v6.Value
 		return faToType(ExprToType, fa)
-	case Expr_EVar:
-		v := _v6.Value
+	case Expr_EVarRef:
+		vr := _v6.Value
+		v := varRefVar(vr)
 		return v.Ftype
 	case Expr_ESlice:
 		s := _v6.Value

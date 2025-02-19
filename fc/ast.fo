@@ -1,5 +1,7 @@
 package main
 
+import frt
+
 // wrapper types.
 package_info _ =
   type funcFacDict
@@ -10,6 +12,36 @@ package_info _ =
 type GoEvalExpr = {GoStmt: string; TypeArg: FType}
 type Var = {Name: string; Ftype: FType}
 
+// type specified var ref
+// like NewDict<string, int>
+type SpecVar = {Var: Var; SpecList: []FType}
+
+type VarRef =
+| VRVar of Var
+| VRSVar of SpecVar
+
+let varRefName (vr:VarRef) =
+  match vr with
+  | VRVar v -> v.Name
+  | VRSVar sv -> sv.Var.Name
+
+let varRefVar (vr:VarRef) =
+  match vr with
+  | VRVar v -> v
+  | VRSVar sv -> sv.Var
+
+let varRefVarType (vr:VarRef) =
+   let v = varRefVar vr
+   v.Ftype
+
+let transVarVR (transV:Var->Var) (vr: VarRef) =
+  match vr with
+  | VRVar v -> transV v |> VRVar
+  | VRSVar sv ->
+    let nv = transV sv.Var
+    {SpecVar.Var=nv; SpecList=sv.SpecList}
+    |> VRSVar
+  
 
 /*
 Union case matching.
@@ -30,7 +62,7 @@ type Expr =
 | EBoolLiteral of bool
 | EFunCall of FunCall
 | EFieldAccess of FieldAccess
-| EVar of Var
+| EVarRef of VarRef
 | ESlice of []Expr
 | ERecordGen of RecordGen
 | ELazyBlock of LazyBlock
@@ -42,7 +74,7 @@ type Expr =
   We use type ReturnableExpr for expr of which we can emit directlry return go code.
 */
 | EReturnableExpr of ReturnableExpr
-and FunCall = {TargetFunc: Var; Args: []Expr}
+and FunCall = {TargetFunc: VarRef; Args: []Expr}
 and FieldAccess = {TargetExpr: Expr; FieldName: string} // stands for record field access of form: targetName.FieldName
 and BinOpCall = {Op: string; Rtype: FType; Lhs: Expr; Rhs: Expr}
 and NEPair = {Name: string; Expr: Expr}

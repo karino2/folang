@@ -45,7 +45,7 @@ func TestMatchExprToGo(t *testing.T) {
 	resetUniqueTmpCounter()
 	defer resetUniqueTmpCounter()
 	unionType := UnionType{"IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}}}
-	target := New_Expr_EVar(Var{"udata", New_FType_FUnion(unionType)})
+	target := New_Expr_EVarRef(New_VarRef_VRVar(Var{"udata", New_FType_FUnion(unionType)}))
 	matchExpr := MatchExpr{
 		target,
 		[]MatchRule{

@@ -62,6 +62,7 @@ package_info _ =
   let newTokenizer: string->Tokenizer
   let nextToken: string->Token->Token
   let nextNLToken: string->Token->Token
+  let isNeighborLT: string->Token->bool
 
 let newTkz (buf:string) =
   let itk = newToken ILLEGAL 0 0
@@ -91,3 +92,5 @@ let tkzNextNOL (tkz:Tokenizer) : Tokenizer =
   else
     ntkz
 
+let tkzIsNeighborLT (tkz:Tokenizer) =
+  isNeighborLT tkz.buf tkz.current

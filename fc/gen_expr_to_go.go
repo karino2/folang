@@ -204,6 +204,20 @@ func ntpairToParam(tGo func(FType) string, ntp frt.Tuple2[string, FType]) string
 	return ((name + " ") + tpgo)
 }
 
+func varRefToGo(tGo func(FType) string, vr VarRef) string {
+	switch _v4 := (vr).(type) {
+	case VarRef_VRVar:
+		v := _v4.Value
+		return v.Name
+	case VarRef_VRSVar:
+		sv := _v4.Value
+		tlis := frt.Pipe(frt.Pipe(sv.SpecList, (func(_r0 []FType) []string { return slice.Map(tGo, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
+		return (((sv.Var.Name + "[") + tlis) + "]")
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
 func fcPartialApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall) string {
 	funcType := fcToFuncType(fc)
 	fargTypes := fargs(funcType)
@@ -223,7 +237,7 @@ func fcPartialApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall)
 		frt.PipeUnit(tGo(fret), (func(_r0 string) { buf.Write(b, _r0) }))
 		buf.Write(b, "{ return ")
 	}))
-	buf.Write(b, fc.TargetFunc.Name)
+	frt.PipeUnit(varRefToGo(tGo, fc.TargetFunc), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "(")
 	frt.PipeUnit(frt.Pipe(slice.Map(eGo, fc.Args), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ", ")
@@ -241,9 +255,9 @@ func fcUnitArgOnly(fc FunCall) bool {
 	}))
 }
 
-func fcFullApplyGo(eGo func(Expr) string, fc FunCall) string {
+func fcFullApplyGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall) string {
 	b := buf.New()
-	buf.Write(b, fc.TargetFunc.Name)
+	frt.PipeUnit(varRefToGo(tGo, fc.TargetFunc), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "(")
 	frt.IfOnly(frt.OpNot(fcUnitArgOnly(fc)), (func() {
 		frt.PipeUnit(frt.Pipe(slice.Map(eGo, fc.Args), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
@@ -263,7 +277,7 @@ func fcToGo(tGo func(FType) string, eGo func(Expr) string, fc FunCall) string {
 	return frt.IfElse((al < tal), (func() string {
 		return fcPartialApplyGo(tGo, eGo, fc)
 	}), (func() string {
-		return fcFullApplyGo(eGo, fc)
+		return fcFullApplyGo(tGo, eGo, fc)
 	}))
 }
 
@@ -302,47 +316,47 @@ func faToGo(eGo func(Expr) string, fa FieldAccess) string {
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
-	switch _v4 := (expr).(type) {
+	switch _v5 := (expr).(type) {
 	case Expr_EBoolLiteral:
-		b := _v4.Value
+		b := _v5.Value
 		return frt.Sprintf1("%t", b)
 	case Expr_EGoEvalExpr:
-		ge := _v4.Value
+		ge := _v5.Value
 		return reinterpretEscape(ge.GoStmt)
 	case Expr_EStringLiteral:
-		s := _v4.Value
+		s := _v5.Value
 		return frt.Sprintf1("\"%s\"", s)
 	case Expr_EIntImm:
-		i := _v4.Value
+		i := _v5.Value
 		return frt.Sprintf1("%d", i)
 	case Expr_EUnit:
 		return ""
 	case Expr_EFieldAccess:
-		fa := _v4.Value
+		fa := _v5.Value
 		return faToGo(eToGo, fa)
-	case Expr_EVar:
-		v := _v4.Value
-		return v.Name
+	case Expr_EVarRef:
+		vr := _v5.Value
+		return varRefName(vr)
 	case Expr_ESlice:
-		es := _v4.Value
+		es := _v5.Value
 		return sliceToGo(FTypeToGo, eToGo, es)
 	case Expr_ETupleExpr:
-		es := _v4.Value
+		es := _v5.Value
 		return tupleToGo(eToGo, es)
 	case Expr_EBinOpCall:
-		bop := _v4.Value
+		bop := _v5.Value
 		return binOpToGo(eToGo, bop)
 	case Expr_ERecordGen:
-		rg := _v4.Value
+		rg := _v5.Value
 		return rgToGo(eToGo, rg)
 	case Expr_EReturnableExpr:
-		re := _v4.Value
+		re := _v5.Value
 		return reToGo(sToGo, eToGo, re)
 	case Expr_EFunCall:
-		fc := _v4.Value
+		fc := _v5.Value
 		return fcToGo(FTypeToGo, eToGo, fc)
 	case Expr_ELazyBlock:
-		lb := _v4.Value
+		lb := _v5.Value
 		return lbToGo((func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, reToGoRet, _r0) }), lb)
 	default:
 		panic("Union pattern fail. Never reached here.")

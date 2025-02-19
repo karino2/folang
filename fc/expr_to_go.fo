@@ -213,6 +213,15 @@ let ntpairToParam (tGo:FType->string) (ntp: string*FType) =
   let name = frt.Fst ntp
   name + " " + tpgo
 
+let varRefToGo (tGo:FType->string) (vr:VarRef) =
+  match vr with
+  | VRVar v -> v.Name
+  | VRSVar sv ->
+    let tlis = sv.SpecList
+                |> slice.Map tGo
+                |> strings.Concat ", "
+    sv.Var.Name + "[" + tlis + "]"
+
 let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   let funcType = fcToFuncType fc
   let fargTypes = fargs funcType
@@ -230,7 +239,7 @@ let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   else
     tGo fret |> buf.Write b
     buf.Write b "{ return "
-  buf.Write b fc.TargetFunc.Name
+  varRefToGo tGo fc.TargetFunc |> buf.Write b
   buf.Write b "("
   slice.Map eGo fc.Args |> strings.Concat ", " |> buf.Write b
   buf.Write b ", "
@@ -243,11 +252,11 @@ let fcUnitArgOnly (fc:FunCall) =
   if al = 1 then
     EUnit = slice.Head fc.Args 
   else
-    false
+    false        
 
-let fcFullApplyGo (eGo:Expr->string) (fc:FunCall) =
+let fcFullApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   let b = buf.New ()
-  buf.Write b fc.TargetFunc.Name
+  varRefToGo tGo fc.TargetFunc |> buf.Write b
   buf.Write b "("
   if not (fcUnitArgOnly fc) then
     slice.Map eGo fc.Args |> strings.Concat ", " |> buf.Write b
@@ -263,7 +272,7 @@ let fcToGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   if al < tal then
     fcPartialApplyGo tGo eGo fc
   else
-    fcFullApplyGo eGo fc
+    fcFullApplyGo tGo eGo fc
 
 let sliceToGo (tGo:FType->string) (eGo:Expr->string) (exprs: []Expr) =
   let b = buf.New ()
@@ -308,7 +317,7 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | EIntImm i -> frt.Sprintf1 "%d" i
   | EUnit -> ""
   | EFieldAccess fa -> faToGo eToGo fa
-  | EVar v -> v.Name
+  | EVarRef vr ->varRefName vr
   | ESlice es -> sliceToGo FTypeToGo eToGo es
   | ETupleExpr es -> tupleToGo eToGo es
   | EBinOpCall bop -> binOpToGo eToGo bop

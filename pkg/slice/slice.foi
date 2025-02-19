@@ -1,5 +1,8 @@
 package_info slice =
   let Length<T>: []T -> int
+  // alias
+  let Len<T>: []T -> int
+  let Item<T>: int -> []T -> T
   let IsEmpty<T>: []T -> bool
   let Last<T>: []T -> T
   let Head<T>: []T -> T

@@ -57,7 +57,7 @@ let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
 let fcToFuncType (fc:FunCall) =
   // double field access like fc.TargetFunc.Ftype is NYI.
   let tfv = fc.TargetFunc
-  let ft = tfv.Ftype
+  let ft = varRefVarType tfv
   match ft with
   | FFunc ft -> ft
   | _ -> GoEval<FuncType> "FuncType{}" // never happens.
@@ -83,7 +83,9 @@ let ExprToType (expr:Expr) : FType =
   | EUnit -> FUnit
   | EBoolLiteral _ -> FBool
   | EFieldAccess fa -> faToType ExprToType fa
-  | EVar v -> v.Ftype
+  | EVarRef vr -> 
+      let v = varRefVar vr
+      v.Ftype
   | ESlice s -> 
     // slice must be all the same type, so use first elem type.
     let etp = slice.Head s |> ExprToType

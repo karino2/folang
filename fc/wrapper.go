@@ -356,6 +356,16 @@ func scanTokenAt(buf string, pos int) Token {
 	}
 }
 
+// very special.
+// No space is important.
+// This is the only place where space is matters.
+func isNeighborLT(buf string, prev Token) bool {
+	if len(buf) <= prev.end() {
+		return false
+	}
+	return buf[prev.end()] == '<'
+}
+
 // next non-space token.
 func nextToken(buf string, prev Token) Token {
 	if len(buf) <= prev.end() {
@@ -406,9 +416,11 @@ func reinterpretEscape(buf string) string {
 	So I write Scope related code in golang, then call it from folang.
 */
 
+type VarFactory = func(stlist []FType, tvgen func() TypeVar) VarRef
+
 type scopeImpl struct {
 	// var factory Map
-	varFacMap map[string]func(tvgen func() TypeVar) Var
+	varFacMap map[string]VarFactory
 	recordMap map[string]RecordType
 	typeMap   map[string]FType
 	parent    *scopeImpl
@@ -419,7 +431,7 @@ type Scope = *scopeImpl
 
 func newScope(parent *scopeImpl) *scopeImpl {
 	s := &scopeImpl{}
-	s.varFacMap = make(map[string]func(tvgen func() TypeVar) Var)
+	s.varFacMap = make(map[string]VarFactory)
 	s.recordMap = make(map[string]RecordType)
 	s.typeMap = make(map[string]FType)
 	s.parent = parent
@@ -435,16 +447,16 @@ func NewScope() Scope {
 }
 
 func scDefVar(s Scope, name string, v Var) {
-	s.varFacMap[name] = func(_ func() TypeVar) Var { return v }
+	s.varFacMap[name] = func(_ []FType, _ func() TypeVar) VarRef { return New_VarRef_VRVar(v) }
 }
 
-func scRegisterVarFac(s Scope, name string, fac func(func() TypeVar) Var) {
+func scRegisterVarFac(s Scope, name string, fac VarFactory) {
 	s.varFacMap[name] = fac
 }
 
 // currently, we can't support Result because of absence of generic type.
 // We use golang style convention though F# convention is bool is first.
-func scLookupVarFac(s Scope, name string) frt.Tuple2[func(func() TypeVar) Var, bool] {
+func scLookupVarFac(s Scope, name string) frt.Tuple2[VarFactory, bool] {
 	cur := s
 	for cur != nil {
 		ret, ok := cur.varFacMap[name]
@@ -453,7 +465,7 @@ func scLookupVarFac(s Scope, name string) frt.Tuple2[func(func() TypeVar) Var, b
 		}
 		cur = cur.parent
 	}
-	return frt.NewTuple2[func(func() TypeVar) Var](nil, false)
+	return frt.NewTuple2[VarFactory](nil, false)
 }
 
 func scRegisterRecType(s Scope, recType RecordType) {
@@ -697,6 +709,15 @@ func tdPut(dic TypeDict, key string, v FType) {
 
 func tdLookup(dic TypeDict, key string) frt.Tuple2[FType, bool] {
 	return dictLookup(dic, key)
+}
+
+// NF: Never fail.
+func tdLookupNF(tdic TypeDict, key string) FType {
+	return tdic[key]
+}
+
+func toTDict(ps []frt.Tuple2[string, FType]) TypeDict {
+	return toDict(ps)
 }
 
 type SDict = map[string]string

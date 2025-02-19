@@ -345,3 +345,7 @@ func tkzNextNOL(tkz Tokenizer) Tokenizer {
 		return ntkz
 	}))
 }
+
+func tkzIsNeighborLT(tkz Tokenizer) bool {
+	return isNeighborLT(tkz.buf, tkz.current)
+}

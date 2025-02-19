@@ -280,10 +280,10 @@ let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     let (rtype, ok) = scLookupRecordByName ps2.scope recName
     retRecordGen ok rtype neps ps2
 
-let refVar (vname:string) (ps:ParseState) =
+let refVar (vname:string) (stlist:[]FType) (ps:ParseState) =
   let (vfac, ok) = scLookupVarFac ps.scope vname
   if ok then
-    psTypeVarGen ps |> vfac |> EVar
+    psTypeVarGen ps |> vfac stlist |> EVarRef
   else
     frt.Sprintf1 "Unknown var ref: %s" vname
     |> frt.Panic
@@ -308,33 +308,68 @@ let parseFAAfterDot (ps:ParseState) (cur:Expr) : (ParseState*Expr) =
     (ps2, fexpr)
 
 
+/*
+  TYPE_LIST = TYPE (',' TYPE)*
+*/
+let parseTypeList (ps:ParseState) : ParseState*[]FType =
+  let (ps2, one) = parseType ps
+  if psCurIs COMMA ps2 then
+    psConsume COMMA ps2
+    |> parseTypeList
+    |> CnvR (slice.PushHead one)
+  else
+    (ps2, [one])
 
 /*
-  VARIABLE_REF = IDENTIFIER | IDENTIFER '.' IDENTIFIER
+  if cur is '<', parse '<' TYPE_LIST '>',
+  else return empty type list with current ps.
+*/
+let mightParseSpecifiedTypeList (ps:ParseState) =
+  if psCurIs LT ps then
+    psConsume LT ps
+    |> parseTypeList
+    |> CnvL (psConsume GT)
+  else
+    emptyFtps ()
+    |> withPs ps
+
+/*
+  VARIABLE_REF = VARIABLE_REF_BASE ('<' TYPE_LIST '>')
+  VARIABLE_REF_BASE = IDENTIFIER | IDENTIFER '.' IDENTIFIER
 
   For first case, IDENTIFIER must be in scope.
   For later case, there are 2 types:
     - external pkg access: slice.Take
     - record field access: rec.Person
+
+  between VARIABLE_REF_BASE and '<', there must not be space to distinguish "a < b > 3" and "a<b>".
+  This is special.
 */
 let parseVarRef (ps:ParseState) =
-  let (ps2, firstId) = psIdentNameNx ps
+  let firstId = psIdentName ps
+  let (ps2, stlist) = if psIsNeighborLT ps then
+                        psNext ps
+                        |> mightParseSpecifiedTypeList
+                      else
+                        emptyFtps ()
+                        |> withPs (psNext ps)
   if (psCurrentTT ps2) <> DOT then
-    refVar firstId ps2
+    refVar firstId stlist ps2
     |> withPs ps2
   else
   	// Next is dot. Check whether rec field access or pkg access.
     let (vfac, ok) = scLookupVarFac ps2.scope firstId
     if ok then
   	  // symbol found, record field access.
-      psTypeVarGen ps2 |> vfac |> EVar
+      psTypeVarGen ps2 |> vfac (emptyFtps ()) |> EVarRef
       |> parseFAAfterDot ps2
     else
       // external pkg access.
       // use original ps for parseFullName
       let (ps3, fullName) = parseFullName ps
-      refVar fullName ps3
-      |> withPs ps3
+      let (ps4, stlist) = mightParseSpecifiedTypeList ps3
+      refVar fullName stlist ps4
+      |> withPs ps4
 
 
 let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
@@ -580,8 +615,8 @@ let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseSta
       let head = slice.Head es
       let tail = slice.Tail es
       match head with
-      | EVar v ->
-        let fc = {TargetFunc=v; Args=tail}
+      | EVarRef vr ->
+        let fc = {TargetFunc=vr; Args=tail}
         (ps2, EFunCall fc)
       | _ ->
         frt.Panic "Funcall head is not var"

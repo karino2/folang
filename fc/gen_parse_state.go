@@ -4,11 +4,6 @@ import "github.com/karino2/folang/pkg/frt"
 
 import "github.com/karino2/folang/pkg/slice"
 
-func tpname2tvtp(tvgen func() TypeVar, tpname string) frt.Tuple2[string, TypeVar] {
-	tv := tvgen()
-	return frt.NewTuple2(tpname, tv)
-}
-
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
 	switch _v1 := (ftp).(type) {
@@ -64,29 +59,56 @@ func collectTVarFType(ft FType) []string {
 	}
 }
 
-func tpReplaceOne(tvd TypeVarDict, tv TypeVar) FType {
-	return frt.Pipe(tvdLookupNF(tvd, tv.Name), New_FType_FTypeVar)
+func tpReplaceOne(tdic TypeDict, tv TypeVar) FType {
+	tp, ok := frt.Destr(tdLookup(tdic, tv.Name))
+	return frt.IfElse(ok, (func() FType {
+		return tp
+	}), (func() FType {
+		return New_FType_FTypeVar(tv)
+	}))
 }
 
-func tpreplace(tvd TypeVarDict, ft FType) FType {
-	return transTypeVarFType((func(_r0 TypeVar) FType { return tpReplaceOne(tvd, _r0) }), ft)
+func tpreplace(tdic TypeDict, ft FType) FType {
+	return transTypeVarFType((func(_r0 TypeVar) FType { return tpReplaceOne(tdic, _r0) }), ft)
 }
 
-func GenFunc(ff FuncFactory, tvgen func() TypeVar) FuncType {
-	tvd := frt.Pipe(slice.Map((func(_r0 string) frt.Tuple2[string, TypeVar] { return tpname2tvtp(tvgen, _r0) }), ff.Tparams), toTVDict)
-	ntargets := slice.Map((func(_r0 FType) FType { return tpreplace(tvd, _r0) }), ff.Targets)
+func emptyFtps() []FType {
+	return []FType{}
+}
+
+func tpname2tvtp(tvgen func() TypeVar, slist []FType, i int, tpname string) frt.Tuple2[string, FType] {
+	return frt.IfElse((slice.Len(slist) > i), (func() frt.Tuple2[string, FType] {
+		item := slice.Item(i, slist)
+		return frt.NewTuple2(tpname, item)
+	}), (func() frt.Tuple2[string, FType] {
+		tv := frt.Pipe(tvgen(), New_FType_FTypeVar)
+		return frt.NewTuple2(tpname, tv)
+	}))
+}
+
+func GenFunc(ff FuncFactory, stlist []FType, tvgen func() TypeVar) FuncType {
+	frt.IfOnly((slice.Len(stlist) > slice.Len(ff.Tparams)), (func() {
+		frt.Panic("Too many type specified.")
+	}))
+	tdic := frt.Pipe(slice.Mapi((func(_r0 int, _r1 string) frt.Tuple2[string, FType] { return tpname2tvtp(tvgen, stlist, _r0, _r1) }), ff.Tparams), toTDict)
+	ntargets := slice.Map((func(_r0 FType) FType { return tpreplace(tdic, _r0) }), ff.Targets)
 	return FuncType{Targets: ntargets}
 }
 
-func GenFuncVar(vname string, ff FuncFactory, tvgen func() TypeVar) Var {
-	funct := GenFunc(ff, tvgen)
+func GenFuncVar(vname string, ff FuncFactory, stlist []FType, tvgen func() TypeVar) VarRef {
+	funct := GenFunc(ff, stlist, tvgen)
 	ft := New_FType_FFunc(funct)
-	return Var{Name: vname, Ftype: ft}
+	v := Var{Name: vname, Ftype: ft}
+	return frt.IfElse(slice.IsEmpty(stlist), (func() VarRef {
+		return New_VarRef_VRVar(v)
+	}), (func() VarRef {
+		return New_VarRef_VRSVar(SpecVar{Var: v, SpecList: stlist})
+	}))
 }
 
 func genBuiltinFunCall(tvgen func() TypeVar, fname string, tpnames []string, targetTPs []FType, args []Expr) Expr {
 	ff := FuncFactory{Tparams: tpnames, Targets: targetTPs}
-	fvar := GenFuncVar(fname, ff, tvgen)
+	fvar := GenFuncVar(fname, ff, emptyFtps(), tvgen)
 	return frt.Pipe(FunCall{TargetFunc: fvar, Args: args}, New_Expr_EFunCall)
 }
 
@@ -341,6 +363,10 @@ func psResetTmpCtx(ps ParseState) ParseState {
 	return frt.Pipe(newTypeVarCtx(), (func(_r0 TypeVarCtx) ParseState { return psWithTVCtx(ps, _r0) }))
 }
 
+func psIsNeighborLT(ps ParseState) bool {
+	return tkzIsNeighborLT(ps.tkz)
+}
+
 func udToUt(ud UnionDef) UnionType {
 	return UnionType(ud)
 }
@@ -385,7 +411,7 @@ func piRegEType(pi PackageInfo, tname string) FType {
 }
 
 func scRegFunFac(sc Scope, fname string, ff FuncFactory) {
-	scRegisterVarFac(sc, fname, (func(_r0 func() TypeVar) Var { return GenFuncVar(fname, ff, _r0) }))
+	scRegisterVarFac(sc, fname, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return GenFuncVar(fname, ff, _r0, _r1) }))
 }
 
 func piRegFF(pi PackageInfo, fname string, ff FuncFactory, ps ParseState) ParseState {

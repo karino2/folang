@@ -742,6 +742,34 @@ let hoge (uname: string) =
 `,
 			"hoge(uname",
 		},
+		{
+			`package main
+
+package_info slice =
+  let New<T>: ()->[]T
+  let IsEmpty<T>: []T->bool
+
+let ika () =
+  let s = slice.New<string> ()
+  slice.IsEmpty s
+
+`,
+			"New[string]",
+		},
+		{
+			`package main
+
+package_info slice =
+  let New<T>: ()->[]T
+  let Head<T>: []T->T
+
+let ika () =
+  let s = slice.New<string> ()
+  slice.Head s
+
+`,
+			"ika() string",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -988,12 +1016,12 @@ func TestParseAddhook(t *testing.T) {
 	src := `package main
 
 package_info slice =
-  let New<T>: ()->T[]
-  let IsEmpty<T>: []T->bool
+  let New<T>: ()->[]T
+  let Head<T>: []T->T
 
 let ika () =
   let s = slice.New<string> ()
-  slice.IsEmpty s
+  slice.Head s
 
 `
 

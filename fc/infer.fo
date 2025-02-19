@@ -181,7 +181,7 @@ let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
   So just check current layer for each node.
 */
 let collectFunCall (fc: FunCall) =
-  let tftype = fc.TargetFunc.Ftype
+  let tftype = varRefVarType fc.TargetFunc
   match tftype with
   | FFunc fft ->
     let argTps = slice.Map ExprToType fc.Args
@@ -401,7 +401,14 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   let transE = transVarExpr transV
   let transS = (transVarStmt transV transE)
   match expr with
-  | EVar v -> transV v |> EVar
+  | EVarRef rv ->
+    match rv with
+    | VRVar v ->
+       transV v |> VRVar |> EVarRef
+    | VRSVar sv ->
+       let nv = transV sv.Var
+       {SpecVar.Var=nv; SpecList=sv.SpecList}
+       |> VRSVar |> EVarRef
   | ESlice es -> slice.Map transE es |> ESlice
   | EBinOpCall bop ->
      let nlhs = transE bop.Lhs
@@ -429,7 +436,7 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
       |> RMatchExpr
       |> EReturnableExpr
   | EFunCall fc ->
-    let ntarget = transV fc.TargetFunc
+    let ntarget =  transVarVR transV fc.TargetFunc
     let nargs = slice.Map transE fc.Args
     {TargetFunc=ntarget;Args=nargs}
     |> EFunCall
@@ -490,7 +497,8 @@ let collectTVarExpr (expr:Expr) : []string =
   let collS = collectTVarStmt recurse
   let collB = collectTVarBlock recurse collS
   match expr with
-  | EVar v -> collectTVarFType v.Ftype
+  | EVarRef vr ->
+     varRefVarType vr |> collectTVarFType
   | ESlice es -> slice.Collect recurse es
   | EBinOpCall bop ->
      let lres = recurse bop.Lhs
@@ -510,7 +518,7 @@ let collectTVarExpr (expr:Expr) : []string =
       slice.Map mrToBlock me.Rules |> slice.Collect collB
       |> slice.Append (recurse me.Target)
   | EFunCall fc ->
-    let colt = collectTVarFType fc.TargetFunc.Ftype
+    let colt = varRefVarType fc.TargetFunc |> collectTVarFType 
     slice.Collect recurse fc.Args
     |> slice.Append colt
   | EFieldAccess fa ->

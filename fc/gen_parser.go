@@ -289,10 +289,10 @@ func parseRecordGen(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps Par
 	}))
 }
 
-func refVar(vname string, ps ParseState) Expr {
+func refVar(vname string, stlist []FType, ps ParseState) Expr {
 	vfac, ok := frt.Destr(scLookupVarFac(ps.scope, vname))
 	return frt.IfElse(ok, (func() Expr {
-		return frt.Pipe(frt.Pipe(psTypeVarGen(ps), vfac), New_Expr_EVar)
+		return frt.Pipe(frt.Pipe(psTypeVarGen(ps), (func(_r0 func() TypeVar) VarRef { return vfac(stlist, _r0) })), New_Expr_EVarRef)
 	}), (func() Expr {
 		frt.PipeUnit(frt.Sprintf1("Unknown var ref: %s", vname), frt.Panic)
 		return New_Expr_EUnit
@@ -309,17 +309,44 @@ func parseFAAfterDot(ps ParseState, cur Expr) frt.Tuple2[ParseState, Expr] {
 	}))
 }
 
+func parseTypeList(ps ParseState) frt.Tuple2[ParseState, []FType] {
+	ps2, one := frt.Destr(parseType(ps))
+	return frt.IfElse(psCurIs(New_TokenType_COMMA, ps2), (func() frt.Tuple2[ParseState, []FType] {
+		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), parseTypeList), (func(_r0 frt.Tuple2[ParseState, []FType]) frt.Tuple2[ParseState, []FType] {
+			return CnvR((func(_r0 []FType) []FType { return slice.PushHead(one, _r0) }), _r0)
+		}))
+	}), (func() frt.Tuple2[ParseState, []FType] {
+		return frt.NewTuple2(ps2, ([]FType{one}))
+	}))
+}
+
+func mightParseSpecifiedTypeList(ps ParseState) frt.Tuple2[ParseState, []FType] {
+	return frt.IfElse(psCurIs(New_TokenType_LT, ps), (func() frt.Tuple2[ParseState, []FType] {
+		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_LT, ps), parseTypeList), (func(_r0 frt.Tuple2[ParseState, []FType]) frt.Tuple2[ParseState, []FType] {
+			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_GT, _r0) }), _r0)
+		}))
+	}), (func() frt.Tuple2[ParseState, []FType] {
+		return frt.Pipe(emptyFtps(), (func(_r0 []FType) frt.Tuple2[ParseState, []FType] { return withPs(ps, _r0) }))
+	}))
+}
+
 func parseVarRef(ps ParseState) frt.Tuple2[ParseState, Expr] {
-	ps2, firstId := frt.Destr(psIdentNameNx(ps))
+	firstId := psIdentName(ps)
+	ps2, stlist := frt.Destr(frt.IfElse(psIsNeighborLT(ps), (func() frt.Tuple2[ParseState, []FType] {
+		return frt.Pipe(psNext(ps), mightParseSpecifiedTypeList)
+	}), (func() frt.Tuple2[ParseState, []FType] {
+		return frt.Pipe(emptyFtps(), (func(_r0 []FType) frt.Tuple2[ParseState, []FType] { return withPs(psNext(ps), _r0) }))
+	})))
 	return frt.IfElse(frt.OpNotEqual(psCurrentTT(ps2), New_TokenType_DOT), (func() frt.Tuple2[ParseState, Expr] {
-		return frt.Pipe(refVar(firstId, ps2), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps2, _r0) }))
+		return frt.Pipe(refVar(firstId, stlist, ps2), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps2, _r0) }))
 	}), (func() frt.Tuple2[ParseState, Expr] {
 		vfac, ok := frt.Destr(scLookupVarFac(ps2.scope, firstId))
 		return frt.IfElse(ok, (func() frt.Tuple2[ParseState, Expr] {
-			return frt.Pipe(frt.Pipe(frt.Pipe(psTypeVarGen(ps2), vfac), New_Expr_EVar), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return parseFAAfterDot(ps2, _r0) }))
+			return frt.Pipe(frt.Pipe(frt.Pipe(psTypeVarGen(ps2), (func(_r0 func() TypeVar) VarRef { return vfac(emptyFtps(), _r0) })), New_Expr_EVarRef), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return parseFAAfterDot(ps2, _r0) }))
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			ps3, fullName := frt.Destr(parseFullName(ps))
-			return frt.Pipe(refVar(fullName, ps3), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps3, _r0) }))
+			ps4, stlist := frt.Destr(mightParseSpecifiedTypeList(ps3))
+			return frt.Pipe(refVar(fullName, stlist, ps4), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps4, _r0) }))
 		}))
 	}))
 }
@@ -563,9 +590,9 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 			head := slice.Head(es)
 			tail := slice.Tail(es)
 			switch _v2 := (head).(type) {
-			case Expr_EVar:
-				v := _v2.Value
-				fc := FunCall{TargetFunc: v, Args: tail}
+			case Expr_EVarRef:
+				vr := _v2.Value
+				fc := FunCall{TargetFunc: vr, Args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
 				frt.Panic("Funcall head is not var")
