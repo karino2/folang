@@ -1,0 +1,12 @@
+package main
+
+import frt
+import slice
+
+let hoge a =
+  slice.Head a
+
+let main () =
+  let b = [1; 2; 3]
+  let c = hoge b
+  frt.Printf1 "%d\n" c
