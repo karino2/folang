@@ -41,7 +41,25 @@ let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
   buf.String b
 
 let rfdToGo (bToGoRet: Block->string) (rfd:RootFuncDef) =
-  lfdToGo bToGoRet rfd.Lfd
+  let lfd = rfd.Lfd
+  let b = buf.New ()
+  buf.Write b "func "
+  buf.Write b lfd.Fvar.Name
+  if not (slice.IsEmpty rfd.Tparams) then
+    buf.Write b "["
+    rfd.Tparams
+    |> slice.Map (frt.Sprintf1 "%s any")
+    |> strings.Concat ", "
+    |> buf.Write b
+    buf.Write b "]"
+  buf.Write b "("
+  lfdParamsToGo lfd |> buf.Write b
+  buf.Write b ") "
+  blockToType ExprToType lfd.Body |> FTypeToGo |> buf.Write b
+  buf.Write b "{\n"
+  bToGoRet lfd.Body |> buf.Write b
+  buf.Write b "\n}"
+  buf.String b
 
 
 let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =

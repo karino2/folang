@@ -169,3 +169,15 @@ func Append[T any](s1 []T, s2 []T) []T {
 	res = append(res, s2...)
 	return res
 }
+
+func Distinct[T comparable](ss []T) []T {
+	set := make(map[T]bool)
+	res := []T{}
+	for _, e := range ss {
+		if _, ok := set[e]; !ok {
+			res = append(res, e)
+			set[e] = true
+		}
+	}
+	return res
+}

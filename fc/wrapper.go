@@ -712,6 +712,10 @@ func sdLookup(dic SDict, key string) frt.Tuple2[string, bool] {
 	return dictLookup(dic, key)
 }
 
+func toSDict(ps []frt.Tuple2[string, string]) SDict {
+	return toDict(ps)
+}
+
 /*
 Facade:
 Resolve mutual recursive in golang layer (NYI for and letfunc def).

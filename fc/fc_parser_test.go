@@ -727,6 +727,21 @@ let hoge (i:int) =
 `,
 			"hoge(i int) {",
 		},
+		// BinOp resolve check.
+		{
+			`package main
+
+package_info _ =
+  let Print: string->()
+
+
+let hoge (uname: string) =
+  if uname <> "_"  then
+	  Print "hoge"
+  123
+`,
+			"hoge(uname",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -944,6 +959,19 @@ let sum (args: []int) :int =
 `,
 			[]string{"sum(args []int) int{", "sum(tail)"},
 		},
+		{
+			`package main
+
+package_info _ =
+  let Head<T>: []T->T
+
+
+let hoge i =
+  Head i
+
+`,
+			[]string{"[T0 any]", "T0{"},
+		},
 	}
 
 	for _, test := range tests {
@@ -960,13 +988,13 @@ func TestParseAddhook(t *testing.T) {
 	src := `package main
 
 package_info _ =
-  let Println: string->()
+  let Print: string->()
 
 
-let hoge (i:int) =
-  if i <> 3 then
-	  Println "hit"
-
+let hoge (uname: string) =
+  if uname <> "_"  then
+	  Print "hoge"
+  123
 `
 
 	got := transpile(src)

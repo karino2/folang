@@ -123,26 +123,39 @@ type Param =
 | PVar of Var
 | PUnit
 
+let psNewTypeVar (ps:ParseState) =
+  let tgen = psTypeVarGen ps
+  tgen ()
+
 /*
 	PARAM = '(' ')'
 				|	'(' IDENTIFIER : TYPE ')'
+        | IDENTIFIER
 */
 let parseParam (ps:ParseState) =
-  let ps2 = psConsume LPAREN ps
-  let tk = psCurrent ps2
-  match tk.ttype with
-  | RPAREN ->
-     let ps3 = psConsume RPAREN ps2
-     (ps3, PUnit)
-  | _ ->
-    let vname = psIdentName ps2
-    let (ps3, tp) = psNext ps2
-                    |> psConsume COLON
-                    |> parseType
-                    |> CnvL (psConsume RPAREN)
-    let v = {Var.Name=vname; Ftype=tp}
-    scDefVar ps3.scope vname v
-    (ps3, (PVar v))
+  match psCurrentTT ps with
+  | LPAREN ->
+    let ps2 = psConsume LPAREN ps
+    let tk = psCurrent ps2
+    match tk.ttype with
+    | RPAREN ->
+      let ps3 = psConsume RPAREN ps2
+      (ps3, PUnit)
+    | _ ->
+      let vname = psIdentName ps2
+      let (ps3, tp) = psNext ps2
+                      |> psConsume COLON
+                      |> parseType
+                      |> CnvL (psConsume RPAREN)
+      let v = {Var.Name=vname; Ftype=tp}
+      scDefVar ps3.scope vname v
+      (ps3, (PVar v))
+  | IDENTIFIER ->
+    let (ps2, vname) = psIdentNameNx ps
+    let ftv = psNewTypeVar ps2 |> FTypeVar
+    let v = {Var.Name=vname; Ftype=ftv}
+    scDefVar ps2.scope vname v
+    (ps2, (PVar v))
 
 let parseParams (ps:ParseState) : ParseState*[]Var =
   let (ps2, prm1) = parseParam ps
@@ -272,7 +285,8 @@ let refVar (vname:string) (ps:ParseState) =
   if ok then
     psTypeVarGen ps |> vfac |> EVar
   else
-    frt.Panic "Unknown var ref"
+    frt.Sprintf1 "Unknown var ref: %s" vname
+    |> frt.Panic
     EUnit
 
 /*

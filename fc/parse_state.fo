@@ -43,6 +43,27 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     |> FFunc
   | _ -> ftp
 
+let transOneVar (transTV: TypeVar->FType) (v:Var) =
+  let ntp = transTypeVarFType transTV v.Ftype
+  {Var.Name=v.Name; Ftype=ntp}
+
+let collectTVarFType (ft:FType) : []string =
+  let recurse = collectTVarFType
+  match ft with
+  | FTypeVar tv -> [tv.Name]
+  | FSlice ts ->
+    recurse ts.ElemType
+  | FTuple ftup ->
+    slice.Collect recurse ftup.ElemTypes
+  | FFieldAccess fa ->
+    recurse fa.RecType
+  | FFunc fnt ->
+    slice.Collect recurse fnt.Targets
+  | _ ->
+    GoEval<[]string> "[]string{}"
+  
+
+
 let tpReplaceOne (tvd:TypeVarDict) (tv:TypeVar) =
   tvdLookupNF tvd tv.Name |> FTypeVar
 
@@ -102,6 +123,7 @@ package_info _ =
   let newSD: () -> SDict
   let sdLookup: SDict->string->string*bool
   let sdPut: SDict->string->string->()
+  let toSDict: []string*string->SDict
   type EquivInfoDict
   let NewEquivInfoDict: ()->EquivInfoDict
 

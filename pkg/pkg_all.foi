@@ -38,6 +38,8 @@ package_info slice =
   let Zip<T, U>: []T->[]U->[]T*U
   let Forall<T>: (T->bool)->[]T->bool
   let Forany<T>: (T->bool)->[]T->bool
+  // T must be comparable
+  let Distinct<T>: []T->[]T
 
 package_info strings =
   let Concat: string->[]string->string

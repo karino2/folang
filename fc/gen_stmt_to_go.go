@@ -40,7 +40,25 @@ func lfdToGo(bToGoRet func(Block) string, lfd LetFuncDef) string {
 }
 
 func rfdToGo(bToGoRet func(Block) string, rfd RootFuncDef) string {
-	return lfdToGo(bToGoRet, rfd.Lfd)
+	lfd := rfd.Lfd
+	b := buf.New()
+	buf.Write(b, "func ")
+	buf.Write(b, lfd.Fvar.Name)
+	frt.IfOnly(frt.OpNot(slice.IsEmpty(rfd.Tparams)), (func() {
+		buf.Write(b, "[")
+		frt.PipeUnit(frt.Pipe(frt.Pipe(rfd.Tparams, (func(_r0 []string) []string {
+			return slice.Map((func(_r0 string) string { return frt.Sprintf1("%s any", _r0) }), _r0)
+		})), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+		buf.Write(b, "]")
+	}))
+	buf.Write(b, "(")
+	frt.PipeUnit(lfdParamsToGo(lfd), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, ") ")
+	frt.PipeUnit(frt.Pipe(blockToType(ExprToType, lfd.Body), FTypeToGo), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "{\n")
+	frt.PipeUnit(bToGoRet(lfd.Body), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "\n}")
+	return buf.String(b)
 }
 
 func lvdToGo(eToGo func(Expr) string, lvd LetVarDef) string {

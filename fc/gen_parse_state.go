@@ -36,6 +36,34 @@ func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	}
 }
 
+func transOneVar(transTV func(TypeVar) FType, v Var) Var {
+	ntp := transTypeVarFType(transTV, v.Ftype)
+	return Var{Name: v.Name, Ftype: ntp}
+}
+
+func collectTVarFType(ft FType) []string {
+	recurse := collectTVarFType
+	switch _v2 := (ft).(type) {
+	case FType_FTypeVar:
+		tv := _v2.Value
+		return ([]string{tv.Name})
+	case FType_FSlice:
+		ts := _v2.Value
+		return recurse(ts.ElemType)
+	case FType_FTuple:
+		ftup := _v2.Value
+		return slice.Collect(recurse, ftup.ElemTypes)
+	case FType_FFieldAccess:
+		fa := _v2.Value
+		return recurse(fa.RecType)
+	case FType_FFunc:
+		fnt := _v2.Value
+		return slice.Collect(recurse, fnt.Targets)
+	default:
+		return []string{}
+	}
+}
+
 func tpReplaceOne(tvd TypeVarDict, tv TypeVar) FType {
 	return frt.Pipe(tvdLookupNF(tvd, tv.Name), New_FType_FTypeVar)
 }
@@ -421,9 +449,9 @@ func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 
 func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	rht := ExprToType(rhs)
-	switch _v2 := (rht).(type) {
+	switch _v3 := (rht).(type) {
 	case FType_FFunc:
-		ft := _v2.Value
+		ft := _v3.Value
 		switch (freturn(ft)).(type) {
 		case FType_FUnit:
 			return newPipeCallUnit(tvgen, lhs, rhs)
@@ -525,13 +553,13 @@ func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
 }
 
 func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
-	switch _v3 := (df).(type) {
+	switch _v4 := (df).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v3.Value
+		rd := _v4.Value
 		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), rd.Fields)
 		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
-		ud := _v3.Value
+		ud := _v4.Value
 		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), ud.Cases)
 		return frt.Pipe(UnionDef{Name: ud.Name, Cases: ncases}, New_DefStmt_DUnionDef)
 	default:
@@ -562,12 +590,12 @@ func resolveFwrdDecl(md MultipleDefs, ps ParseState) MultipleDefs {
 }
 
 func scRegDefStmtType(sc Scope, df DefStmt) {
-	switch _v4 := (df).(type) {
+	switch _v5 := (df).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v4.Value
+		rd := _v5.Value
 		frt.PipeUnit(rdToRecType(rd), (func(_r0 RecordType) { scRegisterRecType(sc, _r0) }))
 	case DefStmt_DUnionDef:
-		ud := _v4.Value
+		ud := _v5.Value
 		udRegisterCsCtors(sc, ud)
 		fut := udToFUt(ud)
 		scRegisterType(sc, ud.Name, fut)

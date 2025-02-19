@@ -137,21 +137,37 @@ type Param_PUnit struct {
 
 var New_Param_PUnit Param = Param_PUnit{}
 
+func psNewTypeVar(ps ParseState) TypeVar {
+	tgen := psTypeVarGen(ps)
+	return tgen()
+}
+
 func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
-	ps2 := psConsume(New_TokenType_LPAREN, ps)
-	tk := psCurrent(ps2)
-	switch (tk.ttype).(type) {
-	case TokenType_RPAREN:
-		ps3 := psConsume(New_TokenType_RPAREN, ps2)
-		return frt.NewTuple2(ps3, New_Param_PUnit)
+	switch (psCurrentTT(ps)).(type) {
+	case TokenType_LPAREN:
+		ps2 := psConsume(New_TokenType_LPAREN, ps)
+		tk := psCurrent(ps2)
+		switch (tk.ttype).(type) {
+		case TokenType_RPAREN:
+			ps3 := psConsume(New_TokenType_RPAREN, ps2)
+			return frt.NewTuple2(ps3, New_Param_PUnit)
+		default:
+			vname := psIdentName(ps2)
+			ps3, tp := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psNext(ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) })), parseType), (func(_r0 frt.Tuple2[ParseState, FType]) frt.Tuple2[ParseState, FType] {
+				return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
+			})))
+			v := Var{Name: vname, Ftype: tp}
+			scDefVar(ps3.scope, vname, v)
+			return frt.NewTuple2(ps3, New_Param_PVar(v))
+		}
+	case TokenType_IDENTIFIER:
+		ps2, vname := frt.Destr(psIdentNameNx(ps))
+		ftv := frt.Pipe(psNewTypeVar(ps2), New_FType_FTypeVar)
+		v := Var{Name: vname, Ftype: ftv}
+		scDefVar(ps2.scope, vname, v)
+		return frt.NewTuple2(ps2, New_Param_PVar(v))
 	default:
-		vname := psIdentName(ps2)
-		ps3, tp := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psNext(ps2), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COLON, _r0) })), parseType), (func(_r0 frt.Tuple2[ParseState, FType]) frt.Tuple2[ParseState, FType] {
-			return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)
-		})))
-		v := Var{Name: vname, Ftype: tp}
-		scDefVar(ps3.scope, vname, v)
-		return frt.NewTuple2(ps3, New_Param_PVar(v))
+		panic("Union pattern fail. Never reached here.")
 	}
 }
 
@@ -278,7 +294,7 @@ func refVar(vname string, ps ParseState) Expr {
 	return frt.IfElse(ok, (func() Expr {
 		return frt.Pipe(frt.Pipe(psTypeVarGen(ps), vfac), New_Expr_EVar)
 	}), (func() Expr {
-		frt.Panic("Unknown var ref")
+		frt.PipeUnit(frt.Sprintf1("Unknown var ref: %s", vname), frt.Panic)
 		return New_Expr_EUnit
 	}))
 }
