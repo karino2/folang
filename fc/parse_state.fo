@@ -548,12 +548,8 @@ let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
   MultipleDefs resolve forward declaration, etc.
 */
 let transVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
-  match ntp.Ftype with
-  | FTypeVar tv ->
-    let nt = transV tv
-    {NameTypePair.Name=ntp.Name; Ftype=nt}
-  | _ ->
-    ntp
+  let nt = transTypeVarFType transV ntp.Ftype
+  {NameTypePair.Name=ntp.Name; Ftype=nt}
 
 let transDefStmt (transV: TypeVar->FType) (df: DefStmt) =
   match df with
@@ -579,13 +575,10 @@ let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
     FTypeVar tv
 
 let resolveFwrdDecl (md:MultipleDefs) (ps:ParseState) =
-  if (slice.Length md.Defs) = 1 then
-    md
-  else
-    let transV = transVByTDCtx ps.tdctx
-    let transD = transDefStmt transV
-    let ndefs = slice.Map transD md.Defs
-    {Defs=ndefs}
+  let transV = transVByTDCtx ps.tdctx
+  let transD = transDefStmt transV
+  let ndefs = slice.Map transD md.Defs
+  {Defs=ndefs}
 
 let scRegDefStmtType (sc:Scope) (df: DefStmt) =
   match df with

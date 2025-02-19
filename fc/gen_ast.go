@@ -10,11 +10,6 @@ type Var struct {
 	Ftype FType
 }
 
-type FieldAccess struct {
-	TargetExpr Expr
-	FieldName  string
-}
-
 type MatchPattern struct {
 	CaseId  string
 	VarName string
@@ -130,6 +125,10 @@ func New_Expr_EReturnableExpr(v ReturnableExpr) Expr { return Expr_EReturnableEx
 type FunCall struct {
 	TargetFunc Var
 	Args       []Expr
+}
+type FieldAccess struct {
+	TargetExpr Expr
+	FieldName  string
 }
 type BinOpCall struct {
 	Op    string

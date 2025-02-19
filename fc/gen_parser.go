@@ -157,12 +157,12 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 
 func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 	ps2, prm1 := frt.Destr(parseParam(ps))
-	switch _v823 := (prm1).(type) {
+	switch _v821 := (prm1).(type) {
 	case Param_PUnit:
 		zero := []Var{}
 		return frt.NewTuple2(ps2, zero)
 	case Param_PVar:
-		v := _v823.Value
+		v := _v821.Value
 		tt := psCurrentTT(ps2)
 		switch (tt).(type) {
 		case TokenType_LPAREN:
@@ -546,9 +546,9 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v831 := (head).(type) {
+			switch _v829 := (head).(type) {
 			case Expr_EVar:
-				v := _v831.Value
+				v := _v829.Value
 				fc := FunCall{TargetFunc: v, Args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
@@ -632,9 +632,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v833 := (last).(type) {
+	switch _v831 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v833.Value
+		e := _v831.Value
 		return frt.NewTuple2(ps2, Block{Stmts: stmts, FinalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")
@@ -687,9 +687,9 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 	ps4, rhs0 := frt.Destr(pExpr(ps3))
 	rhs := InferExpr(ps4.tvc, rhs0)
 	rtype := ExprToType(rhs)
-	switch _v834 := (rtype).(type) {
+	switch _v832 := (rtype).(type) {
 	case FType_FTuple:
-		tup := _v834.Value
+		tup := _v832.Value
 		v1 := Var{Name: vname1, Ftype: slice.Head(tup.ElemTypes)}
 		v2 := Var{Name: vname2, Ftype: slice.Last(tup.ElemTypes)}
 		defVarIfNecessary(ps4.scope, v1)

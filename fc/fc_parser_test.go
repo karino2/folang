@@ -697,6 +697,21 @@ let ika () =
 `,
 			"ika() int",
 		},
+		{
+			`package main
+
+type Expr =
+| EInt of int
+| ESlice of []Expr
+
+let hoge (e:Expr) =
+  match e with
+  | EInt i -> i
+  | ESlice _ -> 123
+
+`,
+			"Value []Expr",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -929,12 +944,15 @@ let sum (args: []int) :int =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let hoge (a:int) =
-  (123, "abc")
+type Expr =
+| EInt of int
+| ESlice of []Expr
 
-let ika () = 
-  let (a, b) = 123 |> hoge
-  a+123
+let hoge (e:Expr) =
+  match e with
+  | EInt i -> i
+  | ESlice _ -> 123
+
 `
 
 	got := transpile(src)

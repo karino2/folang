@@ -10,8 +10,6 @@ package_info _ =
 type GoEvalExpr = {GoStmt: string; TypeArg: FType}
 type Var = {Name: string; Ftype: FType}
 
-// stands for record field access of form: targetName.FieldName
-type FieldAccess = {TargetExpr: Expr; FieldName: string}
 
 /*
 Union case matching.
@@ -45,6 +43,7 @@ type Expr =
 */
 | EReturnableExpr of ReturnableExpr
 and FunCall = {TargetFunc: Var; Args: []Expr}
+and FieldAccess = {TargetExpr: Expr; FieldName: string} // stands for record field access of form: targetName.FieldName
 and BinOpCall = {Op: string; Rtype: FType; Lhs: Expr; Rhs: Expr}
 and NEPair = {Name: string; Expr: Expr}
 and RecordGen = {FieldsNV: []NEPair; RecordType: RecordType}
