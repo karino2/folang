@@ -16,6 +16,7 @@ package_info buf =
   let String: Buffer->string
 
 package_info slice =
+  let New<T>: ()->[]T
   let Length<T>: []T -> int
   // alias
   let Len<T>: []T -> int

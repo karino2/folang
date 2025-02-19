@@ -1,0 +1,11 @@
+package main
+
+import frt
+import slice
+
+
+let main () =
+  let s = slice.New<string> ()
+  let ss = slice.PushHead "hoge" s
+  let e = slice.Head ss
+  frt.Println e

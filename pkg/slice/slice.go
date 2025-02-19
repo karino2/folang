@@ -20,6 +20,10 @@ func Len[T any](s []T) int {
 	return len(s)
 }
 
+func New[T any]() []T {
+	return []T{}
+}
+
 func Item[T any](index int, s []T) T {
 	return s[index]
 }
