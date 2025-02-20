@@ -12,8 +12,7 @@ func add(a int, b int) int {
 }
 
 func main() {
-	tup := frt.NewTuple2(123, "hoge")
-	frt.PipeUnit(frt.Pipe(tup, (func(_r0 frt.Tuple2[int, string]) frt.Tuple2[int, string] {
+	frt.PipeUnit(frt.Pipe(frt.NewTuple2(123, "hoge"), (func(_r0 frt.Tuple2[int, string]) frt.Tuple2[int, string] {
 		return ApplyL((func(_r0 int) int { return add(456, _r0) }), _r0)
 	})), (func(_r0 frt.Tuple2[int, string]) { frt.Printf1("%v\n", _r0) }))
 }

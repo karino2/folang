@@ -311,8 +311,7 @@ let add (a:int) b =
   a+b
 
 let main () =
-  let tup = (123, "hoge")
-  tup
+  (123, "hoge")
   |> ApplyL (add 456)
   |> frt.Printf1 "%v\n" 
 
