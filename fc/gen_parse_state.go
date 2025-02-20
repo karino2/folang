@@ -4,6 +4,8 @@ import "github.com/karino2/folang/pkg/frt"
 
 import "github.com/karino2/folang/pkg/slice"
 
+import "github.com/karino2/folang/pkg/dict"
+
 func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
 	switch _v1 := (ftp).(type) {
@@ -131,7 +133,7 @@ type TypeDefCtx struct {
 	tva         TypeVarAllocator
 	insideTD    bool
 	defined     TypeDict
-	allocedDict SDict
+	allocedDict dict.Dict[string, string]
 }
 
 type Resolver struct {
@@ -196,7 +198,7 @@ func initParse(src string) ParseState {
 	offside := ([]int{0})
 	tva2 := NewTypeVarAllocator("_P")
 	defdict := newTD()
-	adict := newSD()
+	adict := dict.New[string, string]()
 	tvctx := newTypeVarCtx()
 	tdctx := TypeDefCtx{tva: tva2, insideTD: false, defined: defdict, allocedDict: adict}
 	return newParse(tkz, scope, offside, tvctx, tdctx)
@@ -242,7 +244,7 @@ func psPopOffside(ps ParseState) ParseState {
 func psEnterTypeDef(ps ParseState) ParseState {
 	old := ps.tdctx
 	ntd := newTD()
-	nald := newSD()
+	nald := dict.New[string, string]()
 	ntdctx := TypeDefCtx{tva: old.tva, insideTD: true, defined: ntd, allocedDict: nald}
 	tvaReset(ntdctx.tva)
 	return psWithTDCtx(ps, ntdctx)
@@ -261,7 +263,7 @@ func psInsideTypeDef(ps ParseState) bool {
 func tdctxTVFAlloc(tdctx TypeDefCtx, name string) FType {
 	gen := tvaToTypeVarGen(tdctx.tva)
 	tvar := gen()
-	sdPut(tdctx.allocedDict, tvar.Name, name)
+	dict.Add(tdctx.allocedDict, tvar.Name, name)
 	return frt.Pipe(tvar, New_FType_FTypeVar)
 }
 
@@ -617,7 +619,7 @@ func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
 }
 
 func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
-	rname, ok := frt.Destr(sdLookup(tdctx.allocedDict, tv.Name))
+	rname, ok := frt.Destr(dict.TryFind(tdctx.allocedDict, tv.Name))
 	return frt.IfElse(ok, (func() FType {
 		nt, ok2 := frt.Destr(tdLookup(tdctx.defined, rname))
 		return frt.IfElse(ok2, (func() FType {

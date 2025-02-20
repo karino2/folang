@@ -4,6 +4,8 @@ import "github.com/karino2/folang/pkg/frt"
 
 import "github.com/karino2/folang/pkg/slice"
 
+import "github.com/karino2/folang/pkg/dict"
+
 type UniRel struct {
 	SrcV string
 	Dest FType
@@ -622,14 +624,14 @@ func newTName(i int, n string) string {
 	return frt.Sprintf1("T%d", i)
 }
 
-func replaceSDict(ttdict SDict, tv TypeVar) FType {
-	nname, _ := frt.Destr(sdLookup(ttdict, tv.Name))
+func replaceSDict(ttdict dict.Dict[string, string], tv TypeVar) FType {
+	nname := dict.Item(ttdict, tv.Name)
 	return frt.Pipe(TypeVar{Name: nname}, New_FType_FTypeVar)
 }
 
 func hoistTVar(unresT []string, lfd LetFuncDef) frt.Tuple2[[]string, LetFuncDef] {
 	newTs := slice.Mapi(newTName, unresT)
-	ttdict := frt.Pipe(slice.Zip(unresT, newTs), toSDict)
+	ttdict := frt.Pipe(slice.Zip(unresT, newTs), dict.ToDict)
 	transV := (func(_r0 Var) Var {
 		return transOneVar((func(_r0 TypeVar) FType { return replaceSDict(ttdict, _r0) }), _r0)
 	})

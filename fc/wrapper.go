@@ -721,29 +721,7 @@ func tdLookup(dic TypeDict, key string) frt.Tuple2[FType, bool] {
 	return dictLookup(dic, key)
 }
 
-// NF: Never fail.
-func tdLookupNF(tdic TypeDict, key string) FType {
-	return tdic[key]
-}
-
 func toTDict(ps []frt.Tuple2[string, FType]) TypeDict {
-	return toDict(ps)
-}
-
-type SDict = map[string]string
-
-func newSD() SDict {
-	return make(SDict)
-}
-func sdPut(dic SDict, key string, v string) {
-	dictPut(dic, key, v)
-}
-
-func sdLookup(dic SDict, key string) frt.Tuple2[string, bool] {
-	return dictLookup(dic, key)
-}
-
-func toSDict(ps []frt.Tuple2[string, string]) SDict {
 	return toDict(ps)
 }
 

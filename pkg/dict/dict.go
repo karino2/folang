@@ -43,3 +43,12 @@ func KVs[K comparable, V any](d Dict[K, V]) []frt.Tuple2[K, V] {
 	}
 	return res
 }
+
+func ToDict[K comparable, V any](ss []frt.Tuple2[K, V]) Dict[K, V] {
+	dic := New[K, V]()
+	for _, tp := range ss {
+		k, v := frt.Destr(tp)
+		Add(dic, k, v)
+	}
+	return dic
+}

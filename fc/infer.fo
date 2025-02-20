@@ -2,6 +2,7 @@ package main
 
 import frt
 import slice
+import dict
 
 /*
   UniRel collection.
@@ -582,14 +583,14 @@ let collectTVarLfd (lfd:LetFuncDef) =
 let newTName (i:int) (n:string) =
   frt.Sprintf1 "T%d" i
 
-let replaceSDict (ttdict:SDict) (tv:TypeVar) =
-  let (nname, _) = sdLookup ttdict tv.Name
+let replaceSDict (ttdict:dict.Dict<string, string>) (tv:TypeVar) =
+  let nname = dict.Item ttdict tv.Name
   {TypeVar.Name=nname} |> FTypeVar
 
 
 let hoistTVar (unresT:[]string) (lfd:LetFuncDef) =
   let newTs = slice.Mapi newTName unresT
-  let ttdict = slice.Zip unresT newTs |> toSDict
+  let ttdict = slice.Zip unresT newTs |> dict.ToDict
   let transV = transOneVar (replaceSDict ttdict)
   let nlfd = transVarLfd transV lfd
   (newTs, nlfd)

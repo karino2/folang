@@ -2,6 +2,7 @@ package main
 
 import frt
 import slice
+import dict
 
 /*
   GenFunc related
@@ -11,7 +12,6 @@ import slice
 package_info _ =
   type TypeDict
   let toTDict: []string*FType->TypeDict
-  let tdLookupNF: TypeDict->string->FType
   let tdLookup: TypeDict->string->FType*bool
 
 
@@ -150,11 +150,6 @@ package_info _ =
   let tvaListAlloced: TypeVarAllocator->[]TypeVar
   let newTD: () -> TypeDict
   let tdPut: TypeDict->string->FType->()
-  type SDict
-  let newSD: () -> SDict
-  let sdLookup: SDict->string->string*bool
-  let sdPut: SDict->string->string->()
-  let toSDict: []string*string->SDict
   type EquivInfoDict
   let NewEquivInfoDict: ()->EquivInfoDict
 
@@ -164,7 +159,7 @@ type TypeDefCtx = {
   insideTD: bool;
   defined: TypeDict;
   // key: tvname, value: fwrdDeclTypename
-  allocedDict: SDict;
+  allocedDict: dict.Dict<string, string>;
 }
 
 type Resolver = {eid: EquivInfoDict}
@@ -230,7 +225,7 @@ let initParse (src: string) =
   let offside = [0]
   let tva2 = NewTypeVarAllocator "_P"
   let defdict = newTD ()
-  let adict = newSD ()
+  let adict = dict.New<string, string> ()
   let tvctx = newTypeVarCtx ()
   let tdctx = {tva=tva2; insideTD=false; defined=defdict; allocedDict= adict}
   newParse tkz scope offside tvctx tdctx
@@ -269,7 +264,7 @@ let psPopOffside (ps:ParseState) =
 let psEnterTypeDef (ps:ParseState) =
   let old = ps.tdctx
   let ntd = newTD ()
-  let nald = newSD ()
+  let nald = dict.New<string, string> ()
   let ntdctx = {tva=old.tva; insideTD=true; defined=ntd; allocedDict=nald}
   tvaReset ntdctx.tva
   psWithTDCtx ps ntdctx
@@ -286,7 +281,7 @@ let psInsideTypeDef (ps:ParseState) =
 let tdctxTVFAlloc (tdctx:TypeDefCtx) (name:string) =
   let gen = tvaToTypeVarGen tdctx.tva
   let tvar = gen ()
-  sdPut tdctx.allocedDict tvar.Name name
+  dict.Add tdctx.allocedDict tvar.Name name
   tvar |> FTypeVar
 
 
@@ -629,7 +624,7 @@ let transDefStmt (transV: TypeVar->FType) (df: DefStmt) =
     |> DUnionDef
 
 let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
-  let (rname, ok) = sdLookup tdctx.allocedDict tv.Name
+  let (rname, ok) = dict.TryFind tdctx.allocedDict tv.Name
   if ok then
     let (nt, ok2) = tdLookup tdctx.defined rname
     if ok2 then
