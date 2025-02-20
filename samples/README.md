@@ -18,24 +18,6 @@ let main () =
 generated go: [gen_two_func.go](./gen_two_func.go)
 
 
-### Tuple example
-
-```
-package main
-
-import frt
-
-let ika () =
-   frt.Snd (123, "abc")
-
-let main () =
-  let s = ika ()
-  frt.Println s
-```
-
-generated go: [gen_tuple.go](./gen_tuple.go)
-
-
 ### Record
 
 ```
@@ -171,45 +153,22 @@ let main() =
 generated go: [gen_pkg_generics.go](./gen_pkg_generics.go)
 
 
-### Generic function
+### Tuple example
 
 ```
 package main
 
 import frt
-import slice
 
-let hoge a =
-  slice.Head a
-
-let main () =
-  let b = [1; 2; 3]
-  let c = hoge b
-  frt.Printf1 "%d\n" c
-
-```
-
-generated go: [gen_generic_func.go](./gen_generic_func.go)
-
-
-### Explicit type argument
-
-```
-package main
-
-import frt
-import slice
-
+let ika () =
+   frt.Snd (123, "abc")
 
 let main () =
-  let s = slice.New<string> ()
-  let ss = slice.PushHead "hoge" s
-  let e = slice.Head ss
-  frt.Println e
-
+  let s = ika ()
+  frt.Println s
 ```
 
-generated go: [gen_generic_specify.go](./gen_generic_specify.go)
+generated go: [gen_tuple.go](./gen_tuple.go)
 
 
 ### Pipe operator
@@ -229,6 +188,28 @@ let main() =
 ```
 
 generated go: [gen_pipe.go](./gen_pipe.go)
+
+
+### Map
+
+```
+package main
+
+import frt
+import slice
+
+let conv (i:int) =
+  frt.Sprintf1 "a %d" i
+
+let main() =
+  let s = [5; 6; 7; 8]
+  let s2 = slice.Map conv s
+  frt.Printf1 "%v\n" s2
+
+
+```
+
+generated go: [gen_map.go](./gen_map.go)
 
 
 ### Destructuring let example
@@ -252,6 +233,26 @@ let main () =
 generated go: [gen_destr_let.go](./gen_destr_let.go)
 
 
+### Explicit type argument
+
+```
+package main
+
+import frt
+import slice
+
+
+let main () =
+  let s = slice.New<string> ()
+  let ss = slice.PushHead "hoge" s
+  let e = slice.Head ss
+  frt.Println e
+
+```
+
+generated go: [gen_generic_specify.go](./gen_generic_specify.go)
+
+
 ### Dictionary
 
 ```
@@ -273,7 +274,7 @@ let main () =
 generated go: [gen_dict_sample.go](./gen_dict_sample.go)
 
 
-### Map
+### Generic function
 
 ```
 package main
@@ -281,18 +282,17 @@ package main
 import frt
 import slice
 
-let conv (i:int) =
-  frt.Sprintf1 "a %d" i
+let hoge a =
+  slice.Head a
 
-let main() =
-  let s = [5; 6; 7; 8]
-  let s2 = slice.Map conv s
-  frt.Printf1 "%v\n" s2
-
+let main () =
+  let b = [1; 2; 3]
+  let c = hoge b
+  frt.Printf1 "%d\n" c
 
 ```
 
-generated go: [gen_map.go](./gen_map.go)
+generated go: [gen_generic_func.go](./gen_generic_func.go)
 
 
 ### Type inference

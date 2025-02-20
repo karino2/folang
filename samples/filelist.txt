@@ -1,5 +1,4 @@
 two_func.fo Two function example
-tuple.fo Tuple example
 record.fo Record
 union_simple.fo Basic Union sample
 union_match.fo Union with match
@@ -7,10 +6,11 @@ union_match_noval.fo Match with no value
 union_nocontent.fo Match with no content
 ext_pkg.fo External package example
 pkg_generics.fo External package with generics
-generic_func.fo Generic function
-generic_specify.fo Explicit type argument
+tuple.fo Tuple example
 pipe.fo Pipe operator
-destr_let.fo Destructuring let example
-dict_sample.fo Dictionary
 map.fo Map
+destr_let.fo Destructuring let example
+generic_specify.fo Explicit type argument
+dict_sample.fo Dictionary
+generic_func.fo Generic function
 type_inference.fo Type inference
