@@ -193,3 +193,13 @@ func Distinct[T comparable](ss []T) []T {
 	}
 	return res
 }
+
+func TryFind[T any](pred func(T) bool, ss []T) frt.Tuple2[T, bool] {
+	for _, e := range ss {
+		if pred(e) {
+			return frt.NewTuple2(e, true)
+		}
+	}
+	var res T
+	return frt.NewTuple2(res, false)
+}

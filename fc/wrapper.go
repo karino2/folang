@@ -362,6 +362,33 @@ func reinterpretEscape(buf string) string {
 	So I write Scope related code in golang, then call it from folang.
 */
 
+type myScopeImpl struct {
+	SDict  ScopeDict
+	Parent *myScopeImpl
+}
+
+type MyScope = *myScopeImpl
+
+func NewMyScopeImpl(sd ScopeDict, parent MyScope) MyScope {
+	return &myScopeImpl{SDict: sd, Parent: parent}
+}
+
+func NewMyScopeImpl0(sd ScopeDict) MyScope {
+	return NewMyScopeImpl(sd, nil)
+}
+
+func MSHasParent(sc MyScope) bool {
+	return sc.Parent != nil
+}
+
+func MSParent(sc MyScope) MyScope {
+	return sc.Parent
+}
+
+func MSSDict(sc MyScope) ScopeDict {
+	return sc.SDict
+}
+
 type VarFactory = func(stlist []FType, tvgen func() TypeVar) VarRef
 type TypeFactory = func(stlist []FType) FType
 

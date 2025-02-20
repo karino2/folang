@@ -76,16 +76,27 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 			}
 		case FType_FFieldAccess:
 			fa2 := _v3.Value
-			switch _v5 := (lhs).(type) {
+			fa22 := faResolve(fa2)
+			switch (fa22).(type) {
 			case FType_FFieldAccess:
-				fa1 := _v5.Value
-				rtp, rels := frt.Destr(compositeTp(fa1.RecType, fa2.RecType))
-				return frt.Pipe(frt.Pipe(FieldAccessType{RecType: rtp, FieldName: fa1.FieldName}, faResolve), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
-			case FType_FSlice:
-				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
+				switch _v5 := (lhs).(type) {
+				case FType_FFieldAccess:
+					fa1 := _v5.Value
+					fa12 := faResolve(fa1)
+					switch (fa12).(type) {
+					case FType_FFieldAccess:
+						rtp, rels := frt.Destr(compositeTp(fa1.RecType, fa2.RecType))
+						return frt.Pipe(frt.Pipe(FieldAccessType{RecType: rtp, FieldName: fa1.FieldName}, faResolve), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
+					default:
+						return compositeTp(fa12, rhs)
+					}
+				case FType_FSlice:
+					return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
+				default:
+					return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
+				}
 			default:
-				frt.Panic("unknown case")
-				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
+				return compositeTp(lhs, fa22)
 			}
 		case FType_FFunc:
 			tf2 := _v3.Value

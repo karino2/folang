@@ -44,6 +44,7 @@ package_info slice =
   let Forany<T>: (T->bool)->[]T->bool
   // T must be comparable
   let Distinct<T>: []T->[]T
+  let TryFind<T>: (T->bool)->[]T->T*bool
 
 package_info strings =
   let Concat: string->[]string->string

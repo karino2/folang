@@ -1044,13 +1044,12 @@ let setAddKeys d k =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	src := `package_info dict =
-  type Dict<K, V>
-  let Add<K, V>: Dict<K, V>->K->V->()
+	src := `package main
 
-let setAddKeys d (k:string) =
-  dict.Add d k true
+type List = {elem: int; next:List}
 
+let head (l:List) =
+  l.elem
 `
 
 	got := transpile(src)

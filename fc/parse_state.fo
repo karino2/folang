@@ -119,6 +119,125 @@ let GenType (tfd:TypeFactoryData) (targs:[]FType) =
   Scope and Parser related
 */
 
+/*
+  Scope related
+*/
+type ScopeDict = {
+  VarFacMap: dict.Dict<string, []FType->(()->TypeVar)->VarRef>;
+  RecordMap: dict.Dict<string, RecordType>;
+  TypeFacMap: dict.Dict<string, []FType->FType>;
+}
+
+let NewScopeDict () =
+  let fvm = dict.New<string, []FType->(()->TypeVar)->VarRef> ()
+  let rm = dict.New<string, RecordType> ()
+  let tfm = dict.New<string, []FType->FType> ()
+  {VarFacMap=fvm; RecordMap=rm; TypeFacMap=tfm}
+
+package_info _ =
+  type MyScope
+  let NewMyScopeImpl0: ScopeDict->MyScope
+  let NewMyScopeImpl: ScopeDict->MyScope->MyScope
+  let MSHasParent: MyScope->bool
+  let MSParent: MyScope->MyScope
+  let MSSDict: MyScope->ScopeDict
+
+let NewMyScope0 () =
+  let sd = NewScopeDict ()
+  NewMyScopeImpl0 sd
+
+let NewMyScope parent =
+  let sd = NewScopeDict ()
+  NewMyScopeImpl sd parent
+
+let vToVarFac v tlist tvgen =
+  VRVar v
+
+let myScDefVar s name v =
+  let sdic = MSSDict s
+  dict.Add sdic.VarFacMap name (vToVarFac v)
+
+let myscRegisterVarFac s name fac =
+  let sdic = MSSDict s
+  dict.Add sdic.VarFacMap name fac
+
+// type VarFactory = func(stlist []FType, tvgen func() TypeVar) VarRef
+// []FType->(()->TypeVar)->VarRef
+
+let emptyVarFac (tlist:[]FType) (tgen: ()->TypeVar) =
+  frt.Panic "should never called"
+  GoEval<VarRef> "nil"
+
+let myscLookupVarFac s name : ([]FType->(()->TypeVar)->VarRef)*bool =
+  let sd = MSSDict s
+  let (vfac, ok) = dict.TryFind sd.VarFacMap name
+  if ok then
+    (vfac, ok)
+  elif MSHasParent s then
+    myscLookupVarFac (MSParent s) name
+  else
+    (emptyVarFac, false)
+
+let myscRegisterTypeFac s name fac =
+  let sdic = MSSDict s
+  dict.Add sdic.TypeFacMap name fac
+
+let ftToTypeFac ft (tlist:[]FType) =
+  ft
+
+let myscRegisterType s name ftype =
+  myscRegisterTypeFac s name (ftToTypeFac ftype)
+
+let myscRegisterRecType s recType =
+  let rname = recType.Name
+  let sdic = MSSDict s
+  dict.Add sdic.RecordMap rname recType
+  myscRegisterType s rname (FRecord recType)
+
+let frMatchAdapter fieldNames rec =
+  frMatch rec fieldNames
+
+let myscLookupRecordCur s fieldNames =
+  let sdic = MSSDict s
+  dict.Values sdic.RecordMap
+  |> slice.TryFind (frMatchAdapter fieldNames)
+
+let emptyRec () =
+  GoEval<RecordType> "RecordType{}"
+
+
+let myscLookupRecord s fieldNames : RecordType*bool =
+  let (rec, ok) = myscLookupRecordCur s fieldNames
+  if ok then
+    (rec, ok)  
+  elif MSHasParent s then
+    myscLookupRecord (MSParent s) fieldNames
+  else
+    (emptyRec (), false)
+
+let myscLookupRecordByName s name : RecordType*bool =
+  let sd = MSSDict s
+  let (rec, ok) = dict.TryFind sd.RecordMap name
+  if ok then
+    (rec, ok)
+  elif MSHasParent s then
+    myscLookupRecordByName (MSParent s) name
+  else
+    (emptyRec (), false)
+
+let myscLookupTypeFac s name =
+  let sd = MSSDict s
+  let (rec, ok) = dict.TryFind sd.TypeFacMap name
+  if ok then
+    (rec, ok)
+  elif MSHasParent s then
+    myscLookupTypeFac (MSParent s) name
+  else
+    let empty = ftToTypeFac FUnit
+    (empty, false)
+
+
+
 // wrapper types.
 package_info _ =
   type Scope
@@ -617,7 +736,7 @@ let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
     if ok2 then
       nt
     else
-      frt.Panic "Unresolved foward decl type"
+      frt.Panicf1 "Unresolved foward decl type: %s" rname
       nt
   else
     FTypeVar tv
