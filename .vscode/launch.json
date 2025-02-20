@@ -11,7 +11,7 @@
       "mode": "auto",
       "program": "${fileDirname}",
       // "args": ["../pkg/pkg_all.foi", "../samples/tuple.fo"]
-      "args": ["../pkg/pkg_all.foi", "../fc/ftype.fo", "../fc/ast.fo", "../fc/expr_to_type.fo", "../fc/expr_to_go.fo", "../fc/stmt_to_go.fo", "../fc/tokenizer.fo",  "../fc/parse_state.fo", "../fc/infer.fo", "../fc/parser.fo", "../fc/main.fo"]
+      "args": ["../pkg/pkg_all.foi", "../fc/targets/ftype.fo", "../fc/targets/ast.fo", "../fc/targets/expr_to_type.fo", "../fc/targets/expr_to_go.fo", "../fc/targets/stmt_to_go.fo", "../fc/targets/tokenizer.fo",  "../fc/targets/parse_state.fo", "../fc/targets/infer.fo", "../fc/targets/parser.fo", "../fc/targets/main.fo"]
     },
     {
       "name": "fc fc build",
