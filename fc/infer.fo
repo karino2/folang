@@ -250,7 +250,10 @@ let collectExprRel (expr:Expr) : []UniRel =
     let lft = ExprToType bop.Lhs
     let rft = ExprToType bop.Rhs
     let teq = unifyType lft rft
-    let all = [insideL;insideR;teq]
+    let retEq = match bop.Rtype with
+                | FBool -> emptyRels ()
+                | _ -> unifyType bop.Rtype lft
+    let all = [insideL;insideR;teq; retEq]
     slice.Concat all
   | ETupleExpr tes ->
     slice.Map collectExprRel tes |> slice.Concat    
@@ -377,19 +380,6 @@ let updateResolver (res:Resolver) (rels:[]UniRel) : Resolver =
   else
     updateResolver res nrels
 
-let rsResolveType (resT:FType->FType) (res:Resolver) (tvname:string) =
-  let ei = rsLookupEI res tvname
-  let rcand = ei.resType
-  match rcand with
-  | FTypeVar tv ->
-    if tv.Name = tvname then
-      // same type var, no need to drill down.
-      rcand
-    else
-      resT rcand
-  | _ -> resT rcand
-
-
 /*
   Self transform utility.
   Currently, assume transform Var to Var.
@@ -399,7 +389,8 @@ let rsResolveType (resT:FType->FType) (res:Resolver) (tvname:string) =
 let transExprNE (cnv:Expr->Expr) (p:NEPair) =
    {NEPair.Name=p.Name; Expr=cnv p.Expr}
 
-let transVarStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
+let transTypeStmt (transTV:TypeVar->FType) (transE:Expr->Expr) (stmt:Stmt) =
+  let transV = transOneVar transTV
   match stmt with
   | SLetVarDef llvd ->
     match llvd with
@@ -418,18 +409,26 @@ let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
   let nbody = blockToExpr mr.Body |> pExpr |> exprToBlock
   {Pattern=mr.Pattern; Body=nbody}
 
-let transVarBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
+let transTypeBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let nss = bl.Stmts |> slice.Map transS
   let fexpr = transE bl.FinalExpr
   {Block.Stmts=nss; FinalExpr=fexpr}
+
+let transType (transTV: TypeVar->FType) (ft:FType) =
+  match ft with
+  | FTypeVar tv -> transTV tv
+  | _ -> ft
 
 /*
   Self transform Var of expr.
   For composite expr, call each element and composite automatically.
 */
-let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
-  let transE = transVarExpr transV
-  let transS = (transVarStmt transV transE)
+let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
+  let transV = transOneVar transTV
+  let transT = transType transTV
+  let transE = transTypeExpr transTV
+  let transS = (transTypeStmt transTV transE)
+  let recurse = transTypeExpr transTV
   match expr with
   | EVarRef rv ->
     match rv with
@@ -443,21 +442,22 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
   | EBinOpCall bop ->
      let nlhs = transE bop.Lhs
      let nrhs = transE bop.Rhs
-     {Op=bop.Op; Rtype=bop.Rtype; Lhs=nlhs; Rhs=nrhs}
+     let nret = transT bop.Rtype
+     {Op=bop.Op; Rtype=nret; Lhs=nlhs; Rhs=nrhs}
      |> EBinOpCall
-  | ETupleExpr es -> slice.Map (transVarExpr transV) es |> ETupleExpr
+  | ETupleExpr es -> slice.Map recurse es |> ETupleExpr
   | ERecordGen rg ->
     let newNV = slice.Map (transExprNE transE) rg.FieldsNV
     {FieldsNV=newNV; RecordType=rg.RecordType}
     |> ERecordGen
   | ELazyBlock lb ->
-    let nbl = transVarBlock transE transS lb.Block
+    let nbl = transTypeBlock transE transS lb.Block
     {LazyBlock.Block=nbl}
     |> ELazyBlock
   | EReturnableExpr re -> 
     match re with
     | RBlock bl ->
-      transVarBlock transE transS bl
+      transTypeBlock transE transS bl
       |> blockToExpr
     | RMatchExpr me ->
       let ntarget = transE me.Target
@@ -480,22 +480,23 @@ let transVarExpr (transV:Var->Var) (expr:Expr) : Expr =
     {TargetExpr=ntarget; FieldName=fa.FieldName}
     |> EFieldAccess
 
-let transVarBlockFacade (transV:Var->Var) (block:Block) =
-  let transE = transVarExpr transV
-  let transS = (transVarStmt transV transE)
-  transVarBlock transE transS block
+let transTypeBlockFacade (transTV:TypeVar->FType) (block:Block) =
+  let transE = transTypeExpr transTV
+  let transS = (transTypeStmt transTV transE)
+  transTypeBlock transE transS block
 
-let transVarLfd (transV:Var->Var) (lfd:LetFuncDef) =
+let transTypeLfd (transTV:TypeVar->FType) (lfd:LetFuncDef) =
+   let transV = transOneVar transTV  
    let nfvar = transV lfd.Fvar
    let nparams = slice.Map transV lfd.Params
-   let nbody = transVarBlockFacade transV lfd.Body
+   let nbody = transTypeBlockFacade transTV lfd.Body
    {Fvar=nfvar; Params=nparams; Body=nbody}
 
 
 /*
 type var collection.
 
-This is used later, but implementation is similar to above transVarExpr.
+This is used later, but implementation is similar to above transTypeExpr.
 So I place here.
 Both are catamorphism but currently folang generics is not enough to create it.
 
@@ -561,35 +562,32 @@ let collectTVarBlockFacade (b:Block) =
   collectTVarBlock collE collS b
 
 /*
-  resolve type using transVarExpr utility.
+  resolve type using transTypeExpr utility.
 */
 
-let resolveOneTypeVar (resT:FType->FType) (rsv: Resolver) (tv:TypeVar) =
-  rsResolveType resT rsv tv.Name
+let resolveOneTypeVar (rsv: Resolver) (tv:TypeVar) : FType =
+  let recurse = resolveOneTypeVar rsv
+  let ei = rsLookupEI rsv tv.Name
+  let rcand = ei.resType
+  match rcand with
+  | FTypeVar tv2 ->
+    if tv2.Name = tv.Name then
+      // same type var, no need to drill down.
+      rcand
+    else
+      transTypeVarFType recurse rcand
+  | _ -> transTypeVarFType recurse rcand
+  
 
 let resolveType (rsv: Resolver) (ftp:FType) : FType =
-  let resT = resolveType rsv
-  transTypeVarFType (resolveOneTypeVar resT rsv) ftp
+  transTypeVarFType (resolveOneTypeVar rsv) ftp
 
-
-let resolveVarType (rsv: Resolver) (v:Var) =
-  {Var.Name=v.Name; Ftype=resolveType rsv v.Ftype}
 
 let resolveExprType (rsv: Resolver) (expr:Expr) : Expr =
-  transVarExpr (resolveVarType rsv) expr
+  transTypeExpr (resolveOneTypeVar rsv) expr
 
 let resolveLfd (rsv: Resolver) (lfd:LetFuncDef) =
-  transVarLfd (resolveVarType rsv) lfd
-
-let notFound (rsv:Resolver) (key:string) =
-  let resT = resolveType rsv
-  let rtype = rsResolveType resT rsv key
-  match rtype with
-  | FTypeVar tv ->
-    // resType is the same TypeVar, means not found.
-    tv.Name = key
-  | _ -> false
-
+  transTypeLfd (resolveOneTypeVar rsv) lfd
 
 let InferExpr (tvc:TypeVarCtx) (expr:Expr) =
    let rels = collectExprRel expr
@@ -614,8 +612,8 @@ let replaceSDict (ttdict:dict.Dict<string, string>) (tv:TypeVar) =
 let hoistTVar (unresT:[]string) (lfd:LetFuncDef) =
   let newTs = slice.Mapi newTName unresT
   let ttdict = slice.Zip unresT newTs |> dict.ToDict
-  let transV = transOneVar (replaceSDict ttdict)
-  let nlfd = transVarLfd transV lfd
+  let transTV = replaceSDict ttdict
+  let nlfd = transTypeLfd transTV lfd
   (newTs, nlfd)
 
 

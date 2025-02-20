@@ -770,6 +770,14 @@ let ika () =
 `,
 			"ika() string",
 		},
+		{
+			`package main
+
+let add (a:int) b = 
+  a+b
+`,
+			"int{",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1060,14 +1068,15 @@ let CnvL fn tup =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info frt =
-  let Fst<T, U> : T*U->T
-  let Snd<T, U> : T*U->U
+package_info _ =
+  let Concat<T>: [][]T -> []T
 
+let hoge () =
+  let s1 = GoEval<[]int> "[]int{1, 2}"
+  let s2 = GoEval<[]int> "[]int{3, 4}"
+  [s1; s2]
+  |> Concat
 
-let CnvL fn tup =
-  let nl = frt.Fst tup |> fn
-  (nl, frt.Snd tup)
 `
 
 	got := transpile(src)
