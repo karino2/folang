@@ -177,6 +177,10 @@ type ParseState struct {
 	tdctx      TypeDefCtx
 }
 
+func withPs[T0 any](ps ParseState, v T0) frt.Tuple2[ParseState, T0] {
+	return frt.NewTuple2(ps, v)
+}
+
 func newParse(tkz Tokenizer, scope Scope, offCols []int, tvc TypeVarCtx, tdctx TypeDefCtx) ParseState {
 	return ParseState{tkz: tkz, scope: scope, offsideCol: offCols, tvc: tvc, tdctx: tdctx}
 }

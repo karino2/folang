@@ -479,10 +479,6 @@ func scLookupTypeFac(s Scope, name string) frt.Tuple2[TypeFactory, bool] {
 	return frt.NewTuple2(toTypeFac(New_FType_FUnit), false)
 }
 
-func withPs[T any](ps ParseState, v T) frt.Tuple2[ParseState, T] {
-	return frt.NewTuple2(ps, v)
-}
-
 /*
 inference from funcall to arg side is NYI.
 

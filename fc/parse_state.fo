@@ -187,13 +187,14 @@ type ParseState = {
 
 // wrapper types. Use ParseState
 package_info _ =
-  let withPs<T>: ParseState->T->ParseState*T
   // inference from funcall to arg side is NYI.
   // let CnvL<T, U>: (T->T)->T*U->T*U
   // let CnvR<T, U>: (U->U)->T*U->T*U
   let CnvL<U>: (ParseState->ParseState)->ParseState*U->ParseState*U
   let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
 
+let withPs (ps:ParseState) v =
+  (ps, v)
 
 let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tvc:TypeVarCtx) (tdctx:TypeDefCtx) =
   {tkz=tkz; scope=scope; offsideCol=offCols; tvc=tvc; tdctx=tdctx}
