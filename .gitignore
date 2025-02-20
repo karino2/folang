@@ -9,3 +9,4 @@ fc/targets
 fc/stable
 cmd/build_sample_md/build_sample_md
 cmd/build_sample_md/fc
+samples/build_sample_md
