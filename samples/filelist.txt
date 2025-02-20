@@ -14,3 +14,4 @@ generic_specify.fo Explicit type argument
 pipe.fo Pipe operator
 dict_sample.fo Dictionary
 map.fo Map
+type_inference.fo Type inference

@@ -318,3 +318,29 @@ let main() =
 
 generated go: [gen_map.go](./gen_map.go)
 
+
+### Type inference
+
+```
+package main
+
+import frt
+
+let ApplyL fn tup =
+  let nl = frt.Fst tup |> fn
+  (nl, frt.Snd tup)
+
+
+let add (a:int) b = 
+  a+b
+
+let main () =
+  let tup = (123, "hoge")
+  tup
+  |> ApplyL (add 456)
+  |> frt.Printf1 "%v\n" 
+
+```
+
+generated go: [gen_type_inference.go](./gen_type_inference.go)
+
