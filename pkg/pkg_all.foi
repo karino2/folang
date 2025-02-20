@@ -56,3 +56,13 @@ package_info sys =
   let ReadFile: string->string*bool
   let WriteFile: string->string->bool
 
+// https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-fsharpmap-2.html
+
+package_info dict =
+  type Dict<K, V>
+  let New<K, V>: ()->Dict<K, V>
+  let Add<K, V>: Dict<K,V>->K->V->()
+  let ContainsKey<K, V>: Dict<K, V>->K->bool
+  let TryFind<K, V>: Dict<K, V>->K->V*bool
+  let Item<K, V>: Dict<K, V>->K->V
+  let KVs<K, V>: Dict<K, V>->[]K*V
