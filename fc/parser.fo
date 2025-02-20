@@ -214,6 +214,9 @@ let parseParams (ps:ParseState) : ParseState*[]Var =
       | LPAREN ->
         parseParams ps2
         |> CnvR (slice.PushHead v)
+      | IDENTIFIER ->
+        parseParams ps2
+        |> CnvR (slice.PushHead v)
       | _ -> (ps2, [v])
 
 /*

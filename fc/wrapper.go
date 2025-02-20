@@ -552,45 +552,6 @@ func tvaToTypeVarGen(tva TypeVarAllocator) func() TypeVar {
 }
 
 /*
-EquivSet
-*/
-
-type EquivSet struct {
-	dict map[string]bool
-}
-
-func newEquivSet0() EquivSet {
-	s := EquivSet{}
-	s.dict = make(map[string]bool)
-	return s
-}
-
-func NewEquivSet(itype TypeVar) EquivSet {
-	s := newEquivSet0()
-	s.dict[itype.Name] = true
-	return s
-}
-
-func eqsItems(es EquivSet) []string {
-	var res []string
-	for k := range es.dict {
-		res = append(res, k)
-	}
-	return res
-}
-
-func eqsUnion(es1 EquivSet, es2 EquivSet) EquivSet {
-	e3 := newEquivSet0()
-	for _, k := range eqsItems(es1) {
-		e3.dict[k] = true
-	}
-	for _, k := range eqsItems(es2) {
-		e3.dict[k] = true
-	}
-	return e3
-}
-
-/*
 BinOp related
 */
 

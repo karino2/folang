@@ -270,6 +270,32 @@ func collectLfdRels(lfd LetFuncDef) []UniRel {
 	return frt.Pipe(unifyType(lfdRetType(lfd), lastExprType), (func(_r0 []UniRel) []UniRel { return slice.Append(brels, _r0) }))
 }
 
+func newEquivSet0() EquivSet {
+	dic := dict.New[string, bool]()
+	return EquivSet{Dict: dic}
+}
+
+func NewEquivSet(tv TypeVar) EquivSet {
+	es := newEquivSet0()
+	dict.Add(es.Dict, tv.Name, true)
+	return es
+}
+
+func eqsItems(es EquivSet) []string {
+	return dict.Keys(es.Dict)
+}
+
+func setAddKeys(d dict.Dict[string, bool], k string) {
+	dict.Add(d, k, true)
+}
+
+func eqsUnion(es1 EquivSet, es2 EquivSet) EquivSet {
+	e3 := newEquivSet0()
+	frt.PipeUnit(dict.Keys(es1.Dict), (func(_r0 []string) { slice.Iter((func(_r0 string) { setAddKeys(e3.Dict, _r0) }), _r0) }))
+	frt.PipeUnit(dict.Keys(es2.Dict), (func(_r0 []string) { slice.Iter((func(_r0 string) { setAddKeys(e3.Dict, _r0) }), _r0) }))
+	return e3
+}
+
 func eiUnion(e1 EquivInfo, e2 EquivInfo) frt.Tuple2[EquivInfo, []UniRel] {
 	nset := eqsUnion(e1.eset, e2.eset)
 	nres, rels := frt.Destr(compositeTp(e1.resType, e2.resType))

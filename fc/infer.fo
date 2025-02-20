@@ -277,13 +277,34 @@ let collectLfdRels (lfd:LetFuncDef) =
 
 /*
   Building ResolveInfo from []UniRel
-
 */
 
-package_info _ =
-  let eqsUnion: EquivSet->EquivSet->EquivSet
-  let eqsItems: EquivSet->[]string
-  let NewEquivSet: TypeVar->EquivSet
+/*
+  EquivSet related
+*/
+let newEquivSet0 () =
+  let dic = dict.New<string, bool> ()
+  {Dict=dic}
+
+let NewEquivSet (tv:TypeVar) =
+  let es = newEquivSet0 ()
+  dict.Add es.Dict tv.Name true
+  es
+
+let eqsItems (es:EquivSet) =
+  dict.Keys es.Dict
+
+let setAddKeys d (k:string) =
+  dict.Add d k true
+
+let eqsUnion (es1:EquivSet) (es2:EquivSet) =
+  let e3 = newEquivSet0 ()
+  dict.Keys es1.Dict
+  |> slice.Iter (setAddKeys e3.Dict)
+  dict.Keys es2.Dict
+  |> slice.Iter (setAddKeys e3.Dict)
+  e3
+
 
 let eiUnion (e1: EquivInfo) (e2:EquivInfo) =
   let nset = eqsUnion e1.eset e2.eset

@@ -211,6 +211,10 @@ func parseParams(ps ParseState) frt.Tuple2[ParseState, []Var] {
 			return frt.Pipe(parseParams(ps2), (func(_r0 frt.Tuple2[ParseState, []Var]) frt.Tuple2[ParseState, []Var] {
 				return CnvR((func(_r0 []Var) []Var { return slice.PushHead(v, _r0) }), _r0)
 			}))
+		case TokenType_IDENTIFIER:
+			return frt.Pipe(parseParams(ps2), (func(_r0 frt.Tuple2[ParseState, []Var]) frt.Tuple2[ParseState, []Var] {
+				return CnvR((func(_r0 []Var) []Var { return slice.PushHead(v, _r0) }), _r0)
+			}))
 		default:
 			return frt.NewTuple2(ps2, ([]Var{v}))
 		}

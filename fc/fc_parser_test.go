@@ -1020,6 +1020,17 @@ let hoge () =
 `,
 			[]string{"hoge() int", "New[string, int]"},
 		},
+		{
+			`package_info dict =
+  type Dict<K, V>
+  let Add<K, V>: Dict<K, V>->K->V->()
+
+let setAddKeys d k =
+  dict.Add d k true
+
+`,
+			[]string{"setAddKeys[T0 any]", "Dict[T0, bool]", "k T0"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1035,19 +1046,10 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package_info dict =
   type Dict<K, V>
-  let New<K, V>: ()->Dict<K, V>
-  let Put<K, V>: Dict<K, V>->K->V->()
-  let Lookup<K, V>: Dict<K, V>->K->V*bool
+  let Add<K, V>: Dict<K, V>->K->V->()
 
-
-let hoge () =
-  let dic = dict.New<string, int> ()
-  dict.Put dic "hoge" 123
-  let (v, ok) = dict.Lookup dic "hoge"
-  if ok then
-    v
-  else
-    999
+let setAddKeys d (k:string) =
+  dict.Add d k true
 
 `
 

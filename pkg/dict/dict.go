@@ -44,6 +44,22 @@ func KVs[K comparable, V any](d Dict[K, V]) []frt.Tuple2[K, V] {
 	return res
 }
 
+func Keys[K comparable, V any](d Dict[K, V]) []K {
+	var res []K
+	for k := range d.Fdict {
+		res = append(res, k)
+	}
+	return res
+}
+
+func Values[K comparable, V any](d Dict[K, V]) []V {
+	var res []V
+	for _, v := range d.Fdict {
+		res = append(res, v)
+	}
+	return res
+}
+
 func ToDict[K comparable, V any](ss []frt.Tuple2[K, V]) Dict[K, V] {
 	dic := New[K, V]()
 	for _, tp := range ss {

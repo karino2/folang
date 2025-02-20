@@ -8,4 +8,6 @@ package_info dict =
   let TryFind<K, V>: Dict<K, V>->K->V*bool
   let Item<K, V>: Dict<K, V>->K->V
   let KVs<K, V>: Dict<K, V>->[]K*V
+  let Keys<K, V>: Dict<K, V>->[]K
+  let Values<K, V>: Dict<K, V>->[]V
   let ToDict<K, V>: []K*V->Dict<K, V>

@@ -129,6 +129,10 @@ func GenType(tfd TypeFactoryData, targs []FType) FType {
 	return frt.Pipe(ParamdType{Name: tfd.Name, Targs: targs}, New_FType_FParamd)
 }
 
+type EquivSet struct {
+	Dict dict.Dict[string, bool]
+}
+
 type TypeDefCtx struct {
 	tva         TypeVarAllocator
 	insideTD    bool

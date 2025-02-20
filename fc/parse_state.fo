@@ -140,8 +140,8 @@ package_info _ =
   let tvaReset: TypeVarAllocator->()
   let resetUniqueTmpCounter: ()->()
   let tvaListAlloced: TypeVarAllocator->[]TypeVar
-  type EquivSet
 
+type EquivSet = {Dict: dict.Dict<string, bool>}
 
 type TypeDefCtx = {
   tva: TypeVarAllocator;
