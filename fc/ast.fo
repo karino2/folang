@@ -1,11 +1,10 @@
 package main
 
 import frt
+import dict
 
 // wrapper types.
 package_info _ =
-  type funcFacDict
-  let newFFD: ()->funcFacDict
   type TFDataDict
   let newTFDD: ()->TFDataDict
 
@@ -107,7 +106,7 @@ and LetDestVarDef = {Lvars: []Var; Rhs: Expr}
 and LLetVarDef =
 | LLOneVarDef of LetVarDef
 | LLDestVarDef of LetDestVarDef
-and PackageInfo = {Name: string; FuncInfo: funcFacDict; TypeInfo: TFDataDict}
+and PackageInfo = {Name: string; FuncInfo: dict.Dict<string, FuncFactory>; TypeInfo: TFDataDict}
 and RecordDef = {Name: string; Fields: []NameTypePair}
 and UnionDef = {Name: string; Cases: []NameTypePair}
 and DefStmt =
@@ -116,6 +115,6 @@ and DefStmt =
 and MultipleDefs = {Defs: []DefStmt}
 
 let NewPackageInfo (name:string) =
-  let ffd = newFFD ()
+  let ffd = dict.New<string, FuncFactory> ()
   let tfdd = newTFDD ()
   {Name=name; FuncInfo=ffd; TypeInfo=tfdd}

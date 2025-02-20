@@ -35,20 +35,6 @@ func toDict[V any](ps []frt.Tuple2[string, V]) map[string]V {
 	return dic
 }
 
-type funcFacDict = map[string]FuncFactory
-
-func newFFD() funcFacDict {
-	return make(map[string]FuncFactory)
-}
-
-func ffdPut(dic funcFacDict, key string, v FuncFactory) {
-	dictPut(dic, key, v)
-}
-
-func ffdKVs(dic funcFacDict) []frt.Tuple2[string, FuncFactory] {
-	return dictKeyValues(dic)
-}
-
 type TFDataDict = map[string]TypeFactoryData
 
 func newTFDD() TFDataDict {

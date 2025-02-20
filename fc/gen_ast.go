@@ -2,6 +2,8 @@ package main
 
 import "github.com/karino2/folang/pkg/frt"
 
+import "github.com/karino2/folang/pkg/dict"
+
 type GoEvalExpr struct {
 	GoStmt  string
 	TypeArg FType
@@ -365,7 +367,7 @@ func New_LLetVarDef_LLDestVarDef(v LetDestVarDef) LLetVarDef { return LLetVarDef
 
 type PackageInfo struct {
 	Name     string
-	FuncInfo funcFacDict
+	FuncInfo dict.Dict[string, FuncFactory]
 	TypeInfo TFDataDict
 }
 type RecordDef struct {
@@ -400,7 +402,7 @@ type MultipleDefs struct {
 }
 
 func NewPackageInfo(name string) PackageInfo {
-	ffd := newFFD()
+	ffd := dict.New[string, FuncFactory]()
 	tfdd := newTFDD()
 	return PackageInfo{Name: name, FuncInfo: ffd, TypeInfo: tfdd}
 }

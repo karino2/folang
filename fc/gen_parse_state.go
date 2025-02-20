@@ -436,7 +436,7 @@ func scRegTFData(sc Scope, tname string, tfd TypeFactoryData) {
 }
 
 func piRegFF(pi PackageInfo, fname string, ff FuncFactory, ps ParseState) ParseState {
-	ffdPut(pi.FuncInfo, fname, ff)
+	dict.Add(pi.FuncInfo, fname, ff)
 	scRegFunFac(ps.scope, fname, ff)
 	return ps
 }
@@ -453,7 +453,7 @@ func regTF(pi PackageInfo, sc Scope, etp frt.Tuple2[string, TypeFactoryData]) {
 }
 
 func piRegAll(pi PackageInfo, sc Scope) {
-	frt.PipeUnit(ffdKVs(pi.FuncInfo), (func(_r0 []frt.Tuple2[string, FuncFactory]) {
+	frt.PipeUnit(dict.KVs(pi.FuncInfo), (func(_r0 []frt.Tuple2[string, FuncFactory]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, FuncFactory]) { regFF(pi, sc, _r0) }), _r0)
 	}))
 	frt.PipeUnit(tfddKVs(pi.TypeInfo), (func(_r0 []frt.Tuple2[string, TypeFactoryData]) {

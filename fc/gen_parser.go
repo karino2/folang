@@ -88,7 +88,7 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 							tvarf := tdctxTVFAlloc(ps4.tdctx, fullName)
 							return frt.NewTuple2(ps4, tvarf)
 						}), (func() frt.Tuple2[ParseState, FType] {
-							frt.Panic("type not found.")
+							frt.Panicf1("type not found: %s.", fullName)
 							return frt.NewTuple2(ps4, New_FType_FUnit)
 						}))
 					}))
