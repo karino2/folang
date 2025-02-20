@@ -252,6 +252,8 @@ let collectExprRel (expr:Expr) : []UniRel =
     let teq = unifyType lft rft
     let all = [insideL;insideR;teq]
     slice.Concat all
+  | ETupleExpr tes ->
+    slice.Map collectExprRel tes |> slice.Concat    
   | ESlice es ->
     let inside = slice.Map collectExprRel es |> slice.Concat
     collectSlice es

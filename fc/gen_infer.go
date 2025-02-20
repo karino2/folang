@@ -237,6 +237,9 @@ func collectExprRel(expr Expr) []UniRel {
 		teq := unifyType(lft, rft)
 		all := ([][]UniRel{insideL, insideR, teq})
 		return slice.Concat(all)
+	case Expr_ETupleExpr:
+		tes := _v10.Value
+		return frt.Pipe(slice.Map(collectExprRel, tes), slice.Concat)
 	case Expr_ESlice:
 		es := _v10.Value
 		inside := frt.Pipe(slice.Map(collectExprRel, es), slice.Concat)

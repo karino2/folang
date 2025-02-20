@@ -1031,6 +1031,20 @@ let setAddKeys d k =
 `,
 			[]string{"setAddKeys[T0 any]", "Dict[T0, bool]", "k T0"},
 		},
+		{
+			`package main
+
+package_info frt =
+  let Fst<T, U> : T*U->T
+  let Snd<T, U> : T*U->U
+
+
+let CnvL fn tup =
+  let nl = frt.Fst tup |> fn
+  (nl, frt.Snd tup)
+`,
+			[]string{"[T0 any, T1 any, T2 any]", "fn func (T0) T1", "tup frt.Tuple2[T0, T2]"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1047,12 +1061,13 @@ func TestParseAddhook(t *testing.T) {
 	src := `package main
 
 package_info frt =
+  let Fst<T, U> : T*U->T
   let Snd<T, U> : T*U->U
 
 
-let CnvL (fn:string->string) tup =
-  let nl = frt.Snd tup |> fn
-  (nl, tup)
+let CnvL fn tup =
+  let nl = frt.Fst tup |> fn
+  (nl, frt.Snd tup)
 `
 
 	got := transpile(src)
