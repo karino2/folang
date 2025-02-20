@@ -18,37 +18,6 @@ func dictPut[T any](dict map[string]T, key string, v T) {
 	dict[key] = v
 }
 
-func dictKeyValues[K comparable, V any](dict map[K]V) []frt.Tuple2[K, V] {
-	var res []frt.Tuple2[K, V]
-	for k, v := range dict {
-		res = append(res, frt.NewTuple2(k, v))
-	}
-	return res
-}
-
-func toDict[V any](ps []frt.Tuple2[string, V]) map[string]V {
-	dic := make(map[string]V)
-	for _, tp := range ps {
-		pname, v := frt.Destr(tp)
-		dic[pname] = v
-	}
-	return dic
-}
-
-type TFDataDict = map[string]TypeFactoryData
-
-func newTFDD() TFDataDict {
-	return make(TFDataDict)
-}
-
-func tfddPut(dic TFDataDict, key string, v TypeFactoryData) {
-	dictPut(dic, key, v)
-}
-
-func tfddKVs(dic TFDataDict) []frt.Tuple2[string, TypeFactoryData] {
-	return dictKeyValues(dic)
-}
-
 /*
   uniqueTmpVarName related.
 */
@@ -592,25 +561,6 @@ func tvaToTypeVarGen(tva TypeVarAllocator) func() TypeVar {
 	return func() TypeVar { return tva.Allocate() }
 }
 
-func tvaListAlloced(tva TypeVarAllocator) []TypeVar {
-	return tva.allocated
-}
-
-/*
-  TypeVarDict related.
-*/
-
-type TypeVarDict = map[string]TypeVar
-
-func toTVDict(ps []frt.Tuple2[string, TypeVar]) TypeVarDict {
-	return toDict(ps)
-}
-
-// NF: Never fail.
-func tvdLookupNF(tvd TypeVarDict, key string) TypeVar {
-	return tvd[key]
-}
-
 /*
 EquivSet
 */
@@ -689,26 +639,6 @@ var binOpMap = map[TokenType]BinOpInfo{
 
 func lookupBinOp(tk TokenType) frt.Tuple2[BinOpInfo, bool] {
 	return dictLookup(binOpMap, tk)
-}
-
-/*
-TypeDict related
-*/
-type TypeDict = map[string]FType
-
-func newTD() TypeDict {
-	return make(TypeDict)
-}
-func tdPut(dic TypeDict, key string, v FType) {
-	dictPut(dic, key, v)
-}
-
-func tdLookup(dic TypeDict, key string) frt.Tuple2[FType, bool] {
-	return dictLookup(dic, key)
-}
-
-func toTDict(ps []frt.Tuple2[string, FType]) TypeDict {
-	return toDict(ps)
 }
 
 /*

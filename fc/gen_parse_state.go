@@ -65,8 +65,8 @@ func collectTVarFType(ft FType) []string {
 	}
 }
 
-func tpReplaceOne(tdic TypeDict, tv TypeVar) FType {
-	tp, ok := frt.Destr(tdLookup(tdic, tv.Name))
+func tpReplaceOne(tdic dict.Dict[string, FType], tv TypeVar) FType {
+	tp, ok := frt.Destr(dict.TryFind(tdic, tv.Name))
 	return frt.IfElse(ok, (func() FType {
 		return tp
 	}), (func() FType {
@@ -74,7 +74,7 @@ func tpReplaceOne(tdic TypeDict, tv TypeVar) FType {
 	}))
 }
 
-func tpreplace(tdic TypeDict, ft FType) FType {
+func tpreplace(tdic dict.Dict[string, FType], ft FType) FType {
 	return transTypeVarFType((func(_r0 TypeVar) FType { return tpReplaceOne(tdic, _r0) }), ft)
 }
 
@@ -96,7 +96,7 @@ func GenFunc(ff FuncFactory, stlist []FType, tvgen func() TypeVar) FuncType {
 	frt.IfOnly((slice.Len(stlist) > slice.Len(ff.Tparams)), (func() {
 		frt.Panic("Too many type specified.")
 	}))
-	tdic := frt.Pipe(slice.Mapi((func(_r0 int, _r1 string) frt.Tuple2[string, FType] { return tpname2tvtp(tvgen, stlist, _r0, _r1) }), ff.Tparams), toTDict)
+	tdic := frt.Pipe(slice.Mapi((func(_r0 int, _r1 string) frt.Tuple2[string, FType] { return tpname2tvtp(tvgen, stlist, _r0, _r1) }), ff.Tparams), dict.ToDict)
 	ntargets := slice.Map((func(_r0 FType) FType { return tpreplace(tdic, _r0) }), ff.Targets)
 	return FuncType{Targets: ntargets}
 }
@@ -132,7 +132,7 @@ func GenType(tfd TypeFactoryData, targs []FType) FType {
 type TypeDefCtx struct {
 	tva         TypeVarAllocator
 	insideTD    bool
-	defined     TypeDict
+	defined     dict.Dict[string, FType]
 	allocedDict dict.Dict[string, string]
 }
 
@@ -197,7 +197,7 @@ func initParse(src string) ParseState {
 	scope := NewScope()
 	offside := ([]int{0})
 	tva2 := NewTypeVarAllocator("_P")
-	defdict := newTD()
+	defdict := dict.New[string, FType]()
 	adict := dict.New[string, string]()
 	tvctx := newTypeVarCtx()
 	tdctx := TypeDefCtx{tva: tva2, insideTD: false, defined: defdict, allocedDict: adict}
@@ -243,7 +243,7 @@ func psPopOffside(ps ParseState) ParseState {
 
 func psEnterTypeDef(ps ParseState) ParseState {
 	old := ps.tdctx
-	ntd := newTD()
+	ntd := dict.New[string, FType]()
 	nald := dict.New[string, string]()
 	ntdctx := TypeDefCtx{tva: old.tva, insideTD: true, defined: ntd, allocedDict: nald}
 	tvaReset(ntdctx.tva)
@@ -423,7 +423,7 @@ func piFullName(pi PackageInfo, name string) string {
 func piRegEType(pi PackageInfo, tname string, tparams []string) TypeFactoryData {
 	fullName := piFullName(pi, tname)
 	tfd := TypeFactoryData{Name: fullName, Tparams: tparams}
-	tfddPut(pi.TypeInfo, tname, tfd)
+	dict.Add(pi.TypeInfo, tname, tfd)
 	return tfd
 }
 
@@ -456,7 +456,7 @@ func piRegAll(pi PackageInfo, sc Scope) {
 	frt.PipeUnit(dict.KVs(pi.FuncInfo), (func(_r0 []frt.Tuple2[string, FuncFactory]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, FuncFactory]) { regFF(pi, sc, _r0) }), _r0)
 	}))
-	frt.PipeUnit(tfddKVs(pi.TypeInfo), (func(_r0 []frt.Tuple2[string, TypeFactoryData]) {
+	frt.PipeUnit(dict.KVs(pi.TypeInfo), (func(_r0 []frt.Tuple2[string, TypeFactoryData]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, TypeFactoryData]) { regTF(pi, sc, _r0) }), _r0)
 	}))
 }
@@ -587,7 +587,7 @@ func rdToRecType(rd RecordDef) RecordType {
 func psRegRecDefToTDCtx(rd RecordDef, ps ParseState) {
 	recT := rdToRecType(rd)
 	scRegisterRecType(ps.scope, recT)
-	tdPut(ps.tdctx.defined, recT.Name, New_FType_FRecord(recT))
+	dict.Add(ps.tdctx.defined, recT.Name, New_FType_FRecord(recT))
 }
 
 func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
@@ -595,7 +595,7 @@ func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
 	udRegisterCsCtors(sc, ud)
 	fut := udToFUt(ud)
 	scRegisterType(sc, ud.Name, fut)
-	tdPut(ps.tdctx.defined, ud.Name, fut)
+	dict.Add(ps.tdctx.defined, ud.Name, fut)
 }
 
 func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
@@ -621,7 +621,7 @@ func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
 func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
 	rname, ok := frt.Destr(dict.TryFind(tdctx.allocedDict, tv.Name))
 	return frt.IfElse(ok, (func() FType {
-		nt, ok2 := frt.Destr(tdLookup(tdctx.defined, rname))
+		nt, ok2 := frt.Destr(dict.TryFind(tdctx.defined, rname))
 		return frt.IfElse(ok2, (func() FType {
 			return nt
 		}), (func() FType {

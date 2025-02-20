@@ -8,14 +8,6 @@ import dict
   GenFunc related
 */
 
-// wrapper types.
-package_info _ =
-  type TypeDict
-  let toTDict: []string*FType->TypeDict
-  let tdLookup: TypeDict->string->FType*bool
-
-
-
 
 /*
   TransformT FTypeVar and recomposite.
@@ -67,14 +59,14 @@ let collectTVarFType (ft:FType) : []string =
   
 
 
-let tpReplaceOne (tdic:TypeDict) (tv:TypeVar) =
-  let (tp, ok) = tdLookup tdic tv.Name
+let tpReplaceOne (tdic:dict.Dict<string, FType>) (tv:TypeVar) =
+  let (tp, ok) = dict.TryFind tdic tv.Name
   if ok then
     tp
   else
     FTypeVar tv
 
-let tpreplace (tdic:TypeDict) (ft:FType) =
+let tpreplace (tdic:dict.Dict<string, FType>) (ft:FType) =
   transTypeVarFType (tpReplaceOne tdic) ft
 
 let emptyFtps () =
@@ -91,7 +83,7 @@ let tpname2tvtp (tvgen: ()->TypeVar) (slist:[]FType) (i:int) (tpname:string) =
 let GenFunc (ff:FuncFactory) (stlist:[]FType) (tvgen: ()->TypeVar) =
   if (slice.Len stlist) > (slice.Len ff.Tparams) then
     frt.Panic "Too many type specified."
-  let tdic = slice.Mapi (tpname2tvtp tvgen stlist) ff.Tparams |> toTDict
+  let tdic = slice.Mapi (tpname2tvtp tvgen stlist) ff.Tparams |> dict.ToDict
   let ntargets = slice.Map (tpreplace tdic) ff.Targets
   {FuncType.Targets=ntargets}
 
@@ -148,8 +140,6 @@ package_info _ =
   let tvaReset: TypeVarAllocator->()
   let resetUniqueTmpCounter: ()->()
   let tvaListAlloced: TypeVarAllocator->[]TypeVar
-  let newTD: () -> TypeDict
-  let tdPut: TypeDict->string->FType->()
   type EquivInfoDict
   let NewEquivInfoDict: ()->EquivInfoDict
 
@@ -157,7 +147,7 @@ package_info _ =
 type TypeDefCtx = {
   tva: TypeVarAllocator;
   insideTD: bool;
-  defined: TypeDict;
+  defined: dict.Dict<string, FType>;
   // key: tvname, value: fwrdDeclTypename
   allocedDict: dict.Dict<string, string>;
 }
@@ -224,7 +214,7 @@ let initParse (src: string) =
   let scope = NewScope ()
   let offside = [0]
   let tva2 = NewTypeVarAllocator "_P"
-  let defdict = newTD ()
+  let defdict = dict.New<string, FType> ()
   let adict = dict.New<string, string> ()
   let tvctx = newTypeVarCtx ()
   let tdctx = {tva=tva2; insideTD=false; defined=defdict; allocedDict= adict}
@@ -263,7 +253,7 @@ let psPopOffside (ps:ParseState) =
 // reset defined dict and tva here.
 let psEnterTypeDef (ps:ParseState) =
   let old = ps.tdctx
-  let ntd = newTD ()
+  let ntd = dict.New<string, FType> ()
   let nald = dict.New<string, string> ()
   let ntdctx = {tva=old.tva; insideTD=true; defined=ntd; allocedDict=nald}
   tvaReset ntdctx.tva
@@ -417,10 +407,6 @@ let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
 PackageInfo related utility.
 */
 
-package_info _ =
-  let tfddPut: TFDataDict->string->TypeFactoryData->()
-  let tfddKVs: TFDataDict->[]string*TypeFactoryData
-
 let piFullName (pi:PackageInfo) (name:string) =
   if pi.Name = "_" then
     name
@@ -430,7 +416,7 @@ let piFullName (pi:PackageInfo) (name:string) =
 let piRegEType (pi:PackageInfo) (tname:string) (tparams:[]string) =
   let fullName = piFullName pi tname
   let tfd = {Name=fullName; Tparams=tparams}
-  tfddPut pi.TypeInfo tname tfd
+  dict.Add pi.TypeInfo tname tfd
   tfd
 
 let scRegFunFac (sc:Scope) (fname:string) (ff:FuncFactory) =
@@ -456,13 +442,10 @@ let regTF  (pi:PackageInfo) (sc:Scope) (etp:string*TypeFactoryData) =
   let tfd = frt.Snd etp
   scRegTFData sc tfd.Name tfd
 
-/*
-  PackageInfo = {name: string; funcInfo: dict.Dict<string, FuncFactory>; typeInfo: TFDataDict}
-*/
 let piRegAll (pi:PackageInfo) (sc:Scope) =
   dict.KVs pi.FuncInfo
   |> slice.Iter (regFF pi sc)
-  tfddKVs pi.TypeInfo
+  dict.KVs pi.TypeInfo
   |> slice.Iter (regTF pi sc)
 
 /*
@@ -594,14 +577,14 @@ let rdToRecType (rd:RecordDef) =
 let psRegRecDefToTDCtx (rd:RecordDef) (ps:ParseState) =
   let recT = rdToRecType rd
   scRegisterRecType ps.scope recT
-  tdPut ps.tdctx.defined recT.Name (FRecord recT)
+  dict.Add ps.tdctx.defined recT.Name (FRecord recT)
 
 let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
   let sc = ps.scope
   udRegisterCsCtors sc ud
   let fut = udToFUt ud
   scRegisterType sc ud.Name fut
-  tdPut ps.tdctx.defined ud.Name fut
+  dict.Add ps.tdctx.defined ud.Name fut
 
 /*
   MultipleDefs resolve forward declaration, etc.
@@ -624,7 +607,7 @@ let transDefStmt (transV: TypeVar->FType) (df: DefStmt) =
 let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
   let (rname, ok) = dict.TryFind tdctx.allocedDict tv.Name
   if ok then
-    let (nt, ok2) = tdLookup tdctx.defined rname
+    let (nt, ok2) = dict.TryFind tdctx.defined rname
     if ok2 then
       nt
     else

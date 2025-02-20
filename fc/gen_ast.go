@@ -368,7 +368,7 @@ func New_LLetVarDef_LLDestVarDef(v LetDestVarDef) LLetVarDef { return LLetVarDef
 type PackageInfo struct {
 	Name     string
 	FuncInfo dict.Dict[string, FuncFactory]
-	TypeInfo TFDataDict
+	TypeInfo dict.Dict[string, TypeFactoryData]
 }
 type RecordDef struct {
 	Name   string
@@ -403,6 +403,6 @@ type MultipleDefs struct {
 
 func NewPackageInfo(name string) PackageInfo {
 	ffd := dict.New[string, FuncFactory]()
-	tfdd := newTFDD()
+	tfdd := dict.New[string, TypeFactoryData]()
 	return PackageInfo{Name: name, FuncInfo: ffd, TypeInfo: tfdd}
 }

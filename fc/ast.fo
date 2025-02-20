@@ -106,7 +106,7 @@ and LetDestVarDef = {Lvars: []Var; Rhs: Expr}
 and LLetVarDef =
 | LLOneVarDef of LetVarDef
 | LLDestVarDef of LetDestVarDef
-and PackageInfo = {Name: string; FuncInfo: dict.Dict<string, FuncFactory>; TypeInfo: TFDataDict}
+and PackageInfo = {Name: string; FuncInfo: dict.Dict<string, FuncFactory>; TypeInfo: dict.Dict<string, TypeFactoryData>}
 and RecordDef = {Name: string; Fields: []NameTypePair}
 and UnionDef = {Name: string; Cases: []NameTypePair}
 and DefStmt =
@@ -116,5 +116,5 @@ and MultipleDefs = {Defs: []DefStmt}
 
 let NewPackageInfo (name:string) =
   let ffd = dict.New<string, FuncFactory> ()
-  let tfdd = newTFDD ()
+  let tfdd = dict.New<string, TypeFactoryData> ()
   {Name=name; FuncInfo=ffd; TypeInfo=tfdd}
