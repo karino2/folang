@@ -1,3 +1,3 @@
 #!/bin/sh
 
-cp gen*.go wrapper.go stable/
+cp gen*.go wrapper.go fc stable/
