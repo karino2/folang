@@ -18,29 +18,6 @@ let main () =
 generated go: [gen_two_func.go](./gen_two_func.go)
 
 
-### Non arg call example
-
-```
-package main
-import "fmt"
-
-type AorB =
- | A 
- | B
-
-
-let main () =
-  match A with
-  | A -> GoEval "fmt.Println(\"match A\")"
-  | B -> GoEval "fmt.Println(\"match B\")"
-
-
-
-```
-
-generated go: [gen_noarg_funcall.go](./gen_noarg_funcall.go)
-
-
 ### Tuple example
 
 ```

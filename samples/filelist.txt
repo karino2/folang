@@ -1,5 +1,4 @@
 two_func.fo Two function example
-noarg_funcall.fo Non arg call example
 tuple.fo Tuple example
 destr_let.fo Destructuring let example
 record.fo Record
