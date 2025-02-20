@@ -90,7 +90,7 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
         let tvarf = tdctxTVFAlloc ps4.tdctx fullName
         (ps4, tvarf)
       else
-        frt.Panic("type not found.")
+        frt.Panicf1 "type not found: %s." fullName
         (ps4, FUnit)
   | _ ->
     frt.Panic("Unknown type")
