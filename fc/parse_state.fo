@@ -287,13 +287,13 @@ type ParseState = {
 }
 
 
-// wrapper types. Use ParseState
-package_info _ =
-  // inference from funcall to arg side is NYI.
-  // let CnvL<T, U>: (T->T)->T*U->T*U
-  // let CnvR<T, U>: (U->U)->T*U->T*U
-  let CnvL<U>: (ParseState->ParseState)->ParseState*U->ParseState*U
-  let CnvR<T, U>: (T->U)->ParseState*T->ParseState*U
+let CnvL fn tup =
+  let nl = frt.Fst tup |> fn
+  (nl, frt.Snd tup)
+
+let CnvR fn tup =
+  let nr = frt.Snd tup |> fn
+  (frt.Fst tup, nr)
 
 let withPs (ps:ParseState) v =
   (ps, v)

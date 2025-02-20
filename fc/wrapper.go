@@ -388,30 +388,6 @@ func SCSDict(sc Scope) ScopeDict {
 }
 
 /*
-inference from funcall to arg side is NYI.
-
-func Cnv1[T any, U any](fn func(T) T, prev frt.Tuple2[T, U]) frt.Tuple2[T, U] {
-	t, u := frt.Destr(prev)
-	return frt.NewTuple2(fn(t), u)
-}
-
-func Cnv2[T any, U any](fn func(U) U, prev frt.Tuple2[T, U]) frt.Tuple2[T, U] {
-	t, u := frt.Destr(prev)
-	return frt.NewTuple2(t, fn(u))
-}
-*/
-
-func CnvL[U any](fn func(ParseState) ParseState, prev frt.Tuple2[ParseState, U]) frt.Tuple2[ParseState, U] {
-	t, u := frt.Destr(prev)
-	return frt.NewTuple2(fn(t), u)
-}
-
-func CnvR[T any, U any](fn func(T) U, prev frt.Tuple2[ParseState, T]) frt.Tuple2[ParseState, U] {
-	t, u := frt.Destr(prev)
-	return frt.NewTuple2(t, fn(u))
-}
-
-/*
   TypeVarAllocator
 */
 
