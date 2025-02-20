@@ -238,14 +238,13 @@ generated go: [gen_generic_specify.go](./gen_generic_specify.go)
 ```
 package main
 
-import "fmt"
 import frt
 import slice
 
 let main() =
   let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
   let s2 = s |> slice.Take 2
-  GoEval "fmt.Printf(\"%v\", s2)"
+  frt.Printf1 "%v\n" s2
 
 
 ```
@@ -279,16 +278,16 @@ generated go: [gen_dict_sample.go](./gen_dict_sample.go)
 ```
 package main
 
-import "fmt"
+import frt
 import slice
 
 let conv (i:int) =
-  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
+  frt.Sprintf1 "a %d" i
 
 let main() =
-  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s = [5; 6; 7; 8]
   let s2 = slice.Map conv s
-  GoEval "fmt.Printf(\"%v\", s2)"
+  frt.Printf1 "%v\n" s2
 
 
 ```

@@ -1,13 +1,13 @@
 package main
 
-import "fmt"
+import frt
 import slice
 
 let conv (i:int) =
-  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
+  frt.Sprintf1 "a %d" i
 
 let main() =
-  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s = [5; 6; 7; 8]
   let s2 = slice.Map conv s
-  GoEval "fmt.Printf(\"%v\", s2)"
+  frt.Printf1 "%v\n" s2
 

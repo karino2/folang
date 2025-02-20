@@ -1,15 +1,15 @@
 package main
 
-import "fmt"
+import "github.com/karino2/folang/pkg/frt"
 
 import "github.com/karino2/folang/pkg/slice"
 
 func conv(i int) string {
-	return fmt.Sprintf("a %d", i)
+	return frt.Sprintf1("a %d", i)
 }
 
 func main() {
-	s := []int{5, 6, 7, 8}
+	s := ([]int{5, 6, 7, 8})
 	s2 := slice.Map(conv, s)
-	fmt.Printf("%v", s2)
+	frt.Printf1("%v\n", s2)
 }
