@@ -135,70 +135,67 @@ let NewScopeDict () =
   {VarFacMap=fvm; RecordMap=rm; TypeFacMap=tfm}
 
 package_info _ =
-  type MyScope
-  let NewMyScopeImpl0: ScopeDict->MyScope
-  let NewMyScopeImpl: ScopeDict->MyScope->MyScope
-  let MSHasParent: MyScope->bool
-  let MSParent: MyScope->MyScope
-  let MSSDict: MyScope->ScopeDict
+  type Scope
+  let NewScopeImpl0: ScopeDict->Scope
+  let NewScopeImpl: ScopeDict->Scope->Scope
+  let SCHasParent: Scope->bool
+  let SCParent: Scope->Scope
+  let SCSDict: Scope->ScopeDict
 
-let NewMyScope0 () =
+let NewScope0 () =
   let sd = NewScopeDict ()
-  NewMyScopeImpl0 sd
+  NewScopeImpl0 sd
 
-let NewMyScope parent =
+let NewScope parent =
   let sd = NewScopeDict ()
-  NewMyScopeImpl sd parent
+  NewScopeImpl sd parent
 
 let vToVarFac v tlist tvgen =
   VRVar v
 
-let myScDefVar s name v =
-  let sdic = MSSDict s
+let scDefVar s name v =
+  let sdic = SCSDict s
   dict.Add sdic.VarFacMap name (vToVarFac v)
 
-let myscRegisterVarFac s name fac =
-  let sdic = MSSDict s
+let scRegisterVarFac s name fac =
+  let sdic = SCSDict s
   dict.Add sdic.VarFacMap name fac
-
-// type VarFactory = func(stlist []FType, tvgen func() TypeVar) VarRef
-// []FType->(()->TypeVar)->VarRef
 
 let emptyVarFac (tlist:[]FType) (tgen: ()->TypeVar) =
   frt.Panic "should never called"
   GoEval<VarRef> "nil"
 
-let myscLookupVarFac s name : ([]FType->(()->TypeVar)->VarRef)*bool =
-  let sd = MSSDict s
+let scLookupVarFac s name : ([]FType->(()->TypeVar)->VarRef)*bool =
+  let sd = SCSDict s
   let (vfac, ok) = dict.TryFind sd.VarFacMap name
   if ok then
     (vfac, ok)
-  elif MSHasParent s then
-    myscLookupVarFac (MSParent s) name
+  elif SCHasParent s then
+    scLookupVarFac (SCParent s) name
   else
     (emptyVarFac, false)
 
-let myscRegisterTypeFac s name fac =
-  let sdic = MSSDict s
+let scRegisterTypeFac s name fac =
+  let sdic = SCSDict s
   dict.Add sdic.TypeFacMap name fac
 
 let ftToTypeFac ft (tlist:[]FType) =
   ft
 
-let myscRegisterType s name ftype =
-  myscRegisterTypeFac s name (ftToTypeFac ftype)
+let scRegisterType s name ftype =
+  scRegisterTypeFac s name (ftToTypeFac ftype)
 
-let myscRegisterRecType s recType =
+let scRegisterRecType s recType =
   let rname = recType.Name
-  let sdic = MSSDict s
+  let sdic = SCSDict s
   dict.Add sdic.RecordMap rname recType
-  myscRegisterType s rname (FRecord recType)
+  scRegisterType s rname (FRecord recType)
 
 let frMatchAdapter fieldNames rec =
   frMatch rec fieldNames
 
-let myscLookupRecordCur s fieldNames =
-  let sdic = MSSDict s
+let scLookupRecordCur s fieldNames =
+  let sdic = SCSDict s
   dict.Values sdic.RecordMap
   |> slice.TryFind (frMatchAdapter fieldNames)
 
@@ -206,53 +203,39 @@ let emptyRec () =
   GoEval<RecordType> "RecordType{}"
 
 
-let myscLookupRecord s fieldNames : RecordType*bool =
-  let (rec, ok) = myscLookupRecordCur s fieldNames
+let scLookupRecord s fieldNames : RecordType*bool =
+  let (rec, ok) = scLookupRecordCur s fieldNames
   if ok then
     (rec, ok)  
-  elif MSHasParent s then
-    myscLookupRecord (MSParent s) fieldNames
+  elif SCHasParent s then
+    scLookupRecord (SCParent s) fieldNames
   else
     (emptyRec (), false)
 
-let myscLookupRecordByName s name : RecordType*bool =
-  let sd = MSSDict s
+let scLookupRecordByName s name : RecordType*bool =
+  let sd = SCSDict s
   let (rec, ok) = dict.TryFind sd.RecordMap name
   if ok then
     (rec, ok)
-  elif MSHasParent s then
-    myscLookupRecordByName (MSParent s) name
+  elif SCHasParent s then
+    scLookupRecordByName (SCParent s) name
   else
     (emptyRec (), false)
 
-let myscLookupTypeFac s name =
-  let sd = MSSDict s
+let scLookupTypeFac s name =
+  let sd = SCSDict s
   let (rec, ok) = dict.TryFind sd.TypeFacMap name
   if ok then
     (rec, ok)
-  elif MSHasParent s then
-    myscLookupTypeFac (MSParent s) name
+  elif SCHasParent s then
+    scLookupTypeFac (SCParent s) name
   else
     let empty = ftToTypeFac FUnit
     (empty, false)
 
 
-
 // wrapper types.
 package_info _ =
-  type Scope
-  let NewScope: ()->Scope
-  let newScope: Scope->Scope
-  let popScope: Scope->Scope
-  let scDefVar: Scope->string->Var->()
-  let scLookupVarFac: Scope->string->([]FType->(()->TypeVar)->VarRef)*bool
-  let scRegisterRecType: Scope->RecordType->()
-  let scLookupRecord: Scope->[]string->RecordType*bool
-  let scLookupRecordByName: Scope->string->RecordType*bool
-  let scRegisterType: Scope->string->FType->()
-  let scRegisterTypeFac: Scope->string->([]FType->FType)->()
-  let scRegisterVarFac: Scope->string->([]FType->(()->TypeVar)->VarRef)->()
-  let scLookupTypeFac: Scope->string->([]FType->FType)*bool
   type TypeVarAllocator
   let NewTypeVarAllocator: string->TypeVarAllocator
   let tvaToTypeVarGen: TypeVarAllocator->(()->TypeVar)
@@ -336,7 +319,7 @@ let psWithTVCtx (org:ParseState) (ntvctx:TypeVarCtx) =
 
 let initParse (src: string) =
   let tkz = newTkz src
-  let scope = NewScope ()
+  let scope = NewScope0 ()
   let offside = [0]
   let tva2 = NewTypeVarAllocator "_P"
   let defdict = dict.New<string, FType> ()
@@ -353,7 +336,10 @@ let psTypeVarGen (ps:ParseState) =
   tvcToTypeVarGen ps.tvc
 
 let psPushScope (org:ParseState) =
-  newScope org.scope |> psWithScope org
+  NewScope org.scope |> psWithScope org
+
+let popScope (sc:Scope) =
+  SCParent sc
 
 let psPopScope (org:ParseState) =
   popScope org.scope |> psWithScope org

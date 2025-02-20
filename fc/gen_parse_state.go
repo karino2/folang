@@ -142,27 +142,27 @@ func NewScopeDict() ScopeDict {
 	return ScopeDict{VarFacMap: fvm, RecordMap: rm, TypeFacMap: tfm}
 }
 
-func NewMyScope0() MyScope {
+func NewScope0() Scope {
 	sd := NewScopeDict()
-	return NewMyScopeImpl0(sd)
+	return NewScopeImpl0(sd)
 }
 
-func NewMyScope(parent MyScope) MyScope {
+func NewScope(parent Scope) Scope {
 	sd := NewScopeDict()
-	return NewMyScopeImpl(sd, parent)
+	return NewScopeImpl(sd, parent)
 }
 
 func vToVarFac[T0 any, T1 any](v Var, tlist T0, tvgen T1) VarRef {
 	return New_VarRef_VRVar(v)
 }
 
-func myScDefVar(s MyScope, name string, v Var) {
-	sdic := MSSDict(s)
+func scDefVar(s Scope, name string, v Var) {
+	sdic := SCSDict(s)
 	dict.Add(sdic.VarFacMap, name, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return vToVarFac(v, _r0, _r1) }))
 }
 
-func myscRegisterVarFac(s MyScope, name string, fac func([]FType, func() TypeVar) VarRef) {
-	sdic := MSSDict(s)
+func scRegisterVarFac(s Scope, name string, fac func([]FType, func() TypeVar) VarRef) {
+	sdic := SCSDict(s)
 	dict.Add(sdic.VarFacMap, name, fac)
 }
 
@@ -171,22 +171,22 @@ func emptyVarFac(tlist []FType, tgen func() TypeVar) VarRef {
 	return nil
 }
 
-func myscLookupVarFac(s MyScope, name string) frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
-	sd := MSSDict(s)
+func scLookupVarFac(s Scope, name string) frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
+	sd := SCSDict(s)
 	vfac, ok := frt.Destr(dict.TryFind(sd.VarFacMap, name))
 	return frt.IfElse(ok, (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
 		return frt.NewTuple2(vfac, ok)
 	}), (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
-		return frt.IfElse(MSHasParent(s), (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
-			return myscLookupVarFac(MSParent(s), name)
+		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
+			return scLookupVarFac(SCParent(s), name)
 		}), (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
 			return frt.NewTuple2(emptyVarFac, false)
 		}))
 	}))
 }
 
-func myscRegisterTypeFac(s MyScope, name string, fac func([]FType) FType) {
-	sdic := MSSDict(s)
+func scRegisterTypeFac(s Scope, name string, fac func([]FType) FType) {
+	sdic := SCSDict(s)
 	dict.Add(sdic.TypeFacMap, name, fac)
 }
 
@@ -194,23 +194,23 @@ func ftToTypeFac[T0 any](ft T0, tlist []FType) T0 {
 	return ft
 }
 
-func myscRegisterType(s MyScope, name string, ftype FType) {
-	myscRegisterTypeFac(s, name, (func(_r0 []FType) FType { return ftToTypeFac(ftype, _r0) }))
+func scRegisterType(s Scope, name string, ftype FType) {
+	scRegisterTypeFac(s, name, (func(_r0 []FType) FType { return ftToTypeFac(ftype, _r0) }))
 }
 
-func myscRegisterRecType(s MyScope, recType RecordType) {
+func scRegisterRecType(s Scope, recType RecordType) {
 	rname := recType.Name
-	sdic := MSSDict(s)
+	sdic := SCSDict(s)
 	dict.Add(sdic.RecordMap, rname, recType)
-	myscRegisterType(s, rname, New_FType_FRecord(recType))
+	scRegisterType(s, rname, New_FType_FRecord(recType))
 }
 
 func frMatchAdapter(fieldNames []string, rec RecordType) bool {
 	return frMatch(rec, fieldNames)
 }
 
-func myscLookupRecordCur(s MyScope, fieldNames []string) frt.Tuple2[RecordType, bool] {
-	sdic := MSSDict(s)
+func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
+	sdic := SCSDict(s)
 	return frt.Pipe(dict.Values(sdic.RecordMap), (func(_r0 []RecordType) frt.Tuple2[RecordType, bool] {
 		return slice.TryFind((func(_r0 RecordType) bool { return frMatchAdapter(fieldNames, _r0) }), _r0)
 	}))
@@ -220,41 +220,41 @@ func emptyRec() RecordType {
 	return RecordType{}
 }
 
-func myscLookupRecord(s MyScope, fieldNames []string) frt.Tuple2[RecordType, bool] {
-	rec, ok := frt.Destr(myscLookupRecordCur(s, fieldNames))
+func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
+	rec, ok := frt.Destr(scLookupRecordCur(s, fieldNames))
 	return frt.IfElse(ok, (func() frt.Tuple2[RecordType, bool] {
 		return frt.NewTuple2(rec, ok)
 	}), (func() frt.Tuple2[RecordType, bool] {
-		return frt.IfElse(MSHasParent(s), (func() frt.Tuple2[RecordType, bool] {
-			return myscLookupRecord(MSParent(s), fieldNames)
+		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[RecordType, bool] {
+			return scLookupRecord(SCParent(s), fieldNames)
 		}), (func() frt.Tuple2[RecordType, bool] {
 			return frt.NewTuple2(emptyRec(), false)
 		}))
 	}))
 }
 
-func myscLookupRecordByName(s MyScope, name string) frt.Tuple2[RecordType, bool] {
-	sd := MSSDict(s)
+func scLookupRecordByName(s Scope, name string) frt.Tuple2[RecordType, bool] {
+	sd := SCSDict(s)
 	rec, ok := frt.Destr(dict.TryFind(sd.RecordMap, name))
 	return frt.IfElse(ok, (func() frt.Tuple2[RecordType, bool] {
 		return frt.NewTuple2(rec, ok)
 	}), (func() frt.Tuple2[RecordType, bool] {
-		return frt.IfElse(MSHasParent(s), (func() frt.Tuple2[RecordType, bool] {
-			return myscLookupRecordByName(MSParent(s), name)
+		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[RecordType, bool] {
+			return scLookupRecordByName(SCParent(s), name)
 		}), (func() frt.Tuple2[RecordType, bool] {
 			return frt.NewTuple2(emptyRec(), false)
 		}))
 	}))
 }
 
-func myscLookupTypeFac(s MyScope, name string) frt.Tuple2[func([]FType) FType, bool] {
-	sd := MSSDict(s)
+func scLookupTypeFac(s Scope, name string) frt.Tuple2[func([]FType) FType, bool] {
+	sd := SCSDict(s)
 	rec, ok := frt.Destr(dict.TryFind(sd.TypeFacMap, name))
 	return frt.IfElse(ok, (func() frt.Tuple2[func([]FType) FType, bool] {
 		return frt.NewTuple2(rec, ok)
 	}), (func() frt.Tuple2[func([]FType) FType, bool] {
-		return frt.IfElse(MSHasParent(s), (func() frt.Tuple2[func([]FType) FType, bool] {
-			return myscLookupTypeFac(MSParent(s), name)
+		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[func([]FType) FType, bool] {
+			return scLookupTypeFac(SCParent(s), name)
 		}), (func() frt.Tuple2[func([]FType) FType, bool] {
 			empty := (func(_r0 []FType) FType { return ftToTypeFac(New_FType_FUnit, _r0) })
 			return frt.NewTuple2(empty, false)
@@ -340,7 +340,7 @@ func psWithTVCtx(org ParseState, ntvctx TypeVarCtx) ParseState {
 
 func initParse(src string) ParseState {
 	tkz := newTkz(src)
-	scope := NewScope()
+	scope := NewScope0()
 	offside := ([]int{0})
 	tva2 := NewTypeVarAllocator("_P")
 	defdict := dict.New[string, FType]()
@@ -360,7 +360,11 @@ func psTypeVarGen(ps ParseState) func() TypeVar {
 }
 
 func psPushScope(org ParseState) ParseState {
-	return frt.Pipe(newScope(org.scope), (func(_r0 Scope) ParseState { return psWithScope(org, _r0) }))
+	return frt.Pipe(NewScope(org.scope), (func(_r0 Scope) ParseState { return psWithScope(org, _r0) }))
+}
+
+func popScope(sc Scope) Scope {
+	return SCParent(sc)
 }
 
 func psPopScope(org ParseState) ParseState {

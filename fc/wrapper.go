@@ -357,153 +357,34 @@ func reinterpretEscape(buf string) string {
 }
 
 /*
-	Scope implementation.
-	Currently, map is not supported, and side effect is hard to write in folang.
-	So I write Scope related code in golang, then call it from folang.
+	  Recursive type need pointer, but Folang does not suppport it.
+		write in GoLang.
 */
-
-type myScopeImpl struct {
+type scopeImpl struct {
 	SDict  ScopeDict
-	Parent *myScopeImpl
+	Parent *scopeImpl
 }
 
-type MyScope = *myScopeImpl
+type Scope = *scopeImpl
 
-func NewMyScopeImpl(sd ScopeDict, parent MyScope) MyScope {
-	return &myScopeImpl{SDict: sd, Parent: parent}
+func NewScopeImpl(sd ScopeDict, parent Scope) Scope {
+	return &scopeImpl{SDict: sd, Parent: parent}
 }
 
-func NewMyScopeImpl0(sd ScopeDict) MyScope {
-	return NewMyScopeImpl(sd, nil)
+func NewScopeImpl0(sd ScopeDict) Scope {
+	return NewScopeImpl(sd, nil)
 }
 
-func MSHasParent(sc MyScope) bool {
+func SCHasParent(sc Scope) bool {
 	return sc.Parent != nil
 }
 
-func MSParent(sc MyScope) MyScope {
+func SCParent(sc Scope) Scope {
 	return sc.Parent
 }
 
-func MSSDict(sc MyScope) ScopeDict {
+func SCSDict(sc Scope) ScopeDict {
 	return sc.SDict
-}
-
-type VarFactory = func(stlist []FType, tvgen func() TypeVar) VarRef
-type TypeFactory = func(stlist []FType) FType
-
-type scopeImpl struct {
-	// var factory Map
-	varFacMap  map[string]VarFactory
-	recordMap  map[string]RecordType
-	typeFacMap map[string]TypeFactory
-	parent     *scopeImpl
-}
-
-// for folang, show pointer as real type for hidden side effect.
-type Scope = *scopeImpl
-
-func newScope(parent *scopeImpl) *scopeImpl {
-	s := &scopeImpl{}
-	s.varFacMap = make(map[string]VarFactory)
-	s.recordMap = make(map[string]RecordType)
-	s.typeFacMap = make(map[string]TypeFactory)
-	s.parent = parent
-	return s
-}
-
-func popScope(src Scope) Scope {
-	return src.parent
-}
-
-func NewScope() Scope {
-	return newScope(nil)
-}
-
-func scDefVar(s Scope, name string, v Var) {
-	s.varFacMap[name] = func(_ []FType, _ func() TypeVar) VarRef { return New_VarRef_VRVar(v) }
-}
-
-func scRegisterVarFac(s Scope, name string, fac VarFactory) {
-	s.varFacMap[name] = fac
-}
-
-// currently, we can't support Result because of absence of generic type.
-// We use golang style convention though F# convention is bool is first.
-func scLookupVarFac(s Scope, name string) frt.Tuple2[VarFactory, bool] {
-	cur := s
-	for cur != nil {
-		ret, ok := cur.varFacMap[name]
-		if ok {
-			return frt.NewTuple2(ret, true)
-		}
-		cur = cur.parent
-	}
-	return frt.NewTuple2[VarFactory](nil, false)
-}
-
-func scRegisterTypeFac(s Scope, name string, tfac TypeFactory) {
-	s.typeFacMap[name] = tfac
-}
-
-func toTypeFac(ft FType) TypeFactory {
-	return func([]FType) FType { return ft }
-}
-
-func scRegisterType(s Scope, name string, ftype FType) {
-	scRegisterTypeFac(s, name, toTypeFac(ftype))
-}
-
-func scRegisterRecType(s Scope, recType RecordType) {
-	rname := recType.Name
-	s.recordMap[rname] = recType
-	scRegisterType(s, rname, New_FType_FRecord(recType))
-}
-
-func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
-	for _, rt := range s.recordMap {
-		if frMatch(rt, fieldNames) {
-			return frt.NewTuple2(rt, true)
-		}
-	}
-	return frt.NewTuple2(RecordType{}, false)
-
-}
-
-func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
-	cur := s
-	for cur != nil {
-		ret := scLookupRecordCur(cur, fieldNames)
-		if ret.E1 {
-			return ret
-		}
-		cur = cur.parent
-	}
-	return frt.NewTuple2(RecordType{}, false)
-}
-
-func scLookupRecordByName(s Scope, rname string) frt.Tuple2[RecordType, bool] {
-	cur := s
-	for cur != nil {
-		ret, ok := cur.recordMap[rname]
-		if ok {
-			return frt.NewTuple2(ret, true)
-		}
-		cur = cur.parent
-	}
-	return frt.NewTuple2(RecordType{}, false)
-}
-
-func scLookupTypeFac(s Scope, name string) frt.Tuple2[TypeFactory, bool] {
-	cur := s
-	for cur != nil {
-		ret, ok := cur.typeFacMap[name]
-		if ok {
-			return frt.NewTuple2(ret, true)
-		}
-		cur = cur.parent
-	}
-	return frt.NewTuple2(toTypeFac(New_FType_FUnit), false)
 }
 
 /*
