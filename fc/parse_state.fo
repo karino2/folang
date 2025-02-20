@@ -140,8 +140,7 @@ package_info _ =
   let tvaReset: TypeVarAllocator->()
   let resetUniqueTmpCounter: ()->()
   let tvaListAlloced: TypeVarAllocator->[]TypeVar
-  type EquivInfoDict
-  let NewEquivInfoDict: ()->EquivInfoDict
+  type EquivSet
 
 
 type TypeDefCtx = {
@@ -152,10 +151,16 @@ type TypeDefCtx = {
   allocedDict: dict.Dict<string, string>;
 }
 
-type Resolver = {eid: EquivInfoDict}
+/*
+  resType is most concrete type for this equiv set.
+  If only TypeVar is known, alphabetically first one is set.
+*/
+type EquivInfo = {eset: EquivSet; resType: FType}
+
+type Resolver = {eid: dict.Dict<string, EquivInfo>}
 
 let newResolver () =
-  let neid = NewEquivInfoDict ()
+  let neid = dict.New<string, EquivInfo> ()
   {eid=neid}
 
 type TypeVarCtx = {

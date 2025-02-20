@@ -270,11 +270,6 @@ func collectLfdRels(lfd LetFuncDef) []UniRel {
 	return frt.Pipe(unifyType(lfdRetType(lfd), lastExprType), (func(_r0 []UniRel) []UniRel { return slice.Append(brels, _r0) }))
 }
 
-type EquivInfo struct {
-	eset    EquivSet
-	resType FType
-}
-
 func eiUnion(e1 EquivInfo, e2 EquivInfo) frt.Tuple2[EquivInfo, []UniRel] {
 	nset := eqsUnion(e1.eset, e2.eset)
 	nres, rels := frt.Destr(compositeTp(e1.resType, e2.resType))
@@ -295,7 +290,7 @@ func eiInit(tv TypeVar) EquivInfo {
 }
 
 func rsLookupEI(res Resolver, tvname string) EquivInfo {
-	ei, ok := frt.Destr(eidLookup(res.eid, tvname))
+	ei, ok := frt.Destr(dict.TryFind(res.eid, tvname))
 	return frt.IfElse(ok, (func() EquivInfo {
 		return ei
 	}), (func() EquivInfo {
@@ -304,7 +299,7 @@ func rsLookupEI(res Resolver, tvname string) EquivInfo {
 }
 
 func rsRegisterTo(res Resolver, ei EquivInfo, key string) {
-	eidPut(res.eid, key, ei)
+	dict.Add(res.eid, key, ei)
 }
 
 func rsRegisterNewEI(res Resolver, ei EquivInfo) {

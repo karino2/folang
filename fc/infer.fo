@@ -281,22 +281,9 @@ let collectLfdRels (lfd:LetFuncDef) =
 */
 
 package_info _ =
-  type EquivSet
   let eqsUnion: EquivSet->EquivSet->EquivSet
   let eqsItems: EquivSet->[]string
   let NewEquivSet: TypeVar->EquivSet
-
-/*
-  resType is most concrete type for this equiv set.
-  If only TypeVar is known, alphabetically first one is set.
-*/
-type EquivInfo = {eset: EquivSet; resType: FType}
-
-// circular dependency.
-package_info _ =
-  let eidLookup: EquivInfoDict->string->EquivInfo*bool
-  let eidPut: EquivInfoDict->string->EquivInfo->()
-
 
 let eiUnion (e1: EquivInfo) (e2:EquivInfo) =
   let nset = eqsUnion e1.eset e2.eset
@@ -317,7 +304,7 @@ let eiInit (tv:TypeVar) =
 
 
 let rsLookupEI (res:Resolver) (tvname:string) =
-  let (ei, ok) = eidLookup res.eid tvname
+  let (ei, ok) = dict.TryFind res.eid tvname
   if ok then
     ei
   else
@@ -325,7 +312,7 @@ let rsLookupEI (res:Resolver) (tvname:string) =
     eiInit {TypeVar.Name=tvname}
 
 let rsRegisterTo (res:Resolver) (ei:EquivInfo) (key:string) =
-  eidPut res.eid key ei
+  dict.Add res.eid key ei
 
 let rsRegisterNewEI (res:Resolver) (ei:EquivInfo) =
   eqsItems ei.eset

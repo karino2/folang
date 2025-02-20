@@ -4,19 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/karino2/folang/pkg/dict"
 	"github.com/karino2/folang/pkg/frt"
 )
-
-// currently, map is NYI  and generic exxt type is also NYI.
-// wrap to standard type for each.
-func dictLookup[K comparable, T any](dict map[K]T, key K) frt.Tuple2[T, bool] {
-	e, ok := dict[key]
-	return frt.NewTuple2(e, ok)
-}
-
-func dictPut[T any](dict map[string]T, key string, v T) {
-	dict[key] = v
-}
 
 /*
   uniqueTmpVarName related.
@@ -569,10 +559,6 @@ type EquivSet struct {
 	dict map[string]bool
 }
 
-type EquivInfoDict struct {
-	dict map[string]EquivInfo
-}
-
 func newEquivSet0() EquivSet {
 	s := EquivSet{}
 	s.dict = make(map[string]bool)
@@ -583,20 +569,6 @@ func NewEquivSet(itype TypeVar) EquivSet {
 	s := newEquivSet0()
 	s.dict[itype.Name] = true
 	return s
-}
-
-func NewEquivInfoDict() EquivInfoDict {
-	ei := EquivInfoDict{}
-	ei.dict = make(map[string]EquivInfo)
-	return ei
-}
-
-func eidPut(eid EquivInfoDict, key string, v EquivInfo) {
-	dictPut(eid.dict, key, v)
-}
-
-func eidLookup(eid EquivInfoDict, key string) frt.Tuple2[EquivInfo, bool] {
-	return dictLookup(eid.dict, key)
 }
 
 func eqsItems(es EquivSet) []string {
@@ -637,8 +609,10 @@ var binOpMap = map[TokenType]BinOpInfo{
 	New_TokenType_MINUS:   {4, "-", false},
 }
 
+var binOpMapWrapper = dict.Dict[TokenType, BinOpInfo]{Fdict: binOpMap}
+
 func lookupBinOp(tk TokenType) frt.Tuple2[BinOpInfo, bool] {
-	return dictLookup(binOpMap, tk)
+	return dict.TryFind(binOpMapWrapper, tk)
 }
 
 /*

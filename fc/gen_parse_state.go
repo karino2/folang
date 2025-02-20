@@ -136,12 +136,17 @@ type TypeDefCtx struct {
 	allocedDict dict.Dict[string, string]
 }
 
+type EquivInfo struct {
+	eset    EquivSet
+	resType FType
+}
+
 type Resolver struct {
-	eid EquivInfoDict
+	eid dict.Dict[string, EquivInfo]
 }
 
 func newResolver() Resolver {
-	neid := NewEquivInfoDict()
+	neid := dict.New[string, EquivInfo]()
 	return Resolver{eid: neid}
 }
 
