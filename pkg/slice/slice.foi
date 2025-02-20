@@ -28,4 +28,5 @@ package_info slice =
   // T must be comparable
   let Distinct<T>: []T->[]T
   let TryFind<T>: (T->bool)->[]T->T*bool
+  let Fold<T, S>: (S->T->S)->S->[]T->S
 

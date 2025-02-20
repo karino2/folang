@@ -203,3 +203,11 @@ func TryFind[T any](pred func(T) bool, ss []T) frt.Tuple2[T, bool] {
 	var res T
 	return frt.NewTuple2(res, false)
 }
+
+func Fold[T any, S any](folder func(S, T) S, iniS S, ss []T) S {
+	stat := iniS
+	for _, e := range ss {
+		stat = folder(stat, e)
+	}
+	return stat
+}

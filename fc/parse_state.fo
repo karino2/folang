@@ -286,6 +286,8 @@ type ParseState = {
   tdctx: TypeDefCtx;
 }
 
+package_info _ =
+  let ParseList<T>: (ParseState->ParseState*T)->(ParseState->bool)->ParseState->ParseState*[]T
 
 let CnvL fn tup =
   let nl = frt.Fst tup |> fn

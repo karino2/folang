@@ -24,7 +24,7 @@ let transpileOne (parser: ParseState) (file:string) =
   let (src, ok) = sys.ReadFile file
   if ok then
     let (ps2, stmts) = psSetNewSrc src parser 
-                       |>ParseAll
+                       |> ParseAll
     let res = RootStmtsToGo stmts
 		// for .foi file, just skip writing.
 		// only write result for .fo file.
@@ -35,27 +35,15 @@ let transpileOne (parser: ParseState) (file:string) =
       let dest = filepath.Join dir newFname
       sys.WriteFile dest res
       ()
-    (ps2, true)
+    ps2
   else
     frt.Panicf1 "Can't open file: %s" file
-    (parser, false)
-
-let transpileRecur (parser: ParseState) (files:[]string) : ParseState*bool =
-  if slice.IsEmpty files then
-    (parser, true)
-  else
-    let head = slice.Head files
-    let (ps2, ok) = transpileOne parser head
-    if ok then
-      let rest = slice.Tail files
-      transpileRecur ps2 rest
-    else
-      (parser, false)
+    parser
 
 
 let transpileFiles (files:[]string) =
   let parser = initParse ""
-  transpileRecur parser files
+  slice.Fold transpileOne parser files
   ()
 
 

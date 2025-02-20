@@ -457,6 +457,25 @@ func lookupBinOp(tk TokenType) frt.Tuple2[BinOpInfo, bool] {
 }
 
 /*
+	  To avoid deep stack trace, loop in go layer instead of recursive call.
+
+		one: ps->ps*T
+		endPred: ps->bool
+
+	  call one until endPred becomes true and collect result as []T.
+		ps is always supplied as newly returned one (like Fold).
+*/
+func ParseList[T any](one func(ParseState) frt.Tuple2[ParseState, T], endPred func(ParseState) bool, ps ParseState) frt.Tuple2[ParseState, []T] {
+	var res []T
+	var rone T
+	for !endPred(ps) {
+		ps, rone = frt.Destr(one(ps))
+		res = append(res, rone)
+	}
+	return frt.NewTuple2(ps, res)
+}
+
+/*
 Facade:
 Resolve mutual recursive in golang layer (NYI for and letfunc def).
 */
@@ -473,14 +492,7 @@ func parseExprFacade(ps ParseState) frt.Tuple2[ParseState, Expr] {
 }
 
 func ParseAll(ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
-	var res []RootStmt
-	var stmt RootStmt
-	ps2 := ps
-	for !IsParseEnd(ps2) {
-		ps2, stmt = frt.Destr(ParseStmtOne(parseExprFacade, ps2))
-		res = append(res, stmt)
-	}
-	return frt.NewTuple2(ps2, res)
+	return parseRootStmts(parseExprFacade, ps)
 }
 
 // for test backward compat.

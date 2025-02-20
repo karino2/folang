@@ -1111,26 +1111,15 @@ let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     frt.Panic "Unknown stmt"
     parsePackage ps // never reached this line.
 
+let parseRootOneStmtSk (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+  parseRootOneStmt pExpr ps
+  |> CnvL psSkipEOL
+
+let psIsRootStmtsEnd (ps:ParseState) =
+  (psCurrentTT ps) = EOF
 
 // this recursive is too deep for golang.
 let parseRootStmts (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]RootStmt =
-  let ps2 = psSkipEOL ps
-  if (psCurrentTT ps2) = EOF then
-    let s = GoEval<[]RootStmt> "[]RootStmt{}"
-    (ps2, s)
-  else
-    let (ps3, one) = parseRootOneStmt pExpr ps2 |> CnvL psSkipEOL
-    let (ps4, rest) = parseRootStmts pExpr ps3
-    let ss = slice.PushHead one rest
-    (ps4, ss)
-
-
-let IsParseEnd (ps:ParseState) =
   psSkipEOL ps
-  |> psCurIs EOF
+  |> ParseList (parseRootOneStmtSk pExpr) psIsRootStmtsEnd
 
-// call after cheking IsParseEnd.
-let ParseStmtOne (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*RootStmt =
-  psSkipEOL ps
-  |> parseRootOneStmt pExpr |> CnvL psSkipEOL
-  

@@ -1063,27 +1063,18 @@ func parseRootOneStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pa
 	}
 }
 
-func parseRootStmts(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
-	ps2 := psSkipEOL(ps)
-	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_EOF), (func() frt.Tuple2[ParseState, []RootStmt] {
-		s := []RootStmt{}
-		return frt.NewTuple2(ps2, s)
-	}), (func() frt.Tuple2[ParseState, []RootStmt] {
-		ps3, one := frt.Destr(frt.Pipe(parseRootOneStmt(pExpr, ps2), (func(_r0 frt.Tuple2[ParseState, RootStmt]) frt.Tuple2[ParseState, RootStmt] {
-			return CnvL(psSkipEOL, _r0)
-		})))
-		ps4, rest := frt.Destr(parseRootStmts(pExpr, ps3))
-		ss := slice.PushHead(one, rest)
-		return frt.NewTuple2(ps4, ss)
+func parseRootOneStmtSk(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, RootStmt] {
+	return frt.Pipe(parseRootOneStmt(pExpr, ps), (func(_r0 frt.Tuple2[ParseState, RootStmt]) frt.Tuple2[ParseState, RootStmt] {
+		return CnvL(psSkipEOL, _r0)
 	}))
 }
 
-func IsParseEnd(ps ParseState) bool {
-	return frt.Pipe(psSkipEOL(ps), (func(_r0 ParseState) bool { return psCurIs(New_TokenType_EOF, _r0) }))
+func psIsRootStmtsEnd(ps ParseState) bool {
+	return frt.OpEqual(psCurrentTT(ps), New_TokenType_EOF)
 }
 
-func ParseStmtOne(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, RootStmt] {
-	return frt.Pipe(frt.Pipe(psSkipEOL(ps), (func(_r0 ParseState) frt.Tuple2[ParseState, RootStmt] { return parseRootOneStmt(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, RootStmt]) frt.Tuple2[ParseState, RootStmt] {
-		return CnvL(psSkipEOL, _r0)
+func parseRootStmts(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
+	return frt.Pipe(psSkipEOL(ps), (func(_r0 ParseState) frt.Tuple2[ParseState, []RootStmt] {
+		return ParseList((func(_r0 ParseState) frt.Tuple2[ParseState, RootStmt] { return parseRootOneStmtSk(pExpr, _r0) }), psIsRootStmtsEnd, _r0)
 	}))
 }
