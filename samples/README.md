@@ -36,27 +36,6 @@ let main () =
 generated go: [gen_tuple.go](./gen_tuple.go)
 
 
-### Destructuring let example
-
-```
-package main
-
-import frt
-
-let ika () =
-  (123, "abc")
-
-let main () =
-  let (a, _) = ika ()
-  frt.Sprintf1 "a=%d" a
-  |> frt.Println
-  
-
-```
-
-generated go: [gen_destr_let.go](./gen_destr_let.go)
-
-
 ### Record
 
 ```
@@ -178,13 +157,13 @@ generated go: [gen_ext_pkg.go](./gen_ext_pkg.go)
 ```
 package main
 
-import "fmt"
+import frt
 import slice
 
 let main() =
-  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s = [5; 6; 7; 8]
   let s2 = slice.Take 2 s
-  GoEval "fmt.Printf(\"%v\", s2)"
+  frt.Printf1 "%v\n" s2
 
 
 ```
@@ -242,7 +221,7 @@ import frt
 import slice
 
 let main() =
-  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s = [5; 6; 7; 8]
   let s2 = s |> slice.Take 2
   frt.Printf1 "%v\n" s2
 
@@ -250,6 +229,27 @@ let main() =
 ```
 
 generated go: [gen_pipe.go](./gen_pipe.go)
+
+
+### Destructuring let example
+
+```
+package main
+
+import frt
+
+let ika () =
+  (123, "abc")
+
+let main () =
+  let (a, _) = ika ()
+  frt.Sprintf1 "a=%d" a
+  |> frt.Println
+  
+
+```
+
+generated go: [gen_destr_let.go](./gen_destr_let.go)
 
 
 ### Dictionary

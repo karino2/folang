@@ -1,6 +1,5 @@
 two_func.fo Two function example
 tuple.fo Tuple example
-destr_let.fo Destructuring let example
 record.fo Record
 union_simple.fo Basic Union sample
 union_match.fo Union with match
@@ -11,6 +10,7 @@ pkg_generics.fo External package with generics
 generic_func.fo Generic function
 generic_specify.fo Explicit type argument
 pipe.fo Pipe operator
+destr_let.fo Destructuring let example
 dict_sample.fo Dictionary
 map.fo Map
 type_inference.fo Type inference
