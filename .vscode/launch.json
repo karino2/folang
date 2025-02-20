@@ -20,7 +20,9 @@
       "mode": "auto",
       "program": "${fileDirname}",
       // "args": ["../pkg/pkg_all.foi", "../samples/tuple.fo"]
-      "args": ["../pkg/pkg_all.foi", "targets/ftype.fo", "targets/ast.fo", "targets/expr_to_type.fo", "targets/expr_to_go.fo", "targets/stmt_to_go.fo", "targets/tokenizer.fo",  "targets/parse_state.fo", "targets/infer.fo", "targets/parser.fo", "targets/main.fo"]
+      // "args": ["../pkg/pkg_all.foi", "targets/ftype.fo", "targets/ast.fo", "targets/expr_to_type.fo", "targets/expr_to_go.fo", "targets/stmt_to_go.fo", "targets/tokenizer.fo",  "targets/parse_state.fo", "targets/infer.fo", "targets/parser.fo", "targets/main.fo"]
+      "args": ["../pkg/pkg_all.foi", "../cmd/build_sample_md/build_sample_md.fo"]
+
     }
   ]
 }

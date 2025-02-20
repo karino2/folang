@@ -1,0 +1,60 @@
+package main
+
+import frt
+import sys
+import slice
+import buf
+import strings
+import "path/filepath"
+
+package_info filepath =
+  let Dir: string->string
+  // this is wrong, but OK for 2 arg.
+  let Join: string->string->string
+  let Base: string->string
+
+let printUsage () =
+  frt.Println "Usage: build_sample_md filelist.txt"
+
+
+// oneline: "filename some_title_text"
+let convOne dir oneline =
+  let cols = strings.SplitN 2 " " oneline
+  let (foFname, title) = (slice.Head cols, slice.Last cols)
+  let b = buf.New ()
+  frt.Printf1 "process: %s\n" foFname
+  let (content, ok) = filepath.Join dir foFname |> sys.ReadFile
+  if not ok then
+    frt.Panicf1 "Can't open file %s" foFname
+  frt.Sprintf1 "### %s\n\n" title |> buf.Write b
+  buf.Write b "```\n"
+  buf.Write b content
+  buf.Write b "\n```\n\n"
+  let base = foFname |> strings.TrimSuffix ".fo"
+  let genName = "gen_" + base + ".go"
+  frt.Sprintf1 "generated go: [%s]" genName |> buf.Write b
+  frt.Sprintf1 "(./%s)" genName |> buf.Write b
+  buf.Write b "\n\n"
+  buf.String b
+
+let processListFile destName listPath =
+  let dir = filepath.Dir listPath
+  let (content, ok) = sys.ReadFile listPath
+  if not ok then
+    frt.Panicf1 "Can't open list file: %s" listPath
+  content
+  |> strings.Split "\n"
+  |> slice.Filter strings.IsNotEmpty
+  |> slice.Map (convOne dir)
+  |> strings.Concat "\n"
+  |> strings.AppendHead "## Folang Sample \n\n\n"
+  |> sys.WriteFile (filepath.Join dir destName)
+  ()
+
+
+let main () =
+  let args = sys.Args () |> slice.Tail
+  if (slice.Len args) <> 1 then
+    printUsage ()
+  else
+    slice.Head args |> processListFile "README.md"

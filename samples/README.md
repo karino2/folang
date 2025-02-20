@@ -1,0 +1,320 @@
+## Folang Sample 
+
+
+### Two function example
+
+```
+package main
+import "fmt"
+
+let hello (msg:string) = 
+    GoEval "fmt.Printf(\"Hello %s\\n\", msg)"
+
+let main () =
+    hello "World"
+
+```
+
+generated go: [gen_two_func.go](./gen_two_func.go)
+
+
+### Non arg call example
+
+```
+package main
+import "fmt"
+
+type AorB =
+ | A 
+ | B
+
+
+let main () =
+  match A with
+  | A -> GoEval "fmt.Println(\"match A\")"
+  | B -> GoEval "fmt.Println(\"match B\")"
+
+
+
+```
+
+generated go: [gen_noarg_funcall.go](./gen_noarg_funcall.go)
+
+
+### Tuple example
+
+```
+package main
+
+import frt
+
+let ika () =
+   frt.Snd (123, "abc")
+
+let main () =
+  let s = ika ()
+  frt.Println s
+```
+
+generated go: [gen_tuple.go](./gen_tuple.go)
+
+
+### Destructuring let example
+
+```
+package main
+
+import frt
+
+let ika () =
+  (123, "abc")
+
+let main () =
+  let (a, _) = ika ()
+  frt.Sprintf1 "a=%d" a
+  |> frt.Println
+  
+
+```
+
+generated go: [gen_destr_let.go](./gen_destr_let.go)
+
+
+### Record
+
+```
+package main
+
+type hoge = {X: string; Y: string}
+
+let ika () =
+    {X="abc"; Y="def"}
+
+```
+
+generated go: [gen_record.go](./gen_record.go)
+
+
+### Basic Union sample
+
+```
+package main
+
+type IntOrString =
+| I of int
+| S of string
+
+let ika () =
+   I 123 
+
+```
+
+generated go: [gen_union_simple.go](./gen_union_simple.go)
+
+
+### Union with match
+
+```
+package main
+import "fmt"
+
+type IorS =
+ | IT of int
+ | ST of string
+
+ let main () =
+  match IT 3 with
+  | IT ival -> GoEval "fmt.Printf(\"ival=%d\\n\", ival)"
+  | ST sval -> GoEval "fmt.Printf(\"ival=%s\\n\", sval)"
+
+
+```
+
+generated go: [gen_union_match.go](./gen_union_match.go)
+
+
+### Match with no value
+
+```
+package main
+
+type IorS =
+ | IT of int
+ | ST of string
+
+ let ika () =
+  match IT 3 with
+  | IT _ -> "i hit" 
+  | ST sval -> sval
+
+
+```
+
+generated go: [gen_union_match_noval.go](./gen_union_match_noval.go)
+
+
+### Match with no content
+
+```
+package main
+import "fmt"
+
+type AorB =
+ | A 
+ | B
+
+
+let ika (ab:AorB) =
+  match ab with
+  | A -> "a match"
+  | B -> "b match"
+
+
+```
+
+generated go: [gen_union_nocontent.go](./gen_union_nocontent.go)
+
+
+### External package example
+
+```
+package main
+
+import frt
+import buf
+
+let main() =
+  let bb = buf.New ()
+  buf.Write bb "hello"
+  buf.Write bb "world"
+  let res = buf.String bb
+  frt.Println res
+
+
+```
+
+generated go: [gen_ext_pkg.go](./gen_ext_pkg.go)
+
+
+### External package with generics
+
+```
+package main
+
+import "fmt"
+import slice
+
+let main() =
+  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s2 = slice.Take 2 s
+  GoEval "fmt.Printf(\"%v\", s2)"
+
+
+```
+
+generated go: [gen_pkg_generics.go](./gen_pkg_generics.go)
+
+
+### Generic function
+
+```
+package main
+
+import frt
+import slice
+
+let hoge a =
+  slice.Head a
+
+let main () =
+  let b = [1; 2; 3]
+  let c = hoge b
+  frt.Printf1 "%d\n" c
+
+```
+
+generated go: [gen_generic_func.go](./gen_generic_func.go)
+
+
+### Explicit type argument
+
+```
+package main
+
+import frt
+import slice
+
+
+let main () =
+  let s = slice.New<string> ()
+  let ss = slice.PushHead "hoge" s
+  let e = slice.Head ss
+  frt.Println e
+
+```
+
+generated go: [gen_generic_specify.go](./gen_generic_specify.go)
+
+
+### Pipe operator
+
+```
+package main
+
+import "fmt"
+import frt
+import slice
+
+let main() =
+  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s2 = s |> slice.Take 2
+  GoEval "fmt.Printf(\"%v\", s2)"
+
+
+```
+
+generated go: [gen_pipe.go](./gen_pipe.go)
+
+
+### Dictionary
+
+```
+package main
+
+import frt
+import dict
+
+let main () =
+  let d = dict.New<string, int> ()
+  dict.Add d "hoge" 123
+  dict.Add d "ika" 456
+  let i1 = dict.Item d "hoge"
+  let i2 = dict.Item d "ika"
+  frt.Printf1 "sum=%d\n" (i1+i2)
+
+```
+
+generated go: [gen_dict_sample.go](./gen_dict_sample.go)
+
+
+### Map
+
+```
+package main
+
+import "fmt"
+import slice
+
+let conv (i:int) =
+  GoEval<string> "fmt.Sprintf(\"a %d\", i)"
+
+let main() =
+  let s = GoEval<[]int> "[]int{5, 6, 7, 8}"
+  let s2 = slice.Map conv s
+  GoEval "fmt.Printf(\"%v\", s2)"
+
+
+```
+
+generated go: [gen_map.go](./gen_map.go)
+

@@ -52,8 +52,14 @@ package_info strings =
   let Concat: string->[]string->string
   let Length: string->int
   let AppendTail: string->string->string
+  let AppendHead: string->string->string
   let HasSuffix: string->string->bool
   let TrimSuffix: string->string->string
+  let EncloseWith: string->string->string->string
+  let Split: string->string->[]string
+  let SplitN: int->string->string->[]string
+  let IsEmpty: string->bool
+  let IsNotEmpty: string->bool
 package_info sys =
   let Args: ()->[]string
   let ReadFile: string->string*bool
