@@ -692,7 +692,7 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 		return frt.NewTuple2(ps2, Block{Stmts: stmts, FinalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")
-		return frt.Pipe(emptyBlock(), (func(_r0 Block) frt.Tuple2[ParseState, Block] { return withPs(ps2, _r0) }))
+		return frt.Pipe(frt.Empty[Block](), (func(_r0 Block) frt.Tuple2[ParseState, Block] { return withPs(ps2, _r0) }))
 	}
 }
 
@@ -926,8 +926,7 @@ func parseUnionDef(tname string, ps ParseState) frt.Tuple2[ParseState, UnionDef]
 }
 
 func emptyDefStmt() DefStmt {
-	rd := RecordDef{}
-	return frt.Pipe(rd, New_DefStmt_DRecordDef)
+	return frt.Pipe(frt.Empty[RecordDef](), New_DefStmt_DRecordDef)
 }
 
 func parseTypeDefBody(ps ParseState) frt.Tuple2[ParseState, DefStmt] {

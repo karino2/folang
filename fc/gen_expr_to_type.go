@@ -37,10 +37,6 @@ func blockToExpr(block Block) Expr {
 	return New_Expr_EReturnableExpr(New_ReturnableExpr_RBlock(block))
 }
 
-func emptyBlock() Block {
-	return Block{}
-}
-
 func exprToBlock(bexpr Expr) Block {
 	switch _v2 := (bexpr).(type) {
 	case Expr_EReturnableExpr:
@@ -51,11 +47,11 @@ func exprToBlock(bexpr Expr) Block {
 			return b
 		default:
 			frt.Panic("Not block, some ReturnableExpr.")
-			return emptyBlock()
+			return frt.Empty[Block]()
 		}
 	default:
 		frt.Panic("Not block.")
-		return emptyBlock()
+		return frt.Empty[Block]()
 	}
 }
 

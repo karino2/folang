@@ -728,7 +728,7 @@ let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseSt
   | _ ->
     frt.Panic "block of last is not expr"
     // dummy
-    emptyBlock ()
+    frt.Empty<Block> ()
     |> withPs ps2
 
 let parseBlock (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : ParseState*Block =
@@ -970,8 +970,8 @@ let parseUnionDef (tname:string) (ps:ParseState) =
   (ps2, ud)
 
 let emptyDefStmt () =
-  let rd = GoEval<RecordDef> "RecordDef{}"
-  rd |> DRecordDef
+  frt.Empty<RecordDef> ()
+  |> DRecordDef
 
 /*
   TYPE_DEF_BODY = ID '=' (RECORD_DEF | UNION_DEF)

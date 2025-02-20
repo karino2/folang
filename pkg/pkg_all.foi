@@ -7,6 +7,7 @@ package_info frt =
   let Assert : bool->string->()
   let Panic : string->()
   let Panicf1<T>: string->T->()
+  let Empty<T>: ()->T
 
 
 package_info buf =

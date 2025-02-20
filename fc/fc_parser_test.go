@@ -1046,10 +1046,13 @@ let setAddKeys d k =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type List = {elem: int; next:List}
+package_info frt =
+  let Snd<T, U> : T*U->U
 
-let head (l:List) =
-  l.elem
+
+let CnvL (fn:string->string) tup =
+  let nl = frt.Snd tup |> fn
+  (nl, tup)
 `
 
 	got := transpile(src)

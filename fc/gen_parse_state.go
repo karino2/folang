@@ -79,7 +79,7 @@ func tpreplace(tdic dict.Dict[string, FType], ft FType) FType {
 }
 
 func emptyFtps() []FType {
-	return []FType{}
+	return slice.New[FType]()
 }
 
 func tpname2tvtp(tvgen func() TypeVar, slist []FType, i int, tpname string) frt.Tuple2[string, FType] {
@@ -168,7 +168,7 @@ func scRegisterVarFac(s Scope, name string, fac func([]FType, func() TypeVar) Va
 
 func emptyVarFac(tlist []FType, tgen func() TypeVar) VarRef {
 	frt.Panic("should never called")
-	return nil
+	return frt.Empty[VarRef]()
 }
 
 func scLookupVarFac(s Scope, name string) frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
@@ -217,7 +217,7 @@ func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool
 }
 
 func emptyRec() RecordType {
-	return RecordType{}
+	return frt.Empty[RecordType]()
 }
 
 func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
@@ -692,7 +692,7 @@ func newFnTp(argType FType, retType FType) FType {
 }
 
 func emptySS() []string {
-	return []string{}
+	return slice.New[string]()
 }
 
 func newIfElseCall(tvgen func() TypeVar, cond Expr, tbody Block, fbody Block) Expr {

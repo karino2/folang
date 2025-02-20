@@ -70,7 +70,7 @@ let tpreplace (tdic:dict.Dict<string, FType>) (ft:FType) =
   transTypeVarFType (tpReplaceOne tdic) ft
 
 let emptyFtps () =
-  GoEval<[]FType> "[]FType{}"
+  slice.New<FType> ()
 
 let tpname2tvtp (tvgen: ()->TypeVar) (slist:[]FType) (i:int) (tpname:string) =
   if (slice.Len slist) > i then
@@ -163,7 +163,7 @@ let scRegisterVarFac s name fac =
 
 let emptyVarFac (tlist:[]FType) (tgen: ()->TypeVar) =
   frt.Panic "should never called"
-  GoEval<VarRef> "nil"
+  frt.Empty<VarRef> ()
 
 let scLookupVarFac s name : ([]FType->(()->TypeVar)->VarRef)*bool =
   let sd = SCSDict s
@@ -200,7 +200,7 @@ let scLookupRecordCur s fieldNames =
   |> slice.TryFind (frMatchAdapter fieldNames)
 
 let emptyRec () =
-  GoEval<RecordType> "RecordType{}"
+  frt.Empty<RecordType> ()
 
 
 let scLookupRecord s fieldNames : RecordType*bool =
@@ -642,7 +642,7 @@ let newFnTp (argType:FType) (retType:FType) =
   |> FFunc
 
 let emptySS () =
-  GoEval<[]string> "[]string{}"
+  slice.New<string> ()
 
 /*
   if else call.

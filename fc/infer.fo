@@ -13,7 +13,7 @@ import dict
 type UniRel = {SrcV:string; Dest: FType}
 
 let emptyRels () =
-  GoEval<[]UniRel> "[]UniRel{}"
+  frt.Empty<[]UniRel> ()
 
 // generics it NYI...
 let tupApply (f:FType->FType->FType*[]UniRel) (tup:FType*FType) =

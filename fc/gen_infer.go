@@ -12,7 +12,7 @@ type UniRel struct {
 }
 
 func emptyRels() []UniRel {
-	return []UniRel{}
+	return frt.Empty[[]UniRel]()
 }
 
 func tupApply(f func(FType, FType) frt.Tuple2[FType, []UniRel], tup frt.Tuple2[FType, FType]) frt.Tuple2[FType, []UniRel] {

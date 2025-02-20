@@ -97,3 +97,8 @@ func Panicf1[T any](fmt string, arg T) {
 	msg := Sprintf1(fmt, arg)
 	panic(msg)
 }
+
+func Empty[T any]() T {
+	var res T
+	return res
+}
