@@ -36,18 +36,9 @@ func toDict[V any](ps []frt.Tuple2[string, V]) map[string]V {
 }
 
 type funcFacDict = map[string]FuncFactory
-type extTypeDict = map[string]string
 
 func newFFD() funcFacDict {
 	return make(map[string]FuncFactory)
-}
-
-func newETD() extTypeDict {
-	return make(map[string]string)
-}
-
-func etdPut(dic extTypeDict, key string, v string) {
-	dictPut(dic, key, v)
 }
 
 func ffdPut(dic funcFacDict, key string, v FuncFactory) {
@@ -58,7 +49,17 @@ func ffdKVs(dic funcFacDict) []frt.Tuple2[string, FuncFactory] {
 	return dictKeyValues(dic)
 }
 
-func etdKVs(dic extTypeDict) []frt.Tuple2[string, string] {
+type TFDataDict = map[string]TypeFactoryData
+
+func newTFDD() TFDataDict {
+	return make(TFDataDict)
+}
+
+func tfddPut(dic TFDataDict, key string, v TypeFactoryData) {
+	dictPut(dic, key, v)
+}
+
+func tfddKVs(dic TFDataDict) []frt.Tuple2[string, TypeFactoryData] {
 	return dictKeyValues(dic)
 }
 
@@ -417,13 +418,14 @@ func reinterpretEscape(buf string) string {
 */
 
 type VarFactory = func(stlist []FType, tvgen func() TypeVar) VarRef
+type TypeFactory = func(stlist []FType) FType
 
 type scopeImpl struct {
 	// var factory Map
-	varFacMap map[string]VarFactory
-	recordMap map[string]RecordType
-	typeMap   map[string]FType
-	parent    *scopeImpl
+	varFacMap  map[string]VarFactory
+	recordMap  map[string]RecordType
+	typeFacMap map[string]TypeFactory
+	parent     *scopeImpl
 }
 
 // for folang, show pointer as real type for hidden side effect.
@@ -433,7 +435,7 @@ func newScope(parent *scopeImpl) *scopeImpl {
 	s := &scopeImpl{}
 	s.varFacMap = make(map[string]VarFactory)
 	s.recordMap = make(map[string]RecordType)
-	s.typeMap = make(map[string]FType)
+	s.typeFacMap = make(map[string]TypeFactory)
 	s.parent = parent
 	return s
 }
@@ -468,14 +470,22 @@ func scLookupVarFac(s Scope, name string) frt.Tuple2[VarFactory, bool] {
 	return frt.NewTuple2[VarFactory](nil, false)
 }
 
-func scRegisterRecType(s Scope, recType RecordType) {
-	rname := recType.Name
-	s.recordMap[rname] = recType
-	s.typeMap[rname] = New_FType_FRecord(recType)
+func scRegisterTypeFac(s Scope, name string, tfac TypeFactory) {
+	s.typeFacMap[name] = tfac
+}
+
+func toTypeFac(ft FType) TypeFactory {
+	return func([]FType) FType { return ft }
 }
 
 func scRegisterType(s Scope, name string, ftype FType) {
-	s.typeMap[name] = ftype
+	scRegisterTypeFac(s, name, toTypeFac(ftype))
+}
+
+func scRegisterRecType(s Scope, recType RecordType) {
+	rname := recType.Name
+	s.recordMap[rname] = recType
+	scRegisterType(s, rname, New_FType_FRecord(recType))
 }
 
 func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
@@ -512,16 +522,16 @@ func scLookupRecordByName(s Scope, rname string) frt.Tuple2[RecordType, bool] {
 	return frt.NewTuple2(RecordType{}, false)
 }
 
-func scLookupType(s Scope, name string) frt.Tuple2[FType, bool] {
+func scLookupTypeFac(s Scope, name string) frt.Tuple2[TypeFactory, bool] {
 	cur := s
 	for cur != nil {
-		ret, ok := cur.typeMap[name]
+		ret, ok := cur.typeFacMap[name]
 		if ok {
 			return frt.NewTuple2(ret, true)
 		}
 		cur = cur.parent
 	}
-	return frt.NewTuple2(New_FType_FUnit, false)
+	return frt.NewTuple2(toTypeFac(New_FType_FUnit), false)
 }
 
 func withPs[T any](ps ParseState, v T) frt.Tuple2[ParseState, T] {

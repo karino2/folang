@@ -5,9 +5,9 @@ import frt
 // wrapper types.
 package_info _ =
   type funcFacDict
-  type extTypeDict
   let newFFD: ()->funcFacDict
-  let newETD: ()->extTypeDict
+  type TFDataDict
+  let newTFDD: ()->TFDataDict
 
 type GoEvalExpr = {GoStmt: string; TypeArg: FType}
 type Var = {Name: string; Ftype: FType}
@@ -53,6 +53,9 @@ type MatchPattern = {CaseId: string; VarName: string}
 
 // external package func info.
 type FuncFactory = {Tparams:[]string; Targets:[]FType}
+
+// external package type info, TypeFactory is already used. So call TyeFactoryData
+type TypeFactoryData = {Name: string; Tparams:[]string}
 
 type Expr =
 | EGoEvalExpr of GoEvalExpr
@@ -104,7 +107,7 @@ and LetDestVarDef = {Lvars: []Var; Rhs: Expr}
 and LLetVarDef =
 | LLOneVarDef of LetVarDef
 | LLDestVarDef of LetDestVarDef
-and PackageInfo = {Name: string; FuncInfo: funcFacDict; TypeInfo: extTypeDict}
+and PackageInfo = {Name: string; FuncInfo: funcFacDict; TypeInfo: TFDataDict}
 and RecordDef = {Name: string; Fields: []NameTypePair}
 and UnionDef = {Name: string; Cases: []NameTypePair}
 and DefStmt =
@@ -114,5 +117,5 @@ and MultipleDefs = {Defs: []DefStmt}
 
 let NewPackageInfo (name:string) =
   let ffd = newFFD ()
-  let etd = newETD ()
-  {Name=name; FuncInfo=ffd; TypeInfo=etd}
+  let tfdd = newTFDD ()
+  {Name=name; FuncInfo=ffd; TypeInfo=tfdd}

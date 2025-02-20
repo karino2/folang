@@ -40,6 +40,10 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     let nts = slice.Map recurse fnt.Targets
     {FuncType.Targets=nts}
     |> FFunc
+  | FParamd pt ->
+    let nts = slice.Map recurse pt.Targs
+    {Name=pt.Name; Targs=nts}
+    |> FParamd
   | _ -> ftp
 
 let transOneVar (transTV: TypeVar->FType) (v:Var) =
@@ -110,6 +114,14 @@ let newTvf (name:string) =
    {TypeVar.Name=name}
    |> FTypeVar
 
+/*
+  TypeFactory related.
+*/
+let GenType (tfd:TypeFactoryData) (targs:[]FType) =
+  if (slice.Len tfd.Tparams) <> (slice.Len targs) then
+    frt.Panic "wrong type param num for instantiate."
+  {Name=tfd.Name; Targs=targs}
+  |> FParamd
 
 /*
   Scope and Parser related
@@ -127,8 +139,9 @@ package_info _ =
   let scLookupRecord: Scope->[]string->RecordType*bool
   let scLookupRecordByName: Scope->string->RecordType*bool
   let scRegisterType: Scope->string->FType->()
+  let scRegisterTypeFac: Scope->string->([]FType->FType)->()
   let scRegisterVarFac: Scope->string->([]FType->(()->TypeVar)->VarRef)->()
-  let scLookupType: Scope->string->FType*bool
+  let scLookupTypeFac: Scope->string->([]FType->FType)*bool
   type TypeVarAllocator
   let NewTypeVarAllocator: string->TypeVarAllocator
   let tvaToTypeVarGen: TypeVarAllocator->(()->TypeVar)
@@ -294,6 +307,9 @@ let psNext (ps:ParseState) =
 let psNextTT (ps:ParseState) =
   psNext ps |> psCurrentTT
 
+let psNextIs  (expectTT: TokenType) (ps:ParseState) =
+  (psNextTT ps) = expectTT
+
 let psNextNOL (ps:ParseState) =
   let ntk = tkzNextNOL ps.tkz
   psWithTkz ps ntk
@@ -407,10 +423,10 @@ PackageInfo related utility.
 */
 
 package_info _ =
-  let etdPut: extTypeDict->string->string->()
   let ffdPut: funcFacDict->string->FuncFactory->()
   let ffdKVs: funcFacDict->[]string*FuncFactory
-  let etdKVs: extTypeDict->[]string*string
+  let tfddPut: TFDataDict->string->TypeFactoryData->()
+  let tfddKVs: TFDataDict->[]string*TypeFactoryData
 
 let piFullName (pi:PackageInfo) (name:string) =
   if pi.Name = "_" then
@@ -418,14 +434,19 @@ let piFullName (pi:PackageInfo) (name:string) =
   else
     pi.Name + "." + name
 
-let piRegEType (pi:PackageInfo) (tname:string) =
+let piRegEType (pi:PackageInfo) (tname:string) (tparams:[]string) =
   let fullName = piFullName pi tname
-  let etype = FExtType fullName
-  etdPut pi.TypeInfo tname fullName
-  etype
+  let tfd = {Name=fullName; Tparams=tparams}
+  tfddPut pi.TypeInfo tname tfd
+  tfd
 
 let scRegFunFac (sc:Scope) (fname:string) (ff:FuncFactory) =
   scRegisterVarFac sc fname (GenFuncVar fname ff)
+
+
+let scRegTFData (sc:Scope) (tname:string) (tfd:TypeFactoryData) =
+  scRegisterTypeFac sc tname (GenType tfd)
+
 
 // register function factory
 let piRegFF (pi:PackageInfo) (fname:string) (ff:FuncFactory) (ps:ParseState) =
@@ -438,19 +459,18 @@ let regFF (pi:PackageInfo) (sc:Scope) (sff:string*FuncFactory) =
   let fullName = piFullName pi ffname 
   scRegFunFac sc fullName ff
 
-let regET (sc:Scope) (etp:string*string) =
-   let fullName = frt.Snd etp
-   FExtType fullName
-   |> scRegisterType sc fullName
+let regTF  (pi:PackageInfo) (sc:Scope) (etp:string*TypeFactoryData) =
+  let tfd = frt.Snd etp
+  scRegTFData sc tfd.Name tfd
 
 /*
-  PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: extTypeDict}
+  PackageInfo = {name: string; funcInfo: funcFacDict; typeInfo: TFDataDict}
 */
 let piRegAll (pi:PackageInfo) (sc:Scope) =
   ffdKVs pi.FuncInfo
   |> slice.Iter (regFF pi sc)
-  etdKVs pi.TypeInfo
-  |> slice.Iter (regET sc)
+  tfddKVs pi.TypeInfo
+  |> slice.Iter (regTF pi sc)
 
 /*
   BinOp related

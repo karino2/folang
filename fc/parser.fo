@@ -29,9 +29,35 @@ let parseFullName (ps:ParseState) : ParseState*string =
      (ps2, one)
 
 /*
-  ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '[' ']' TERM_TYPE | '(' TYPE ')'
+  TYPE_LIST = TYPE (',' TYPE)*
 */
-let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseState*FType) (ps:ParseState) =
+let parseTypeList (pType: ParseState->ParseState*FType) (ps:ParseState) : ParseState*[]FType =
+  let (ps2, one) = pType ps
+  if psCurIs COMMA ps2 then
+    psConsume COMMA ps2
+    |> parseTypeList pType
+    |> CnvR (slice.PushHead one)
+  else
+    (ps2, [one])
+
+/*
+  if cur is '<', parse '<' TYPE_LIST '>',
+  else return empty type list with current ps.
+*/
+let mightParseSpecifiedTypeList (pType:ParseState->ParseState*FType) (ps:ParseState) =
+  if psCurIs LT ps then
+    psConsume LT ps
+    |> (parseTypeList pType)
+    |> CnvL (psConsume GT)
+  else
+    emptyFtps ()
+    |> withPs ps
+
+
+/*
+  ATOM_TYPE = 'string' | 'int' | '(' ')' | REGISTERED_TYPE | '(' TYPE ')'
+*/
+let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
   let tk = psCurrent ps
   match tk.ttype with
   | LPAREN ->
@@ -42,13 +68,6 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
     else
       pType ps2
       |> CnvL (psConsume RPAREN)
-  | LSBRACKET ->
-    let (ps2, et) = psConsume LSBRACKET ps
-                    |> psConsume RSBRACKET
-                    |> pTerm
-    {SliceType.ElemType=et}
-    |> FSlice
-    |> withPs ps2
   | IDENTIFIER ->
     let tname = tk.stringVal
     let ps3 = psNext ps
@@ -60,9 +79,10 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
       (ps3, FBool)
     else
       let (ps4, fullName) = parseFullName ps
-      let (res, ok) = scLookupType ps3.scope fullName
+      let (rfac, ok) = scLookupTypeFac ps3.scope fullName
       if ok then
-        (ps4, res)
+        mightParseSpecifiedTypeList pType ps4
+        |> CnvR rfac
       elif psInsideTypeDef ps4 then
         // unknown type inside type def.
         // This might be defined in later 'and'
@@ -76,16 +96,23 @@ let parseAtomType (pType:ParseState->ParseState*FType) (pTerm:ParseState->ParseS
     frt.Panic("Unknown type")
     (ps, FUnit)
 
+
+
 /*
-TERM_TYPE = ATOM_TYPE | TUPLE_TYPE
-TUPLE_TYPE = ATOME_TYPE '*' ATOM_TYPE ('*' ATOME_TYPE)*
+  TERM_TYPE = ATOM_TYPE | TUPLE_TYPE
+  TUPLE_TYPE = ATOM_TYPE '*' ELEM_TYPE ('*' ELEM_TYPE)*
+
+  []T*U should parse [](T*U).
+  So tuple is higher precedance.
+
+  But T*[]U is also valid. So right hand side must be ELEM_TYPE.
 */
-let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
-  let pAtom = parseAtomType pType (parseTermType pType)
+let parseTermType (pType:ParseState->ParseState*FType) (pElem:ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
+  let pAtom = parseAtomType pType
   let (ps2, ft) = pAtom ps
   if (psCurrentTT ps2) = ASTER then
     let (ps3, ft2) = psConsume ASTER ps2
-                      |> pAtom
+                      |> pElem
     if (psCurrentTT ps3) = ASTER then
       frt.Panic "More than three elem tuple, NYI"
     {ElemTypes=[ft;ft2]}
@@ -94,13 +121,31 @@ let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseSt
   else
     (ps2, ft)
 
+
 /*
-  TYPE_ARROWS = TERM_TYPE ('->' TERM_TYPE)*
+ELEM_TYPE = TERM_TYPE | '[' ']' ELEM_TYPE
+
+[]T*U should parse [](T*U)
+*/
+let parseElemType (pType: ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
+  let recurse = parseElemType pType
+  if psCurIs LSBRACKET ps then
+    let (ps2, et) = psConsume LSBRACKET ps
+                    |> psConsume RSBRACKET
+                    |> recurse
+    {SliceType.ElemType=et}
+    |> FSlice
+    |> withPs ps2
+  else
+    parseTermType pType recurse ps
+
+/*
+  TYPE_ARROWS = ELEM_TYPE ('->' ELEM_TYPE)*
 
   return []FType
 */
 let parseTypeArrows (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseState*[]FType =
-  let (ps2, one) = parseTermType pType ps
+  let (ps2, one) = parseElemType pType ps
   if (psCurrentTT ps2) = RARROW then
     psConsume RARROW ps2
     |> parseTypeArrows pType
@@ -308,30 +353,7 @@ let parseFAAfterDot (ps:ParseState) (cur:Expr) : (ParseState*Expr) =
     (ps2, fexpr)
 
 
-/*
-  TYPE_LIST = TYPE (',' TYPE)*
-*/
-let parseTypeList (ps:ParseState) : ParseState*[]FType =
-  let (ps2, one) = parseType ps
-  if psCurIs COMMA ps2 then
-    psConsume COMMA ps2
-    |> parseTypeList
-    |> CnvR (slice.PushHead one)
-  else
-    (ps2, [one])
 
-/*
-  if cur is '<', parse '<' TYPE_LIST '>',
-  else return empty type list with current ps.
-*/
-let mightParseSpecifiedTypeList (ps:ParseState) =
-  if psCurIs LT ps then
-    psConsume LT ps
-    |> parseTypeList
-    |> CnvL (psConsume GT)
-  else
-    emptyFtps ()
-    |> withPs ps
 
 /*
   VARIABLE_REF = VARIABLE_REF_BASE ('<' TYPE_LIST '>')
@@ -349,7 +371,7 @@ let parseVarRef (ps:ParseState) =
   let firstId = psIdentName ps
   let (ps2, stlist) = if psIsNeighborLT ps then
                         psNext ps
-                        |> mightParseSpecifiedTypeList
+                        |> mightParseSpecifiedTypeList parseType
                       else
                         emptyFtps ()
                         |> withPs (psNext ps)
@@ -367,7 +389,7 @@ let parseVarRef (ps:ParseState) =
       // external pkg access.
       // use original ps for parseFullName
       let (ps3, fullName) = parseFullName ps
-      let (ps4, stlist) = mightParseSpecifiedTypeList ps3
+      let (ps4, stlist) = mightParseSpecifiedTypeList parseType ps3
       refVar fullName stlist ps4
       |> withPs ps4
 
@@ -992,27 +1014,42 @@ let parseTypeDef (ps:ParseState) =
 */
 
 /*
-  EXT_TYPE_DEF = 'type' IDENTIFIER
+  ID_LIST = IDENTIFIER (',' IDENTIFIER)*
 */
-let parseExtTypeDef (pi:PackageInfo) (ps:ParseState) =
-  let (ps2, tname) = psConsume TYPE ps |> psIdentNameNx
-  let etype = piRegEType pi tname
-  scRegisterType ps2.scope tname etype
-  ps2
-
-/*
-  TYPE_PARAMS = '<' IDENTIFIER (',' IDENTIFIER)* '>'
-
-  call this function after consume '<'
-*/
-let parseTypeParams (ps:ParseState) : ParseState*[]string =
+let parseIdList (ps:ParseState) : ParseState*[]string =
   let (ps2, tname) = psIdentNameNx ps
   if (psCurrentTT ps2) = COMMA then
     psConsume COMMA ps2
-    |> parseTypeParams
+    |> parseIdList
     |> CnvR (slice.PushHead tname)
   else
     (ps2, [tname])
+
+
+/*
+  if '<' ID_LIST '>', return ID_LIST as []string
+  else return empty []string.
+*/
+let mightParseIdList (ps:ParseState) =
+  if psCurIs LT ps then
+    psConsume LT ps
+    |> parseIdList
+    |> CnvL (psConsume GT)
+  else
+    GoEval<[]string> "[]string{}"
+    |>withPs ps
+    
+
+/*
+  EXT_TYPE_DEF = 'type' IDENTIFIER ('<' IDENTIFIER_LIST '>')?
+*/
+let parseExtTypeDef (pi:PackageInfo) (ps:ParseState) =
+  let (ps2, tname) = psConsume TYPE ps |> psIdentNameNx
+  let (ps3, pnames) = mightParseIdList ps2
+  let tfd = piRegEType pi tname pnames
+  scRegTFData ps3.scope tname tfd
+  ps3
+
 
 let regTypeVar (ps:ParseState) (tname:string) =
   FTypeVar {TypeVar.Name=tname}
@@ -1026,13 +1063,7 @@ let psRegTypeVars (ps:ParseState) (tnames:[]string) =
 */
 let parseExtFuncDef (pi:PackageInfo) (ps:ParseState) =
   let (ps2, fname) = psConsume LET ps |> psIdentNameNx
-  let (ps3, tnames) = if (psCurrentTT ps2) = LT then
-                        psConsume LT ps2
-                        |> parseTypeParams
-                        |> CnvL (psConsume GT)
-                      else
-                        GoEval<[]string> "[]string{}"
-                        |>withPs ps2            
+  let (ps3, tnames) = mightParseIdList ps2
   psRegTypeVars ps3 tnames
   let (ps4, fts) = psConsume COLON ps3
                    |> parseTypeArrows parseType

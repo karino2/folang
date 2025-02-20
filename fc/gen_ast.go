@@ -91,6 +91,11 @@ type FuncFactory struct {
 	Targets []FType
 }
 
+type TypeFactoryData struct {
+	Name    string
+	Tparams []string
+}
+
 type Expr interface {
 	Expr_Union()
 }
@@ -361,7 +366,7 @@ func New_LLetVarDef_LLDestVarDef(v LetDestVarDef) LLetVarDef { return LLetVarDef
 type PackageInfo struct {
 	Name     string
 	FuncInfo funcFacDict
-	TypeInfo extTypeDict
+	TypeInfo TFDataDict
 }
 type RecordDef struct {
 	Name   string
@@ -396,6 +401,6 @@ type MultipleDefs struct {
 
 func NewPackageInfo(name string) PackageInfo {
 	ffd := newFFD()
-	etd := newETD()
-	return PackageInfo{Name: name, FuncInfo: ffd, TypeInfo: etd}
+	tfdd := newTFDD()
+	return PackageInfo{Name: name, FuncInfo: ffd, TypeInfo: tfdd}
 }

@@ -26,6 +26,10 @@ func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 		fnt := _v1.Value
 		nts := slice.Map(recurse, fnt.Targets)
 		return frt.Pipe(FuncType{Targets: nts}, New_FType_FFunc)
+	case FType_FParamd:
+		pt := _v1.Value
+		nts := slice.Map(recurse, pt.Targs)
+		return frt.Pipe(ParamdType{Name: pt.Name, Targs: nts}, New_FType_FParamd)
 	default:
 		return ftp
 	}
@@ -114,6 +118,13 @@ func genBuiltinFunCall(tvgen func() TypeVar, fname string, tpnames []string, tar
 
 func newTvf(name string) FType {
 	return frt.Pipe(TypeVar{Name: name}, New_FType_FTypeVar)
+}
+
+func GenType(tfd TypeFactoryData, targs []FType) FType {
+	frt.IfOnly(frt.OpNotEqual(slice.Len(tfd.Tparams), slice.Len(targs)), (func() {
+		frt.Panic("wrong type param num for instantiate.")
+	}))
+	return frt.Pipe(ParamdType{Name: tfd.Name, Targs: targs}, New_FType_FParamd)
 }
 
 type TypeDefCtx struct {
@@ -276,6 +287,10 @@ func psNextTT(ps ParseState) TokenType {
 	return frt.Pipe(psNext(ps), psCurrentTT)
 }
 
+func psNextIs(expectTT TokenType, ps ParseState) bool {
+	return frt.OpEqual(psNextTT(ps), expectTT)
+}
+
 func psNextNOL(ps ParseState) ParseState {
 	ntk := tkzNextNOL(ps.tkz)
 	return psWithTkz(ps, ntk)
@@ -403,15 +418,19 @@ func piFullName(pi PackageInfo, name string) string {
 	}))
 }
 
-func piRegEType(pi PackageInfo, tname string) FType {
+func piRegEType(pi PackageInfo, tname string, tparams []string) TypeFactoryData {
 	fullName := piFullName(pi, tname)
-	etype := New_FType_FExtType(fullName)
-	etdPut(pi.TypeInfo, tname, fullName)
-	return etype
+	tfd := TypeFactoryData{Name: fullName, Tparams: tparams}
+	tfddPut(pi.TypeInfo, tname, tfd)
+	return tfd
 }
 
 func scRegFunFac(sc Scope, fname string, ff FuncFactory) {
 	scRegisterVarFac(sc, fname, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return GenFuncVar(fname, ff, _r0, _r1) }))
+}
+
+func scRegTFData(sc Scope, tname string, tfd TypeFactoryData) {
+	scRegisterTypeFac(sc, tname, (func(_r0 []FType) FType { return GenType(tfd, _r0) }))
 }
 
 func piRegFF(pi PackageInfo, fname string, ff FuncFactory, ps ParseState) ParseState {
@@ -426,17 +445,17 @@ func regFF(pi PackageInfo, sc Scope, sff frt.Tuple2[string, FuncFactory]) {
 	scRegFunFac(sc, fullName, ff)
 }
 
-func regET(sc Scope, etp frt.Tuple2[string, string]) {
-	fullName := frt.Snd(etp)
-	frt.PipeUnit(New_FType_FExtType(fullName), (func(_r0 FType) { scRegisterType(sc, fullName, _r0) }))
+func regTF(pi PackageInfo, sc Scope, etp frt.Tuple2[string, TypeFactoryData]) {
+	tfd := frt.Snd(etp)
+	scRegTFData(sc, tfd.Name, tfd)
 }
 
 func piRegAll(pi PackageInfo, sc Scope) {
 	frt.PipeUnit(ffdKVs(pi.FuncInfo), (func(_r0 []frt.Tuple2[string, FuncFactory]) {
 		slice.Iter((func(_r0 frt.Tuple2[string, FuncFactory]) { regFF(pi, sc, _r0) }), _r0)
 	}))
-	frt.PipeUnit(etdKVs(pi.TypeInfo), (func(_r0 []frt.Tuple2[string, string]) {
-		slice.Iter((func(_r0 frt.Tuple2[string, string]) { regET(sc, _r0) }), _r0)
+	frt.PipeUnit(tfddKVs(pi.TypeInfo), (func(_r0 []frt.Tuple2[string, TypeFactoryData]) {
+		slice.Iter((func(_r0 frt.Tuple2[string, TypeFactoryData]) { regTF(pi, sc, _r0) }), _r0)
 	}))
 }
 

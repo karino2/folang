@@ -23,11 +23,11 @@ func (FType_FUnit) FType_Union()        {}
 func (FType_FFunc) FType_Union()        {}
 func (FType_FRecord) FType_Union()      {}
 func (FType_FUnion) FType_Union()       {}
-func (FType_FExtType) FType_Union()     {}
 func (FType_FSlice) FType_Union()       {}
 func (FType_FTuple) FType_Union()       {}
 func (FType_FFieldAccess) FType_Union() {}
 func (FType_FTypeVar) FType_Union()     {}
+func (FType_FParamd) FType_Union()      {}
 
 type FType_FInt struct {
 }
@@ -67,12 +67,6 @@ type FType_FUnion struct {
 
 func New_FType_FUnion(v UnionType) FType { return FType_FUnion{v} }
 
-type FType_FExtType struct {
-	Value string
-}
-
-func New_FType_FExtType(v string) FType { return FType_FExtType{v} }
-
 type FType_FSlice struct {
 	Value SliceType
 }
@@ -97,11 +91,21 @@ type FType_FTypeVar struct {
 
 func New_FType_FTypeVar(v TypeVar) FType { return FType_FTypeVar{v} }
 
+type FType_FParamd struct {
+	Value ParamdType
+}
+
+func New_FType_FParamd(v ParamdType) FType { return FType_FParamd{v} }
+
 type SliceType struct {
 	ElemType FType
 }
 type FuncType struct {
 	Targets []FType
+}
+type ParamdType struct {
+	Name  string
+	Targs []FType
 }
 type FieldAccessType struct {
 	RecType   FType
@@ -220,6 +224,18 @@ func faResolve(fat FieldAccessType) FType {
 	}
 }
 
+func encloseWith(beg string, end string, center string) string {
+	return ((beg + center) + end)
+}
+
+func fpToGo(tToGo func(FType) string, pt ParamdType) string {
+	return frt.IfElse(slice.IsEmpty(pt.Targs), (func() string {
+		return pt.Name
+	}), (func() string {
+		return frt.Pipe(frt.Pipe(slice.Map(tToGo, pt.Targs), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) string { return encloseWith((pt.Name + "["), "]", _r0) }))
+	}))
+}
+
 func FTypeToGo(ft FType) string {
 	switch _v2 := (ft).(type) {
 	case FType_FInt:
@@ -239,9 +255,9 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnion:
 		fu := _v2.Value
 		return funionToGo(fu)
-	case FType_FExtType:
-		fe := _v2.Value
-		return fe
+	case FType_FParamd:
+		pt := _v2.Value
+		return fpToGo(FTypeToGo, pt)
 	case FType_FSlice:
 		fs := _v2.Value
 		return fSliceToGo(fs, FTypeToGo)

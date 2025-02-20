@@ -18,13 +18,14 @@ type FType =
 | FFunc of FuncType
 | FRecord of RecordType
 | FUnion of UnionType
-| FExtType of string
 | FSlice of SliceType
 | FTuple of TupleType
 | FFieldAccess of FieldAccessType
 | FTypeVar of TypeVar
+| FParamd of ParamdType
 and SliceType = {ElemType: FType}
 and FuncType = {Targets: []FType}
+and ParamdType = {Name: string; Targs: []FType}
 and FieldAccessType = {RecType: FType; FieldName: string}
 and TupleType = {ElemTypes: []FType}
 and NameTypePair = {Name: string; Ftype: FType}
@@ -107,6 +108,19 @@ let faResolve (fat:FieldAccessType) =
     field.Ftype
   | _ -> fat |> FFieldAccess
 
+let encloseWith (beg:string) (end:string) (center:string) =
+  beg+center+end
+
+let fpToGo (tToGo:FType->string) (pt:ParamdType) =
+  // Dict<string, int> -> Dict[string, int]
+  if slice.IsEmpty pt.Targs then
+    pt.Name
+  else
+    slice.Map tToGo pt.Targs
+    |> strings.Concat ", "
+    |> encloseWith (pt.Name + "[") "]"
+
+
 let FTypeToGo (ft:FType) : string =
   match ft with
   | FInt -> "int"
@@ -116,7 +130,7 @@ let FTypeToGo (ft:FType) : string =
   | FFunc ft -> funcTypeToGo ft FTypeToGo
   | FRecord fr -> recordTypeToGo fr
   | FUnion fu -> funionToGo fu
-  | FExtType fe -> fe // for external type with typename fe, use that type name as is.
+  | FParamd pt -> fpToGo FTypeToGo pt
   | FSlice fs -> fSliceToGo fs FTypeToGo
   | FTuple ft -> fTupleToGo FTypeToGo ft
   | FFieldAccess _ -> "FieldAccess_Unresoled" // must be removed during type resolution.
