@@ -267,9 +267,6 @@ let parseFiIni (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     let fi = {Name=fname;Expr=expr}
     (ps3, {RecName=""; NePair=fi})
 
-let notEmpty (s:string) =
-  s <> ""
-
 type fiListInfo = {
   RecName: string; // "" if not specified.
   NePairs: []NEPair;
@@ -279,12 +276,6 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
   let (ps2, fii) = parseFiIni parseE ps
   let nep = fii.NePair
   let recN = fii.RecName
-  /*
-  slice.Map frt.Snd nepTup
-  let recs = slice.Map frt.Fst nepTup
-               |> slice.Filter notEmpty
-  let recN = if slice.IsEmpty recs then "" else slice.Head recs
-  */
   if (psCurrentTT ps2) = RBRACE then
     (ps2, {RecName=recN; NePairs=[nep]})
   else
@@ -810,12 +801,6 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     frt.Panic "Destructuring let, but rhs is not tuple. NYI."
     let dummy = GoEval<[]Var> "[]Var{}"
     (ps2, LLDestVarDef {LetDestVarDef.Lvars=dummy; Rhs=EUnit})
-
-// I want to make this func as factory.
-// But currently, last arg () is not supported.
-// So I return Var here and handle in wrapper.go for a while.
-let lfdToFuncVar (lfd:LetFuncDef) =
-  lfd.Fvar
 
 /*
   LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK

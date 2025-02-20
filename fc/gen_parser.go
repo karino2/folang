@@ -262,10 +262,6 @@ func parseFiIni(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSt
 	}))
 }
 
-func notEmpty(s string) bool {
-	return frt.OpNotEqual(s, "")
-}
-
 type fiListInfo struct {
 	RecName string
 	NePairs []NEPair
@@ -773,10 +769,6 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 		dummy := []Var{}
 		return frt.NewTuple2(ps2, New_LLetVarDef_LLDestVarDef(LetDestVarDef{Lvars: dummy, Rhs: New_Expr_EUnit}))
 	}
-}
-
-func lfdToFuncVar(lfd LetFuncDef) Var {
-	return lfd.Fvar
 }
 
 func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, LetFuncDef] {
