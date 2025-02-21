@@ -167,4 +167,4 @@ GoEvalなどは少しトリッキーなのでここでは深入りせずに先�
 
 ## 次回: frtパッケージを使う (pkg_all.foiの説明)
 
-[2. frtパッケージを使う (pkg_all.foiの説明)](UseFrtPackage_ja.md)
+[2. frtパッケージを使う (pkg_all.foiの説明)](2_UseFrtPackage_ja.md)

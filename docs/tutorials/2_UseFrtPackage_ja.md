@@ -1,6 +1,6 @@
 # 2. frtパッケージを使う (pkg_all.foiの説明)
 
-前回の、[1. Getting Started](GettingStarted_ja.md)で使ったGoEvalは特殊な関数で、
+前回の、[1. Getting Started](1_GettingStarted_ja.md)で使ったGoEvalは特殊な関数で、
 一切の外部パッケージを使わずに実行出来ますが、普通はこんな事はしません。
 
 通常はfrtというfolang標準のパッケージを使います。
@@ -11,7 +11,7 @@ frtはFolang RunTimeの略で、ほとんどのfolangプログラムに必要と
 
 ## go mod initの実行(やってなければ)
 
-前回の[1. Getting Started](GettingStarted_ja.md)の通りに作業していればやっているはずですが、
+前回の[1. Getting Started](1_GettingStarted_ja.md)の通りに作業していればやっているはずですが、
 今回はgo言語から見ると外部パッケージとなるfrtを使うので、
 go mod initの設定が必要となります。
 
