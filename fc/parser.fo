@@ -387,7 +387,28 @@ let parseVarRef (ps:ParseState) =
       refVar fullName stlist ps4
       |> withPs ps4
 
+// expr (; expr)*
+let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
+  let (ps2, one) = pExpr ps
+  if (psCurrentTT ps2) = SEMICOLON then
+    psConsume SEMICOLON ps2
+    |> parseSemiExprs pExpr
+    |> CnvR (slice.PushHead one)
+  else
+    (ps2, [one])
 
+/*
+  SLICE_EXPR = '[' expr (; expr)* ']'
+*/
+let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+   psConsume LSBRACKET ps
+   |> parseSemiExprs pExpr
+   |> CnvL (psConsume RSBRACKET)
+   |> CnvR ESlice
+
+/*
+  ATOM = LITERAL | (EXPR) | RECORD_GEN | SLICE_EXPR | VAR_REF
+*/
 let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let cur = psCurrent ps
   let pn = psNext ps
@@ -402,6 +423,8 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     EBoolLiteral false |> withPs pn
   | LBRACE ->
     parseRecordGen parseE ps
+  | LSBRACKET ->
+    parseSliceExpr parseE ps
   | LPAREN ->
     if (psCurrentTT pn) = RPAREN then
       (pn, EUnit) |> CnvL (psConsume RPAREN)
@@ -418,7 +441,6 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
       else
         (ps2, e1)
         |> CnvL (psConsume RPAREN)
-
   | IDENTIFIER ->
     if cur.stringVal = "GoEval" then
       parseGoEval ps
@@ -522,24 +544,6 @@ let parseMatchExpr (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->Par
   let (ps3, rules) = parseMatchRules pBlock target ps2
   {Target=target; Rules=rules} |> withPs ps3
 
-// expr (; expr)*
-let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
-  let (ps2, one) = pExpr ps
-  if (psCurrentTT ps2) = SEMICOLON then
-    psConsume SEMICOLON ps2
-    |> parseSemiExprs pExpr
-    |> CnvR (slice.PushHead one)
-  else
-    (ps2, [one])
-
-/*
-  SLICE_EXPR = '[' expr (; expr)* ']'
-*/
-let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
-   psConsume LSBRACKET ps
-   |> parseSemiExprs pExpr
-   |> CnvL (psConsume RSBRACKET)
-   |> CnvR ESlice
 
 /*
   parseIfExpr related

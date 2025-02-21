@@ -358,6 +358,25 @@ func parseVarRef(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	}))
 }
 
+func parseSemiExprs(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Expr] {
+	ps2, one := frt.Destr(pExpr(ps))
+	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_SEMICOLON), (func() frt.Tuple2[ParseState, []Expr] {
+		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+			return CnvR((func(_r0 []Expr) []Expr { return slice.PushHead(one, _r0) }), _r0)
+		}))
+	}), (func() frt.Tuple2[ParseState, []Expr] {
+		return frt.NewTuple2(ps2, ([]Expr{one}))
+	}))
+}
+
+func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {
+	return frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LSBRACKET, ps), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RSBRACKET, _r0) }), _r0)
+	})), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, Expr] {
+		return CnvR(New_Expr_ESlice, _r0)
+	}))
+}
+
 func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {
 	cur := psCurrent(ps)
 	pn := psNext(ps)
@@ -372,6 +391,8 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 		return frt.Pipe(New_Expr_EBoolLiteral(false), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
 	case TokenType_LBRACE:
 		return parseRecordGen(parseE, ps)
+	case TokenType_LSBRACKET:
+		return parseSliceExpr(parseE, ps)
 	case TokenType_LPAREN:
 		return frt.IfElse(frt.OpEqual(psCurrentTT(pn), New_TokenType_RPAREN), (func() frt.Tuple2[ParseState, Expr] {
 			return frt.Pipe(frt.NewTuple2(pn, New_Expr_EUnit), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] {
@@ -507,25 +528,6 @@ func parseMatchExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock 
 	})), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] { return CnvL(psSkipEOL, _r0) })))
 	ps3, rules := frt.Destr(parseMatchRules(pBlock, target, ps2))
 	return frt.Pipe(MatchExpr{Target: target, Rules: rules}, (func(_r0 MatchExpr) frt.Tuple2[ParseState, MatchExpr] { return withPs(ps3, _r0) }))
-}
-
-func parseSemiExprs(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Expr] {
-	ps2, one := frt.Destr(pExpr(ps))
-	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_SEMICOLON), (func() frt.Tuple2[ParseState, []Expr] {
-		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
-			return CnvR((func(_r0 []Expr) []Expr { return slice.PushHead(one, _r0) }), _r0)
-		}))
-	}), (func() frt.Tuple2[ParseState, []Expr] {
-		return frt.NewTuple2(ps2, ([]Expr{one}))
-	}))
-}
-
-func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {
-	return frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LSBRACKET, ps), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
-		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RSBRACKET, _r0) }), _r0)
-	})), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, Expr] {
-		return CnvR(New_Expr_ESlice, _r0)
-	}))
 }
 
 func exprOnlyBlock(expr Expr) Block {

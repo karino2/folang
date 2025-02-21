@@ -778,6 +778,23 @@ let add (a:int) b =
 `,
 			"int{",
 		},
+		{
+			`package main
+
+package_info frt =
+  let Sprintf1<T>: string->T->string
+
+package_info slice =
+  let Map<T, U> : (T->U)->[]T->[]U
+
+let toS a =
+  frt.Sprintf1 "%d" a
+
+let hoge () =
+  slice.Map toS [1; 2; 3]
+`,
+			"toS, ([]int{1,2,3})",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1068,15 +1085,17 @@ let CnvL fn tup =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let Concat<T>: [][]T -> []T
+package_info frt =
+  let Sprintf1<T>: string->T->string
+
+package_info slice =
+  let Map<T, U> : (T->U)->[]T->[]U
+
+let toS a =
+  frt.Sprintf1 "%d" a
 
 let hoge () =
-  let s1 = GoEval<[]int> "[]int{1, 2}"
-  let s2 = GoEval<[]int> "[]int{3, 4}"
-  [s1; s2]
-  |> Concat
-
+  slice.Map toS [1; 2; 3]
 `
 
 	got := transpile(src)
