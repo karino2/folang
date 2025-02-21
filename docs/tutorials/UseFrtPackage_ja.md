@@ -9,6 +9,21 @@ frtはFolang RunTimeの略で、ほとんどのfolangプログラムに必要と
 
 ここでfrtを使ってみましょう。frtのPrintlnを使ってみます。
 
+## go mod initの実行(やってなければ)
+
+前回の[1. Getting Started](GettingStarted_ja.md)の通りに作業していればやっているはずですが、
+今回はgo言語から見ると外部パッケージとなるfrtを使うので、
+go mod initの設定が必要となります。
+
+以下をやっておきましょう。
+
+```
+hello_fo $ pwd
+~/helo_fo
+hello_fo $ go mod init hello_fo
+hello_fo $ go mod tidy
+```
+
 ## hello_frt.fo ファイルの作成
 
 frtを使うhello_frt.foファイルを作りましょう。
@@ -188,3 +203,9 @@ Hello Frt2
 実際に生成したコードが正しく実行されるようにするのはプログラマ側の責任になります。
 
 これは自分でラッパを書いて実行する時に重要になるので心に留めておきましょう。
+
+## 第二回まとめ
+
+- folang標準のパッケージをダブルクオート無しでimport
+- frtは普通importする
+- pkg_all.foiファイルをfcコマンドの先頭に指定する
