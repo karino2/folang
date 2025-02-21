@@ -476,6 +476,33 @@ func ParseList[T any](one func(ParseState) frt.Tuple2[ParseState, T], endPred fu
 }
 
 /*
+	  More generic ParseList.
+		There are many subtle differences.
+
+		- First, call one before checking endPred.
+	  - after endPred, call nextFunc
+
+		The use case is something like parsing following:
+		expr ';' expr ';' expr
+
+		nextFunc consume ';'.
+*/
+func ParseList2[T any](one func(ParseState) frt.Tuple2[ParseState, T], endPred func(ParseState) bool, nextFunc func(ParseState) ParseState, ps ParseState) frt.Tuple2[ParseState, []T] {
+	var res []T
+	var rone T
+
+	ps, rone = frt.Destr(one(ps))
+	res = append(res, rone)
+
+	for !endPred(ps) {
+		ps = nextFunc(ps)
+		ps, rone = frt.Destr(one(ps))
+		res = append(res, rone)
+	}
+	return frt.NewTuple2(ps, res)
+}
+
+/*
 Facade:
 Resolve mutual recursive in golang layer (NYI for and letfunc def).
 */

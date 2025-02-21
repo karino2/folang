@@ -358,15 +358,12 @@ func parseVarRef(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	}))
 }
 
+func isSemiExprEnd(ps ParseState) bool {
+	return frt.OpNotEqual(psCurrentTT(ps), New_TokenType_SEMICOLON)
+}
+
 func parseSemiExprs(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Expr] {
-	ps2, one := frt.Destr(pExpr(ps))
-	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_SEMICOLON), (func() frt.Tuple2[ParseState, []Expr] {
-		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_SEMICOLON, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return parseSemiExprs(pExpr, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
-			return CnvR((func(_r0 []Expr) []Expr { return slice.PushHead(one, _r0) }), _r0)
-		}))
-	}), (func() frt.Tuple2[ParseState, []Expr] {
-		return frt.NewTuple2(ps2, ([]Expr{one}))
-	}))
+	return ParseList2(pExpr, isSemiExprEnd, (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_SEMICOLON, _r0) }), ps)
 }
 
 func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {

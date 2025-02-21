@@ -387,15 +387,12 @@ let parseVarRef (ps:ParseState) =
       refVar fullName stlist ps4
       |> withPs ps4
 
+let isSemiExprEnd ps =
+  (psCurrentTT ps) <> SEMICOLON 
+
 // expr (; expr)*
-let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =
-  let (ps2, one) = pExpr ps
-  if (psCurrentTT ps2) = SEMICOLON then
-    psConsume SEMICOLON ps2
-    |> parseSemiExprs pExpr
-    |> CnvR (slice.PushHead one)
-  else
-    (ps2, [one])
+let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =  
+  ParseList2 pExpr isSemiExprEnd (psConsume SEMICOLON) ps
 
 /*
   SLICE_EXPR = '[' expr (; expr)* ']'
