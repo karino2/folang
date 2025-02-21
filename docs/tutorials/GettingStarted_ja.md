@@ -1,4 +1,4 @@
-# Getting Started Folang
+# 1. Getting Started Folang
 
 セットアップと最初のHello Worldが動くまでを解説します。
 
@@ -167,4 +167,4 @@ GoEvalなどは少しトリッキーなのでここでは深入りせずに先�
 
 ## 次回: frtパッケージを使う (pkg_all.foiの説明)
 
-[frtパッケージを使う (pkg_all.foiの説明)](UseFrtPackage_ja.md)
+[2. frtパッケージを使う (pkg_all.foiの説明)](UseFrtPackage_ja.md)
