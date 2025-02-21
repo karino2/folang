@@ -3,11 +3,6 @@ package main
 import frt
 import dict
 
-// wrapper types.
-package_info _ =
-  type TFDataDict
-  let newTFDD: ()->TFDataDict
-
 type GoEvalExpr = {GoStmt: string; TypeArg: FType}
 type Var = {Name: string; Ftype: FType}
 
