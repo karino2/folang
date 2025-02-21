@@ -90,8 +90,8 @@ hello.fo
 これでgen_hello.goというファイルが出来ているはずです。
 中を見ると以下のようになっています。
 
-```
-$ cat gen_hello.fo
+```golang
+// gen_hello.fo
 package main
 
 import "fmt"
@@ -117,8 +117,11 @@ fcはインデントをしないので普通はgo fmtします。
 ```
 $ go fmt gen_hello.go
 gen_hello.go
+```
 
-$ cat gen_hello.go
+これで以下のようになります。
+
+```golang
 package main
 
 import "fmt"
@@ -128,7 +131,7 @@ func main() {
 }
 ```
 
-これで綺麗になりました。
+これで綺麗になりました。この辺の話はfolangというよりはgolangの話ですね。
 
 ### hello.foの内容を少しだけ解説
 

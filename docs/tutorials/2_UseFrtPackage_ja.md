@@ -89,8 +89,8 @@ $ go fmt gen_hello_frt.go
 
 これで以下のようなファイルが生成されるはずです。
 
-```
-$ cat gen_hello_frt.go
+```golang
+// gen_hello_frt.go
 package main
 
 import "github.com/karino2/folang/pkg/frt"
@@ -179,7 +179,7 @@ package_info frt =
 これをhello_frt.foに書いても、実は実行する事が出来ます。
 
 ```
-$ cat hello_frt2.fo
+// hello_frt2.fo
 package main
 import frt
 
@@ -212,3 +212,7 @@ Hello Frt2
 - frtは普通importする
 - pkg_all.foiファイルをfcコマンドの先頭に指定する
 - コメントは `//` と `/* */`
+
+## 次回: スライスとパイプとMap
+
+[3. スライスとパイプとMap](3_SlicePipeMap_ja.md)
