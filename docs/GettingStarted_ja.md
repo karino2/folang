@@ -271,7 +271,7 @@ $ cat hello_frt2.fo
 package main
 import frt
 
-// この2行ｗ追加
+// この2行を追加
 package_info frt =
   let Println: string->()
 
