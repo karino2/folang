@@ -30,7 +30,7 @@ frtを使うhello_frt.foファイルを作りましょう。
 中は以下のようにします。
 
 ```
-$ cat hello_frt.fo
+// hello_frt.fo
 package main
 import frt
 
@@ -53,6 +53,8 @@ import "github.com/karino2/folang/pkg/frt"
 ```
 
 基本的には folang/pkg の下にはfolangから使う事を前提としたライブラリが置かれています。
+
+ちなみにコメントはgolang同様、`//`の行コメントと `/* */` のブロックコメントです。
 
 ## hello_frt.foのトランスパイルとpkg_all.foiファイル
 
@@ -209,3 +211,4 @@ Hello Frt2
 - folang標準のパッケージをダブルクオート無しでimport
 - frtは普通importする
 - pkg_all.foiファイルをfcコマンドの先頭に指定する
+- コメントは `//` と `/* */`
