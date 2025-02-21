@@ -1,4 +1,4 @@
-# 3. スライスとMapとパイプ
+# 3. スライスとパイプとMap
 
 前回: [2. frtパッケージを使う (pkg_all.foiの説明)](2_UseFrtPackage_ja.md)
 
@@ -151,4 +151,74 @@ f1(123)
 
 ### slice.Map
 
-以下書く。
+sliceパッケージもほぼ全てのfolangプログラムで使うものです。
+特に `slice.Map` は頻出。
+
+slice.Mapは以下のように２つの引数を取ります。
+
+`slice.Map fn slice1`
+
+２つ目の引数がスライスで、その要素一つ一つに順番にfnを実行して、結果をまたスライスにまとめて返します。
+
+```fsharp
+
+let add10 a =
+   a+10
+
+let main () =
+  let res = slice.Map add10 [1; 2; 3]
+  frt.Printf1 "%v\n" res
+
+```
+
+これで以下のように表示されます。
+
+```
+[11 12 13]
+```
+
+これがMapです。
+
+### パイプ演算子で書き換える
+
+さて、以下の行は、
+
+```fsharp
+  let res = slice.Map add10 [1; 2; 3]
+```
+
+パイプ演算子を使って最後の要素を前に持ってくる事が出来ます。
+
+```fsharp
+let res = [1; 2; 3] |> slice.Map add10 
+```
+
+全体だと見づらいですが、以下の部分だけ取り出すと、
+
+```fsharp
+slice.Map add10 [1; 2; 3]
+```
+
+この最後の要素を左に持ってきて、以下のように書ける訳です。
+
+```fsharp
+[1; 2; 3] |> slice.Map add10 
+```
+
+両者は同じ結果になります。
+
+これを踏まえると以下のコードもだいたい分かるのでは無いでしょうか？
+
+```fsharp
+  [1; 2; 3]
+  |> slice.Map (frt.Sprintf1 "This is %d")
+  |> strings.Concat ", "
+  |> frt.Println
+```
+
+なお、strings.Concatも少し特殊です。
+これは文字列のスライスを受け取り、それを間に引数を挟んでつなげた文字列を返す、
+という関数です。つまり`[]string`を受けとり、つなげた`string`を返す訳です。
+
+このMapでいろいろ加工して最後にstrings.Concatを呼ぶのはFolangの文字列処理の基本になるイディオムです。
+
