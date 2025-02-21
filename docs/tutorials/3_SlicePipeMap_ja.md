@@ -222,3 +222,10 @@ slice.Map add10 [1; 2; 3]
 
 このMapでいろいろ加工して最後にstrings.Concatを呼ぶのはFolangの文字列処理の基本になるイディオムです。
 
+## まとめ
+
+あとで書く。
+
+## 次回: goで書いたラッパーを呼ぶ
+
+[4. goで書いたラッパーを呼ぶ](4_CallingGoWrapper_ja.md)
