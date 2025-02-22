@@ -1,3 +1,4 @@
+// Somewhat similar to F# String module: [String (FSharp.Core)](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-stringmodule.html)
 package_info strings =
   let Concat: string->[]string->string
   let Length: string->int
@@ -10,3 +11,4 @@ package_info strings =
   let SplitN: int->string->string->[]string
   let IsEmpty: string->bool
   let IsNotEmpty: string->bool
+

@@ -1,5 +1,4 @@
-// https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-fsharpmap-2.html
-
+// Similar to F# Map module: [Map (FSharp.Core)](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-mapmodule.html)
 package_info dict =
   type Dict<K, V>
   let New<K, V>: ()->Dict<K, V>

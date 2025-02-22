@@ -1,3 +1,4 @@
+// Similar to F# List module: [List (FSharp.Core)](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-listmodule.html)
 package_info slice =
   let New<T>: ()->[]T
   let Length<T>: []T -> int

@@ -16,6 +16,7 @@ package_info buf =
   let Write: Buffer->string->()
   let String: Buffer->string
 
+// Similar to F# List module: [List (FSharp.Core)](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-listmodule.html)
 package_info slice =
   let New<T>: ()->[]T
   let Length<T>: []T -> int
@@ -48,6 +49,7 @@ package_info slice =
   let TryFind<T>: (T->bool)->[]T->T*bool
   let Fold<T, S>: (S->T->S)->S->[]T->S
 
+// Somewhat similar to F# String module: [String (FSharp.Core)](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-stringmodule.html)
 package_info strings =
   let Concat: string->[]string->string
   let Length: string->int
@@ -60,13 +62,13 @@ package_info strings =
   let SplitN: int->string->string->[]string
   let IsEmpty: string->bool
   let IsNotEmpty: string->bool
+
 package_info sys =
   let Args: ()->[]string
   let ReadFile: string->string*bool
   let WriteFile: string->string->bool
 
-// https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-fsharpmap-2.html
-
+// Similar to F# Map module: [Map (FSharp.Core)](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-collections-mapmodule.html)
 package_info dict =
   type Dict<K, V>
   let New<K, V>: ()->Dict<K, V>
