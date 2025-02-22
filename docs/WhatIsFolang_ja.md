@@ -210,5 +210,35 @@ goに向けて独自の言語を作る、という選択をする事にしまし
 goを生成するためのツール、くらいのつもりで使うと便利に使えます。
 
 実際目的のコードが生成されさえすれば良いので、
-一部では嘘をついたりも出来ますし、
+一部ではインターフェース定義に嘘をついたりも出来ますし、
 GoEvalなどの機能を使ってgo言語に向けた穴を作ったりも出来ます。
+
+例えば以下のようにSprintfを2引数の関数と嘘をつく事も出来ますし、
+
+```
+import "fmt"
+
+package_info fmt =
+  let Sprintf<T>: string->T->string
+
+let Sprintf1 fmt arg =
+  fmt.Sprintf fmt arg
+
+```
+
+以下のように3引数の関数と嘘をついても構いません。
+
+```
+package_info fmt =
+  let Sprintf<T, U>: string->T->U->string
+
+let Sprintf2 msg arg1 arg2 =
+  fmt.Sprintf msg arg1 arg2
+```
+
+Folangの中で型が一貫していて、
+生成されるgolangはgolangの中で正当なコードであれば、
+それで良いのです。
+
+閉じた世界と考えるのでは無く、エディタの延長としてgoコードを生成する何か、
+くらいに考える方が実態に近いと思います。
