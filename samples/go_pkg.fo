@@ -1,0 +1,13 @@
+package main
+
+import frt
+import "path/filepath"
+
+package_info filepath =
+  let Dir: string->string
+  let Base: string->string
+
+let main () =
+  let target = "/home/karino2/src/folang/samples/README.md"
+  filepath.Dir target |> frt.Println
+  filepath.Base target |> frt.Println

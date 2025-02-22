@@ -190,6 +190,28 @@ let main() =
 generated go: [gen_pipe.go](./gen_pipe.go)
 
 
+### Using go package.
+
+```
+package main
+
+import frt
+import "path/filepath"
+
+package_info filepath =
+  let Dir: string->string
+  let Base: string->string
+
+let main () =
+  let target = "/home/karino2/src/folang/samples/README.md"
+  filepath.Dir target |> frt.Println
+  filepath.Base target |> frt.Println
+
+```
+
+generated go: [gen_go_pkg.go](./gen_go_pkg.go)
+
+
 ### Map
 
 ```

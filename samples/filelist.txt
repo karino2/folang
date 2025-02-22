@@ -8,6 +8,7 @@ std_pkg.fo Folang standard package example
 pkg_generics.fo Standard package with generics
 tuple.fo Tuple example
 pipe.fo Pipe operator
+go_pkg.fo Using go package.
 map.fo Map
 destr_let.fo Destructuring let example
 generic_specify.fo Explicit type argument
