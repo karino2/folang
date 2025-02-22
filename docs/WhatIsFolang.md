@@ -122,40 +122,39 @@ Personally, I made it to replace everyday tools that I usually write in F# or Py
 
 ## Why OCaml-like languages?
 
-Most of the benefits listed so far are just saying that the Go language is great.
-There are no particular benefits of Folang.
-In fact, there are many people who prefer Go because of their preference.
+Most of the advantages I've mentioned so far are just saying that Go is great, and there are no particular advantages to Folang.
+In fact, many people prefer Go because of their preferences.
 
-In the following, I will write why I wanted an OCaml like language.
-It's just my preference.
+Below I'll write the reasons why I wanted an OCaml-based language, but it's also just my preference.
 
-The Go language emphasizes that it works as you see it.
-Don't do things that cost you money out of sight.
-I think that the language design is done.
-This is also a very good feature.
-I think that the fact that it works so well in system programs is the reason why the Go language has become so widespread.
+I think the Go language is designed to work as you see it, and not to do things that incur costs behind the scenes.
 
-However, if you want to write a small tool for your own use, I don't really care if it costs me out of sight.
-Small, fast-paced single binaries and mod systems, good packages, well-maintained dev environment, I choose Golang for small-mid chore.
-It doesn't have to be this low level language at all.
+This is a very good feature, and I think the reason Go has become so popular is because it works so well in system programs.
 
-I'm happier to be able to write concisely than that.
-In particular, it is nice to write small tools that can be written concisely with type inference, pipe operators, and partial applications.
+However, when writing small tools for my own purposes, I don't really care if there are costs behind the scenes.
 
-If it's a language that can be written slowly and shortly and concisely, there are various candidates other than Golang.
-However, getting slightly larger code size, a few thousand lines, many of these languages become a little tough.
+I sometimes choose Golang because of its small, fast-starting single binary, mod system, good packages, and well-designed environment settings, but there's no need for it to be so low-level.
 
-For me, I can start small and concise.
-When things get a little more complicated, I want to use the powerful type modeling capabilities of Discriminated Union.
-I want a concise language of high level, that could be slow.
+I'd rather write it succinctly.
+I especially like the conciseness of type inference, pipe operators, and partial application, which I find useful for writing small tools.
 
-In addition, there are languages that can write code to some extent with only basic functions.
-It is desirable from the standpoint of implementing the transpiler individually.
-Languages like kotlin that can only be used conveniently after having complex things such as inline returns, it's tough to implement.
-It is desirable to have a language that you can manage with only the minimum number of functions to start using.
 
-Also, OCaml like language has a track record as a transpiler like ReScript.
-I thought it would be a good reference when I was worried about how to realize it.
+If it is a language that can be written short and concisely, even if it is slow,
+if you choose a language other than Go, there are many candidates.
+
+However, coding with many of these languages ​​become a little tough when the code size increases to a few thousand lines.
+
+I want to start small and concisely,
+but when it gets a little more complicated, I want to use the powerful type modeling function of Discriminated Union.
+
+I wanted a language that was concise but high-level and didn't mind being slow.
+
+Also, from the perspective of an individual transpiler implementer, a language that allows you to write code to a certain extent even with just basic functions is desirable.
+It is difficult to implement a language like Kotlin, which cannot be used usefully unless you have complex features such as inline return.
+It is desirable to have a language that allows you to get started with just the minimum functions.
+
+Also, I thought that the fact that OCaml-like language has a track record as a transpiler, like ReScript,
+is a good reference when you are struggling to figure out how to implement it.
 
 Finally, I was familiar with F# and liked it.
 I want something similar.
