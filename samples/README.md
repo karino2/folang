@@ -113,7 +113,7 @@ let ika (ab:AorB) =
 generated go: [gen_union_nocontent.go](./gen_union_nocontent.go)
 
 
-### External package example
+### Folang standard package example
 
 ```
 package main
@@ -131,10 +131,10 @@ let main() =
 
 ```
 
-generated go: [gen_ext_pkg.go](./gen_ext_pkg.go)
+generated go: [gen_std_pkg.go](./gen_std_pkg.go)
 
 
-### External package with generics
+### Standard package with generics
 
 ```
 package main
