@@ -1070,6 +1070,19 @@ let CnvL fn tup =
 `,
 			[]string{"[T0 any, T1 any, T2 any]", "fn func (T0) T1", "tup frt.Tuple2[T0, T2]"},
 		},
+		{
+			`package main
+
+package_info dict =
+  type Dict<K, V>
+  let New<K, V>: () -> Dict<K, V>
+
+
+let hoge () =
+  dict.New<any, string> ()
+`,
+			[]string{"Dict[any, string]", "New[any, string]"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1085,17 +1098,13 @@ let CnvL fn tup =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info frt =
-  let Sprintf1<T>: string->T->string
+package_info dict =
+  type Dict<K, V>
+  let New<K, V>: () -> Dict<K, V>
 
-package_info slice =
-  let Map<T, U> : (T->U)->[]T->[]U
-
-let toS a =
-  frt.Sprintf1 "%d" a
 
 let hoge () =
-  slice.Map toS [1; 2; 3]
+  dict.New<any, string> ()
 `
 
 	got := transpile(src)

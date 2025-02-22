@@ -20,6 +20,7 @@ func (FType_FInt) FType_Union()         {}
 func (FType_FString) FType_Union()      {}
 func (FType_FBool) FType_Union()        {}
 func (FType_FUnit) FType_Union()        {}
+func (FType_FAny) FType_Union()         {}
 func (FType_FFunc) FType_Union()        {}
 func (FType_FRecord) FType_Union()      {}
 func (FType_FUnion) FType_Union()       {}
@@ -48,6 +49,11 @@ type FType_FUnit struct {
 }
 
 var New_FType_FUnit FType = FType_FUnit{}
+
+type FType_FAny struct {
+}
+
+var New_FType_FAny FType = FType_FAny{}
 
 type FType_FFunc struct {
 	Value FuncType
@@ -242,6 +248,8 @@ func FTypeToGo(ft FType) string {
 		return "int"
 	case FType_FBool:
 		return "bool"
+	case FType_FAny:
+		return "any"
 	case FType_FString:
 		return "string"
 	case FType_FUnit:

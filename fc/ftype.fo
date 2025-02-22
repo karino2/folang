@@ -15,6 +15,7 @@ type FType =
 | FString
 | FBool
 | FUnit
+| FAny
 | FFunc of FuncType
 | FRecord of RecordType
 | FUnion of UnionType
@@ -125,6 +126,7 @@ let FTypeToGo (ft:FType) : string =
   match ft with
   | FInt -> "int"
   | FBool -> "bool"
+  | FAny -> "any"
   | FString -> "string"    
   | FUnit -> "" // When use as return type in Go, "" is suitable.
   | FFunc ft -> funcTypeToGo ft FTypeToGo

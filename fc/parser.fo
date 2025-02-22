@@ -77,6 +77,8 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
       (ps3, FInt)
     elif tname = "bool" then
       (ps3, FBool)
+    elif tname = "any" then
+      (ps3, FAny)
     else
       let (ps4, fullName) = parseFullName ps
       let (rfac, ok) = scLookupTypeFac ps3.scope fullName
