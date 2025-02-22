@@ -3,7 +3,7 @@
 Folang is a transpiler to Golang, a functional language similar to F# and ReScript.
 
 F# is OCaml for .NET, ReScript is OCaml for JavaScript.
-If so, folang aims to be a OCaml for Golang.
+If so, Folang aims to be a OCaml for Golang.
 However, the syntax is more heavily influenced by F# than OCaml.
 
 If you look at the [sample page](../samples/README.md), you can get a sense of the atmosphere.
@@ -17,7 +17,7 @@ Let's talk about each of them in a little more detail below.
 
 ## The generated data type or function type is natural as Go.
 
-The following folang code is
+The following Folang code is
 
 ```fsharp
 let a = 3
@@ -78,7 +78,7 @@ As a result, after generating it, it can be used as a Go module.
 If you put it on github, you can also `go get` and `go install`.
 
 What kind of package will it be and what kind of mod will it be?
-It is a problem on the side of the Go language, and folang is not relevant.
+It is a problem on the side of the Go language, and Folang is not relevant.
 And Go is a very good language with this package and deployment mechanism.
 
 In addition, deployment of the result is easy, just a single binary.
@@ -88,7 +88,7 @@ All of these characteristics of the Go language, which makes it a great tool for
 
 However, in terms of execution speed, the code to be generated is code with many functions unnecessarily.
 I think it's much slower than writing Golang by hand.
-I think folang is a language that doesn't perform very well (although I haven't measured it).
+I think Folang is a language that doesn't perform very well (although I haven't measured it).
 
 ## You don't need an environment other than Go.
 
@@ -107,7 +107,7 @@ I think it's a big advantage to make a chore tool with Golang.
 ## Intended for use as a small-scale tool.
 
 The main target of Folang is a command line tool with a scale of 100 to 5000 lines.
-At the time of this writing, the largest folang program is [fc](../fc), which is the folang transpiler itself.
+At the time of this writing, the largest Folang program is [fc](../fc), which is the Folang transpiler itself.
 It currently consists of 3612 lines of fo code and 529 lines of Go code. Even if it is large, it is assumed to be about this scale.
 Those who want to create something on a larger scale are better off choosing other languages.
 
@@ -123,7 +123,7 @@ Personally, I made it to replace everyday tools that I usually write in F# or Py
 ## Why OCaml-like languages?
 
 Most of the benefits listed so far are just saying that the Go language is great.
-There are no particular benefits of folang.
+There are no particular benefits of Folang.
 In fact, there are many people who prefer Go because of their preference.
 
 In the following, I will write why I wanted an OCaml like language.
@@ -164,27 +164,27 @@ I want something similar.
 
 I mentioned earlier that the generated Go code is plain as a type or function.
 
-In addition, folang does not aim to include everything necessary as a language from the beginning.
+In addition, Folang does not aim to include everything necessary as a language from the beginning.
 The missing part is supposed to be written in Golang side.
-Instead, the folang language specification is kept simple.
+Instead, the Folang language specification is kept simple.
 It is designed to be easy to interact with Golang's code.
 
 Especially in the case of more than 1000 lines of code, it is recommended to divide labor so that the parts that are suitable for Go are written in Go.
 
 For example, Folang's transpiler, `fc`, at the time of this writing, it consists of 3612 lines of fo code and 529 lines of Go code.
-This is a typical folang configuration.
+This is a typical Folang configuration.
 Instead of forcibly adding syntax such as loops, destructive assignments, and pointers, the idea is to write such things in Go.
 
-It's ideomatic, though not required, to create a file called wrapper.go and we implement functions for folang with a free-standing function and an argument adjustment for the pipeline in this file,
+It's ideomatic, though not required, to create a file called wrapper.go and we implement functions for Folang with a free-standing function and an argument adjustment for the pipeline in this file,
 then writing interface information in `.fo` file and call them.
 
-In folang, onion architecture is often used.
-Write the inside side of the onion architecture in folang, writing the outside in Golang.
+In Folang, onion architecture is often used.
+Write the inside side of the onion architecture in Folang, writing the outside in Golang.
 It's not suitable to just call the Go package as it is.
 Write a wrapper for the problem and hand-write the interface information for it, It's designed to make it easy.
 
-Also, because it is assumed that the division of labor with Go will be done from the beginning, even if there are unimplemented or missing features in folang, it can be implemented on the Go side at any time.
-Therefore, you can use it with the existing functions without waiting for the completion of folang transpiler.
+Also, because it is assumed that the division of labor with Go will be done from the beginning, even if there are unimplemented or missing features in Folang, it can be implemented on the Go side at any time.
+Therefore, you can use it with the existing functions without waiting for the completion of Folang transpiler.
 
 In order to aim for a language that is open to this Go language, we are not going to make the backend of the existing language for Golang.
 Instead, I decided to create my own language for Go.
@@ -192,7 +192,7 @@ Instead, I decided to create my own language for Go.
 ## Tools for generating the Go source
 
 I don't intend to do everything entirely in our own language.
-Instead, folang transpiler is just convenient tool for generating Go source.
+Instead, Folang transpiler is just convenient tool for generating Go source.
 
 In fact, all you need to do is generate the desired code. Some can lie about the interface definition.
 You can also use features such as GoEval to create a hole for the Go language.
