@@ -141,7 +141,7 @@ The first package and import statements are the same as in Golang, so that's fin
 The next statement looks like it defines a function.
 In Folang, functions are defined as follows.
 
-``
+```
 let main () =
 // Write the body here
 ```
