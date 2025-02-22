@@ -3,16 +3,16 @@
 前回の、[1. Getting Started](1_GettingStarted_ja.md)で使ったGoEvalは特殊な関数で、
 一切の外部パッケージを使わずに実行出来ますが、普通はこんな事はしません。
 
-通常はfrtというfolang標準のパッケージを使います。
+通常はfrtというFolang標準のパッケージを使います。
 
-frtはFolang RunTimeの略で、ほとんどのfolangプログラムに必要とする基本機能を提供します。
+frtはFolang RunTimeの略で、ほとんどのFolangプログラムに必要とする基本機能を提供します。
 
 ここでfrtを使ってみましょう。frtのPrintlnを使ってみます。
 
 ## go mod initの実行(やってなければ)
 
 前回の[1. Getting Started](1_GettingStarted_ja.md)の通りに作業していればやっているはずですが、
-今回はgo言語から見ると外部パッケージとなるfrtを使うので、
+今回はGo言語から見ると外部パッケージとなるfrtを使うので、
 go mod initの設定が必要となります。
 
 以下をやっておきましょう。
@@ -52,9 +52,9 @@ import frt
 import "github.com/karino2/folang/pkg/frt"
 ```
 
-基本的には folang/pkg の下にはfolangから使う事を前提としたライブラリが置かれています。
+基本的には folang/pkg の下にはFolangから使う事を前提としたライブラリが置かれています。
 
-ちなみにコメントはgolang同様、`//`の行コメントと `/* */` のブロックコメントです。
+ちなみにコメントはGolang同様、`//`の行コメントと `/* */` のブロックコメントです。
 
 ## hello_frt.foのトランスパイルとpkg_all.foiファイル
 
@@ -100,7 +100,7 @@ func main() {
 }
 ```
 
-これで通常のgo言語の実行と同じようにgo runを実行すると、
+これで通常のGo言語の実行と同じようにgo runを実行すると、
 
 ```
 $ go run gen_hello_frt.go
@@ -125,15 +125,15 @@ Hello World
 
 以上をまとめると
 
-- folangは普通frtをimportする
+- Folangは普通frtをimportする
 - frtをimportする場合は pkg_all.foiというファイルをfcファイルの前に置く
-- 外部パッケージの使用には通常のgo言語と同様にgo getなどが必要
+- 外部パッケージの使用には通常のGo言語と同様にgo getなどが必要
 
 となります。
 
 ## frt.Printlnの呼び出しについて簡単に解説
 
-今回は初めてfolangらしいコードが出てきたので、
+今回は初めてFolangらしいコードが出てきたので、
 基本的な事を解説しておきます。
 
 再掲すると以下のようになっていました。
@@ -150,10 +150,10 @@ let main () =
 ```
 
 関数はスペース区切りで引数を並べて実行します。
-golangのようにカッコはつけません。
+Golangとは異なり、カッコをつけません。
 
 frt.Printlnは文字列を引数にとって、結果を返さない関数です。
-この辺はgolangのfmt.Printlnと同様ですね。
+この辺はGolangのfmt.Printlnと同様ですね。
 
 ## pkg_all.foiの内容について少しだけ
 
@@ -201,14 +201,14 @@ Hello Frt2
 ```
 
 トランスパイラとしてはそういう型の関数がある、
-と思って型の解決をしてgoのコードを生成するだけです。
+と思って型の解決をしてGoのコードを生成するだけです。
 実際に生成したコードが正しく実行されるようにするのはプログラマ側の責任になります。
 
 これは自分でラッパを書いて実行する時に重要になるので心に留めておきましょう。
 
 ## 第二回まとめ
 
-- folang標準のパッケージをダブルクオート無しでimport
+- Folang標準のパッケージをダブルクオート無しでimport
 - frtは普通importする
 - pkg_all.foiファイルをfcコマンドの先頭に指定する
 - コメントは `//` と `/* */`
