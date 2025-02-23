@@ -1,9 +1,7 @@
 # Notes on specifications
 
 As specifications are decided, they are added to the top.
-
 The order is from the bottom up, so it's a bit tricky.
-
 The writing style is not yet consistent.
 
 I'd like to organize it once it's more solidified.
