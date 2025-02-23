@@ -44,16 +44,15 @@ import "github.com/karino2/folang/pkg/frt"
 
 ## Genericsのシンタックス（タイプパラメータ）
 
-Goは大括弧だがFSharpは角括弧。
+Goは大括弧だがFSharpは角括弧。Folangは角括弧を採用する。
 
 ```
-let Length<T any> (args: []T) =
-   ...
+package_info slice =
+  let New<T>: ()->[]T
 
-Length<int> listOfList[3]
+slice.New<int> ()
 ```
 
-ただし現時点では外部のgenericな関数を呼ぶだけで自身で定義するのはサポートしていない。
 
 ## 外部の型情報
 
@@ -216,7 +215,7 @@ func main() {
 }
 ```
 
-基本的にはメソッドはサポートしない（手でラップする）
+メソッドはサポートしない（手でラップする）
 
 ### 型推論
 
