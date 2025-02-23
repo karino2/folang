@@ -63,13 +63,11 @@ func lvdToGo(eToGo func(Expr) string, lvd LetVarDef) string {
 	return ((lvd.Lvar.Name + " := ") + rhs)
 }
 
-func vToN(v Var) string {
-	return v.Name
-}
-
 func ldvdToGo(eToGo func(Expr) string, ldvd LetDestVarDef) string {
 	b := buf.New()
-	frt.PipeUnit(frt.Pipe(slice.Map(vToN, ldvd.Lvars), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(slice.Map(func(_v1 Var) string {
+		return _v1.Name
+	}, ldvd.Lvars), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, " := frt.Destr(")
 	frt.PipeUnit(eToGo(ldvd.Rhs), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ")")

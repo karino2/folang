@@ -116,8 +116,5 @@ let NewPackageInfo (name:string) =
   let tfdd = dict.New<string, TypeFactoryData> ()
   {Name=name; FuncInfo=ffd; TypeInfo=tfdd}
 
-let vToT (v:Var) =
-  v.Ftype
-
 let varToExpr (v:Var) =
   VRVar v |> EVarRef

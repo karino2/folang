@@ -76,7 +76,7 @@ let fcToType (fc:FunCall) =
       FFunc {Targets=newts}
 
 let lambdaToType bToT (le:LambdaExpr) =  
-  slice.Map vToT le.Params  
+  slice.Map _.Ftype le.Params  
   |> slice.PushLast (bToT le.Body)
   |> newFFunc
 

@@ -107,7 +107,9 @@ func fcToType(fc FunCall) FType {
 }
 
 func lambdaToType(bToT func(Block) FType, le LambdaExpr) FType {
-	return frt.Pipe(frt.Pipe(slice.Map(vToT, le.Params), (func(_r0 []FType) []FType { return slice.PushLast(bToT(le.Body), _r0) })), newFFunc)
+	return frt.Pipe(frt.Pipe(slice.Map(func(_v1 Var) FType {
+		return _v1.Ftype
+	}, le.Params), (func(_r0 []FType) []FType { return slice.PushLast(bToT(le.Body), _r0) })), newFFunc)
 }
 
 func ExprToType(expr Expr) FType {

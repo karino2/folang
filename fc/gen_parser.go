@@ -291,10 +291,6 @@ func parseFieldInitializers(parseE func(ParseState) frt.Tuple2[ParseState, Expr]
 	}))
 }
 
-func NEPToName(nvp NEPair) string {
-	return nvp.Name
-}
-
 func retRecordGen(ok bool, rtype RecordType, neps []NEPair, ps ParseState) frt.Tuple2[ParseState, Expr] {
 	return frt.IfElse(ok, (func() frt.Tuple2[ParseState, Expr] {
 		return frt.Pipe(frt.Pipe(RecordGen{FieldsNV: neps, RecordType: rtype}, New_Expr_ERecordGen), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps, _r0) }))
@@ -311,7 +307,9 @@ func parseRecordGen(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps Par
 	neps := fiInfos.NePairs
 	recName := fiInfos.RecName
 	return frt.IfElse(frt.OpEqual(recName, ""), (func() frt.Tuple2[ParseState, Expr] {
-		rtype, ok := frt.Destr(frt.Pipe(slice.Map(NEPToName, neps), (func(_r0 []string) frt.Tuple2[RecordType, bool] { return scLookupRecord(ps2.scope, _r0) })))
+		rtype, ok := frt.Destr(frt.Pipe(slice.Map(func(_v1 NEPair) string {
+			return _v1.Name
+		}, neps), (func(_r0 []string) frt.Tuple2[RecordType, bool] { return scLookupRecord(ps2.scope, _r0) })))
 		return retRecordGen(ok, rtype, neps, ps2)
 	}), (func() frt.Tuple2[ParseState, Expr] {
 		rtype, ok := frt.Destr(scLookupRecordByName(ps2.scope, recName))
@@ -836,7 +834,9 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 		tvf := frt.Pipe(tvgen(), New_FType_FTypeVar)
 		return frt.NewTuple2(ps3, tvf)
 	})))
-	paramTypes := slice.Map(vToT, params)
+	paramTypes := slice.Map(func(_v1 Var) FType {
+		return _v1.Ftype
+	}, params)
 	defTargets := slice.PushLast(rtypeDef, paramTypes)
 	defFt := frt.Pipe(FuncType{Targets: defTargets}, New_FType_FFunc)
 	defVar := Var{Name: fname, Ftype: defFt}

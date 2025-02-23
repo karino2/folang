@@ -289,9 +289,6 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
     let recN3 = if recN <> "" then recN else recN2
     (ps3, {RecName=recN3; NePairs=neps2})
 
-let NEPToName (nvp:NEPair) =
-  nvp.Name
-
 let retRecordGen (ok:bool) (rtype: RecordType) (neps: []NEPair) (ps:ParseState) =
   if ok then
     {FieldsNV=neps; RecordType=rtype}
@@ -315,7 +312,7 @@ let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let neps = fiInfos.NePairs
   let recName = fiInfos.RecName
   if recName = "" then
-    let (rtype, ok) = slice.Map NEPToName neps |> scLookupRecord ps2.scope
+    let (rtype, ok) = slice.Map _.Name neps |> scLookupRecord ps2.scope
     retRecordGen ok rtype neps ps2
   else
     let (rtype, ok) = scLookupRecordByName ps2.scope recName
@@ -873,7 +870,7 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
                            let tvgen = psTypeVarGen ps3
                            let tvf = tvgen() |> FTypeVar
                            (ps3, tvf) 
-  let paramTypes = slice.Map vToT params
+  let paramTypes = slice.Map _.Ftype params
   let defTargets = slice.PushLast rtypeDef paramTypes
   let defFt = {FuncType.Targets=defTargets} |> FFunc
   let defVar = {Var.Name=fname; Ftype=defFt}

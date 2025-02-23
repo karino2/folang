@@ -139,7 +139,9 @@ func unifyVETup(veTup frt.Tuple2[Var, FType]) []UniRel {
 }
 
 func varsToTupleType(vars []Var) FType {
-	ets := slice.Map(vToT, vars)
+	ets := slice.Map(func(_v1 Var) FType {
+		return _v1.Ftype
+	}, vars)
 	return frt.Pipe(TupleType{ElemTypes: ets}, New_FType_FTuple)
 }
 
@@ -207,14 +209,6 @@ func collectBlock(colE func(Expr) []UniRel, colS func(Stmt) []UniRel, block Bloc
 	return frt.Pipe(frt.Pipe(slice.Map(colS, block.Stmts), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(colE(block.FinalExpr), _r0) }))
 }
 
-func mrToBlock(mr MatchRule) Block {
-	return mr.Body
-}
-
-func NEPToExpr(nep NEPair) Expr {
-	return nep.Expr
-}
-
 func NEPToNT(nep NEPair) frt.Tuple2[string, FType] {
 	return frt.NewTuple2(nep.Name, ExprToType(nep.Expr))
 }
@@ -264,7 +258,9 @@ func collectExprRel(expr Expr) []UniRel {
 		return frt.Pipe(collectSlice(es), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ERecordGen:
 		rg := _v10.Value
-		fieldValEs := slice.Map(NEPToExpr, rg.FieldsNV)
+		fieldValEs := slice.Map(func(_v1 NEPair) Expr {
+			return _v1.Expr
+		}, rg.FieldsNV)
 		inside := frt.Pipe(frt.Pipe(fieldValEs, (func(_r0 []Expr) [][]UniRel { return slice.Map(colE, _r0) })), slice.Concat)
 		return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(NEPToNT, rg.FieldsNV), (func(_r0 []frt.Tuple2[string, FType]) [][]UniRel {
 			return slice.Map((func(_r0 frt.Tuple2[string, FType]) []UniRel { return recNTUnify(rg.RecordType, _r0) }), _r0)
@@ -280,7 +276,9 @@ func collectExprRel(expr Expr) []UniRel {
 			return colB(bl)
 		case ReturnableExpr_RMatchExpr:
 			me := _v11.Value
-			return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(mrToBlock, me.Rules), (func(_r0 []Block) [][]UniRel { return slice.Map(colB, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(colE(me.Target), _r0) }))
+			return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(func(_v2 MatchRule) Block {
+				return _v2.Body
+			}, me.Rules), (func(_r0 []Block) [][]UniRel { return slice.Map(colB, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(colE(me.Target), _r0) }))
 		default:
 			panic("Union pattern fail. Never reached here.")
 		}
@@ -560,7 +558,9 @@ func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
 			return slice.Append(nvar, nrhs)
 		case LLetVarDef_LLDestVarDef:
 			ldvd := _v21.Value
-			nvars := frt.Pipe(slice.Map(vToT, ldvd.Lvars), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
+			nvars := frt.Pipe(slice.Map(func(_v1 Var) FType {
+				return _v1.Ftype
+			}, ldvd.Lvars), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
 			nrhs := collE(ldvd.Rhs)
 			return slice.Append(nvars, nrhs)
 		default:
@@ -601,11 +601,15 @@ func collectTVarExpr(expr Expr) []string {
 		return slice.Collect(recurse, es)
 	case Expr_ELambda:
 		le := _v22.Value
-		pas := frt.Pipe(slice.Map(vToT, le.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
+		pas := frt.Pipe(slice.Map(func(_v1 Var) FType {
+			return _v1.Ftype
+		}, le.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
 		return frt.Pipe(collB(le.Body), (func(_r0 []string) []string { return slice.Append(pas, _r0) }))
 	case Expr_ERecordGen:
 		rg := _v22.Value
-		return frt.Pipe(slice.Map(NEPToExpr, rg.FieldsNV), (func(_r0 []Expr) []string { return slice.Collect(recurse, _r0) }))
+		return frt.Pipe(slice.Map(func(_v2 NEPair) Expr {
+			return _v2.Expr
+		}, rg.FieldsNV), (func(_r0 []Expr) []string { return slice.Collect(recurse, _r0) }))
 	case Expr_ELazyBlock:
 		lb := _v22.Value
 		return collB(lb.Block)
@@ -617,7 +621,9 @@ func collectTVarExpr(expr Expr) []string {
 			return collB(bl)
 		case ReturnableExpr_RMatchExpr:
 			me := _v23.Value
-			return frt.Pipe(frt.Pipe(slice.Map(mrToBlock, me.Rules), (func(_r0 []Block) []string { return slice.Collect(collB, _r0) })), (func(_r0 []string) []string { return slice.Append(recurse(me.Target), _r0) }))
+			return frt.Pipe(frt.Pipe(slice.Map(func(_v3 MatchRule) Block {
+				return _v3.Body
+			}, me.Rules), (func(_r0 []Block) []string { return slice.Collect(collB, _r0) })), (func(_r0 []string) []string { return slice.Append(recurse(me.Target), _r0) }))
 		default:
 			panic("Union pattern fail. Never reached here.")
 		}
@@ -676,7 +682,9 @@ func InferExpr(tvc TypeVarCtx, expr Expr) Expr {
 
 func collectTVarLfd(lfd LetFuncDef) []string {
 	vres := collectTVarFType(lfd.Fvar.Ftype)
-	pres := frt.Pipe(slice.Map(vToT, lfd.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
+	pres := frt.Pipe(slice.Map(func(_v1 Var) FType {
+		return _v1.Ftype
+	}, lfd.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
 	bres := collectTVarBlockFacade(lfd.Body)
 	res := ([][]string{vres, pres, bres})
 	return slice.Concat(res)

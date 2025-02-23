@@ -161,7 +161,7 @@ let unifyVETup (veTup: Var*FType) =
     unifyType v.Ftype ft
 
 let varsToTupleType (vars: []Var) =
-  let ets = slice.Map vToT vars
+  let ets = slice.Map _.Ftype vars
   {ElemTypes=ets}
   |> FTuple
 
@@ -227,12 +227,6 @@ let collectBlock (colE:Expr->[]UniRel) (colS:Stmt->[]UniRel) (block:Block) =
     |> slice.Concat
     |> slice.Append (colE block.FinalExpr)
 
-let mrToBlock (mr:MatchRule) =
-  mr.Body
-
-let NEPToExpr (nep:NEPair) =
-  nep.Expr
-
 let NEPToNT (nep:NEPair) =
   (nep.Name, ExprToType nep.Expr)
 
@@ -270,7 +264,7 @@ let collectExprRel (expr:Expr) : []UniRel =
     collectSlice es
     |> slice.Append inside
   | ERecordGen rg ->
-    let fieldValEs = slice.Map NEPToExpr rg.FieldsNV
+    let fieldValEs = slice.Map _.Expr rg.FieldsNV
     let inside = fieldValEs
                 |> slice.Map colE
                 |> slice.Concat
@@ -285,7 +279,7 @@ let collectExprRel (expr:Expr) : []UniRel =
     | RBlock bl ->
       colB bl
     | RMatchExpr me ->
-      slice.Map mrToBlock me.Rules
+      slice.Map _.Body me.Rules
       |> slice.Map colB
       |> slice.Concat
       |> slice.Append (colE me.Target)
@@ -529,7 +523,7 @@ let collectTVarStmt (collE:Expr->[]string) (stmt:Stmt) =
       let nrhs = collE lvd.Rhs
       slice.Append nvar nrhs
     | LLDestVarDef ldvd ->
-      let nvars = slice.Map vToT ldvd.Lvars |> slice.Collect collectTVarFType
+      let nvars = slice.Map _.Ftype ldvd.Lvars |> slice.Collect collectTVarFType
       let nrhs = collE ldvd.Rhs
       slice.Append nvars nrhs
   | SExprStmt e -> 
@@ -554,11 +548,11 @@ let collectTVarExpr (expr:Expr) : []string =
      slice.Append lres rres
   | ETupleExpr es -> slice.Collect recurse es
   | ELambda le ->
-    let pas = slice.Map vToT le.Params |> slice.Collect collectTVarFType
+    let pas = slice.Map _.Ftype le.Params |> slice.Collect collectTVarFType
     collB le.Body
     |> slice.Append pas
   | ERecordGen rg ->
-    slice.Map NEPToExpr rg.FieldsNV
+    slice.Map _.Expr rg.FieldsNV
     |> slice.Collect recurse
   | ELazyBlock lb ->
     collB lb.Block
@@ -567,7 +561,7 @@ let collectTVarExpr (expr:Expr) : []string =
     | RBlock bl ->
       collB bl
     | RMatchExpr me ->
-      slice.Map mrToBlock me.Rules |> slice.Collect collB
+      slice.Map _.Body me.Rules |> slice.Collect collB
       |> slice.Append (recurse me.Target)
   | EFunCall fc ->
     let colt = varRefVarType fc.TargetFunc |> collectTVarFType 
@@ -617,7 +611,7 @@ let InferExpr (tvc:TypeVarCtx) (expr:Expr) =
 
 let collectTVarLfd (lfd:LetFuncDef) =
   let vres = collectTVarFType lfd.Fvar.Ftype
-  let pres = slice.Map vToT lfd.Params |> slice.Collect collectTVarFType
+  let pres = slice.Map _.Ftype lfd.Params |> slice.Collect collectTVarFType
   let bres = collectTVarBlockFacade lfd.Body
   let res = [vres;pres;bres] // poor parse.
   slice.Concat res
