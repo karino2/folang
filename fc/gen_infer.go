@@ -401,8 +401,7 @@ func transExprNE(cnv func(Expr) Expr, p NEPair) NEPair {
 	return NEPair{Name: p.Name, Expr: cnv(p.Expr)}
 }
 
-func transTypeStmt(transTV func(TypeVar) FType, transE func(Expr) Expr, stmt Stmt) Stmt {
-	transV := (func(_r0 Var) Var { return transOneVar(transTV, _r0) })
+func transStmt(transV func(Var) Var, transE func(Expr) Expr, stmt Stmt) Stmt {
 	switch _v14 := (stmt).(type) {
 	case Stmt_SLetVarDef:
 		llvd := _v14.Value
@@ -433,18 +432,14 @@ func transExprMatchRule(pExpr func(Expr) Expr, mr MatchRule) MatchRule {
 	return MatchRule{Pattern: mr.Pattern, Body: nbody}
 }
 
-func transTypeBlock(transE func(Expr) Expr, transS func(Stmt) Stmt, bl Block) Block {
+func transBlock(transE func(Expr) Expr, transS func(Stmt) Stmt, bl Block) Block {
 	nss := frt.Pipe(bl.Stmts, (func(_r0 []Stmt) []Stmt { return slice.Map(transS, _r0) }))
 	fexpr := transE(bl.FinalExpr)
 	return Block{Stmts: nss, FinalExpr: fexpr}
 }
 
-func transTypeExpr(transTV func(TypeVar) FType, expr Expr) Expr {
-	transV := (func(_r0 Var) Var { return transOneVar(transTV, _r0) })
-	transT := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
-	transE := (func(_r0 Expr) Expr { return transTypeExpr(transTV, _r0) })
-	transS := (func(_r0 Stmt) Stmt { return transTypeStmt(transTV, transE, _r0) })
-	transB := (func(_r0 Block) Block { return transTypeBlock(transE, transS, _r0) })
+func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt) Stmt, transB func(Block) Block, expr Expr) Expr {
+	transE := (func(_r0 Expr) Expr { return transExpr(transT, transV, transS, transB, _r0) })
 	switch _v16 := (expr).(type) {
 	case Expr_EVarRef:
 		rv := _v16.Value
@@ -489,7 +484,7 @@ func transTypeExpr(transTV func(TypeVar) FType, expr Expr) Expr {
 		switch _v18 := (re).(type) {
 		case ReturnableExpr_RBlock:
 			bl := _v18.Value
-			return frt.Pipe(transTypeBlock(transE, transS, bl), blockToExpr)
+			return frt.Pipe(transBlock(transE, transS, bl), blockToExpr)
 		case ReturnableExpr_RMatchExpr:
 			me := _v18.Value
 			ntarget := transE(me.Target)
@@ -522,14 +517,24 @@ func transTypeExpr(transTV func(TypeVar) FType, expr Expr) Expr {
 	}
 }
 
+func transTVExpr(transTV func(TypeVar) FType, expr Expr) Expr {
+	transE := (func(_r0 Expr) Expr { return transTVExpr(transTV, _r0) })
+	transT := (func(_r0 FType) FType { return transTVFType(transTV, _r0) })
+	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
+	transS := (func(_r0 Stmt) Stmt { return transStmt(transV, transE, _r0) })
+	transB := (func(_r0 Block) Block { return transBlock(transE, transS, _r0) })
+	return transExpr(transT, transV, transS, transB, expr)
+}
+
 func transTypeBlockFacade(transTV func(TypeVar) FType, block Block) Block {
-	transE := (func(_r0 Expr) Expr { return transTypeExpr(transTV, _r0) })
-	transS := (func(_r0 Stmt) Stmt { return transTypeStmt(transTV, transE, _r0) })
-	return transTypeBlock(transE, transS, block)
+	transE := (func(_r0 Expr) Expr { return transTVExpr(transTV, _r0) })
+	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
+	transS := (func(_r0 Stmt) Stmt { return transStmt(transV, transE, _r0) })
+	return transBlock(transE, transS, block)
 }
 
 func transTypeLfd(transTV func(TypeVar) FType, lfd LetFuncDef) LetFuncDef {
-	transV := (func(_r0 Var) Var { return transOneVar(transTV, _r0) })
+	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
 	nfvar := transV(lfd.Fvar)
 	nparams := slice.Map(transV, lfd.Params)
 	nbody := transTypeBlockFacade(transTV, lfd.Body)
@@ -645,19 +650,19 @@ func resolveOneTypeVar(rsv Resolver, tv TypeVar) FType {
 		return frt.IfElse(frt.OpEqual(tv2.Name, tv.Name), (func() FType {
 			return rcand
 		}), (func() FType {
-			return transTypeVarFType(recurse, rcand)
+			return transTVFType(recurse, rcand)
 		}))
 	default:
-		return transTypeVarFType(recurse, rcand)
+		return transTVFType(recurse, rcand)
 	}
 }
 
 func resolveType(rsv Resolver, ftp FType) FType {
-	return transTypeVarFType((func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) }), ftp)
+	return transTVFType((func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) }), ftp)
 }
 
 func resolveExprType(rsv Resolver, expr Expr) Expr {
-	return transTypeExpr((func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) }), expr)
+	return transTVExpr((func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) }), expr)
 }
 
 func resolveLfd(rsv Resolver, lfd LetFuncDef) LetFuncDef {

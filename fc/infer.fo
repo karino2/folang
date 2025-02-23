@@ -394,8 +394,7 @@ let updateResolver (res:Resolver) (rels:[]UniRel) : Resolver =
 let transExprNE (cnv:Expr->Expr) (p:NEPair) =
    {NEPair.Name=p.Name; Expr=cnv p.Expr}
 
-let transTypeStmt (transTV:TypeVar->FType) (transE:Expr->Expr) (stmt:Stmt) =
-  let transV = transOneVar transTV
+let transStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
   match stmt with
   | SLetVarDef llvd ->
     match llvd with
@@ -414,21 +413,13 @@ let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
   let nbody = blockToExpr mr.Body |> pExpr |> exprToBlock
   {Pattern=mr.Pattern; Body=nbody}
 
-let transTypeBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
+let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let nss = bl.Stmts |> slice.Map transS
   let fexpr = transE bl.FinalExpr
   {Block.Stmts=nss; FinalExpr=fexpr}
 
-/*
-  Self transform Var of expr.
-  For composite expr, call each element and composite automatically.
-*/
-let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
-  let transV = transOneVar transTV
-  let transT = transTypeVarFType transTV
-  let transE = transTypeExpr transTV
-  let transS = (transTypeStmt transTV transE)
-  let transB = transTypeBlock transE transS
+let transExpr (transT: FType->FType) (transV:Var->Var) (transS: Stmt->Stmt) (transB: Block->Block) (expr:Expr) : Expr =
+  let transE = transExpr transT transV transS transB
   match expr with
   | EVarRef rv ->
     match rv with
@@ -462,7 +453,7 @@ let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
   | EReturnableExpr re -> 
     match re with
     | RBlock bl ->
-      transTypeBlock transE transS bl
+      transBlock transE transS bl
       |> blockToExpr
     | RMatchExpr me ->
       let ntarget = transE me.Target
@@ -485,13 +476,22 @@ let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
     {TargetExpr=ntarget; FieldName=fa.FieldName}
     |> EFieldAccess
 
+let transTVExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
+  let transE = transTVExpr transTV
+  let transT = transTVFType transTV
+  let transV = transTVVar transTV
+  let transS = (transStmt transV transE)
+  let transB = transBlock transE transS
+  transExpr transT transV transS transB expr
+
 let transTypeBlockFacade (transTV:TypeVar->FType) (block:Block) =
-  let transE = transTypeExpr transTV
-  let transS = (transTypeStmt transTV transE)
-  transTypeBlock transE transS block
+  let transE = transTVExpr transTV
+  let transV = transTVVar transTV
+  let transS = (transStmt transV transE)
+  transBlock transE transS block
 
 let transTypeLfd (transTV:TypeVar->FType) (lfd:LetFuncDef) =
-   let transV = transOneVar transTV  
+   let transV = transTVVar transTV  
    let nfvar = transV lfd.Fvar
    let nparams = slice.Map transV lfd.Params
    let nbody = transTypeBlockFacade transTV lfd.Body
@@ -501,7 +501,7 @@ let transTypeLfd (transTV:TypeVar->FType) (lfd:LetFuncDef) =
 /*
 type var collection.
 
-This is used later, but implementation is similar to above transTypeExpr.
+This is used later, but implementation is similar to above transTVExpr.
 So I place here.
 Both are catamorphism but currently folang generics is not enough to create it.
 
@@ -571,7 +571,7 @@ let collectTVarBlockFacade (b:Block) =
   collectTVarBlock collE collS b
 
 /*
-  resolve type using transTypeExpr utility.
+  resolve type using transTVExpr utility.
 */
 
 let resolveOneTypeVar (rsv: Resolver) (tv:TypeVar) : FType =
@@ -584,16 +584,16 @@ let resolveOneTypeVar (rsv: Resolver) (tv:TypeVar) : FType =
       // same type var, no need to drill down.
       rcand
     else
-      transTypeVarFType recurse rcand
-  | _ -> transTypeVarFType recurse rcand
+      transTVFType recurse rcand
+  | _ -> transTVFType recurse rcand
   
 
 let resolveType (rsv: Resolver) (ftp:FType) : FType =
-  transTypeVarFType (resolveOneTypeVar rsv) ftp
+  transTVFType (resolveOneTypeVar rsv) ftp
 
 
 let resolveExprType (rsv: Resolver) (expr:Expr) : Expr =
-  transTypeExpr (resolveOneTypeVar rsv) expr
+  transTVExpr (resolveOneTypeVar rsv) expr
 
 let resolveLfd (rsv: Resolver) (lfd:LetFuncDef) =
   transTypeLfd (resolveOneTypeVar rsv) lfd

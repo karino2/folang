@@ -13,8 +13,8 @@ import dict
   TransformT FTypeVar and recomposite.
   FFieldAccess might be resolved.
 */
-let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
-  let recurse = transTypeVarFType transTV
+let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
+  let recurse = transTVFType transTV
   match ftp with
   | FTypeVar tv -> transTV tv
   | FSlice ts ->
@@ -37,8 +37,8 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     |> FParamd
   | _ -> ftp
 
-let transOneVar (transTV: TypeVar->FType) (v:Var) =
-  let ntp = transTypeVarFType transTV v.Ftype
+let transTVVar (transTV: TypeVar->FType) (v:Var) =
+  let ntp = transTVFType transTV v.Ftype
   {Var.Name=v.Name; Ftype=ntp}
 
 let collectTVarFType (ft:FType) : []string =
@@ -66,7 +66,7 @@ let tpReplaceOne (tdic:dict.Dict<string, FType>) (tv:TypeVar) =
     FTypeVar tv
 
 let tpreplace (tdic:dict.Dict<string, FType>) (ft:FType) =
-  transTypeVarFType (tpReplaceOne tdic) ft
+  transTVFType (tpReplaceOne tdic) ft
 
 let emptyFtps () =
   slice.New<FType> ()
@@ -701,22 +701,22 @@ let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
 /*
   MultipleDefs resolve forward declaration, etc.
 */
-let transVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
-  let nt = transTypeVarFType transV ntp.Ftype
+let transTVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
+  let nt = transTVFType transV ntp.Ftype
   {NameTypePair.Name=ntp.Name; Ftype=nt}
 
-let transDefStmt (transV: TypeVar->FType) (df: DefStmt) =
+let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) =
   match df with
   | DRecordDef rd ->
-    let nfields = slice.Map (transVNTPair transV) rd.Fields
+    let nfields = slice.Map (transTVNTPair transTV) rd.Fields
     {RecordDef.Name=rd.Name; Fields=nfields}
     |> DRecordDef
   | DUnionDef ud ->
-    let ncases = slice.Map (transVNTPair transV) ud.Cases
+    let ncases = slice.Map (transTVNTPair transTV) ud.Cases
     {UnionDef.Name=ud.Name; Cases=ncases}
     |> DUnionDef
 
-let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
+let transTVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
   let (rname, ok) = dict.TryFind tdctx.allocedDict tv.Name
   if ok then
     let (nt, ok2) = dict.TryFind tdctx.defined rname
@@ -729,8 +729,8 @@ let transVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
     FTypeVar tv
 
 let resolveFwrdDecl (md:MultipleDefs) (ps:ParseState) =
-  let transV = transVByTDCtx ps.tdctx
-  let transD = transDefStmt transV
+  let transV = transTVByTDCtx ps.tdctx
+  let transD = transTVDefStmt transV
   let ndefs = slice.Map transD md.Defs
   {Defs=ndefs}
 

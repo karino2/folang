@@ -6,8 +6,8 @@ import "github.com/karino2/folang/pkg/slice"
 
 import "github.com/karino2/folang/pkg/dict"
 
-func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
-	recurse := (func(_r0 FType) FType { return transTypeVarFType(transTV, _r0) })
+func transTVFType(transTV func(TypeVar) FType, ftp FType) FType {
+	recurse := (func(_r0 FType) FType { return transTVFType(transTV, _r0) })
 	switch _v1 := (ftp).(type) {
 	case FType_FTypeVar:
 		tv := _v1.Value
@@ -36,8 +36,8 @@ func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 	}
 }
 
-func transOneVar(transTV func(TypeVar) FType, v Var) Var {
-	ntp := transTypeVarFType(transTV, v.Ftype)
+func transTVVar(transTV func(TypeVar) FType, v Var) Var {
+	ntp := transTVFType(transTV, v.Ftype)
 	return Var{Name: v.Name, Ftype: ntp}
 }
 
@@ -74,7 +74,7 @@ func tpReplaceOne(tdic dict.Dict[string, FType], tv TypeVar) FType {
 }
 
 func tpreplace(tdic dict.Dict[string, FType], ft FType) FType {
-	return transTypeVarFType((func(_r0 TypeVar) FType { return tpReplaceOne(tdic, _r0) }), ft)
+	return transTVFType((func(_r0 TypeVar) FType { return tpReplaceOne(tdic, _r0) }), ft)
 }
 
 func emptyFtps() []FType {
@@ -756,27 +756,27 @@ func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
 	dict.Add(ps.tdctx.defined, ud.Name, fut)
 }
 
-func transVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
-	nt := transTypeVarFType(transV, ntp.Ftype)
+func transTVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
+	nt := transTVFType(transV, ntp.Ftype)
 	return NameTypePair{Name: ntp.Name, Ftype: nt}
 }
 
-func transDefStmt(transV func(TypeVar) FType, df DefStmt) DefStmt {
+func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
 	switch _v4 := (df).(type) {
 	case DefStmt_DRecordDef:
 		rd := _v4.Value
-		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), rd.Fields)
+		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), rd.Fields)
 		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
 		ud := _v4.Value
-		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transVNTPair(transV, _r0) }), ud.Cases)
+		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), ud.Cases)
 		return frt.Pipe(UnionDef{Name: ud.Name, Cases: ncases}, New_DefStmt_DUnionDef)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
 }
 
-func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
+func transTVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
 	rname, ok := frt.Destr(dict.TryFind(tdctx.allocedDict, tv.Name))
 	return frt.IfElse(ok, (func() FType {
 		nt, ok2 := frt.Destr(dict.TryFind(tdctx.defined, rname))
@@ -792,8 +792,8 @@ func transVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
 }
 
 func resolveFwrdDecl(md MultipleDefs, ps ParseState) MultipleDefs {
-	transV := (func(_r0 TypeVar) FType { return transVByTDCtx(ps.tdctx, _r0) })
-	transD := (func(_r0 DefStmt) DefStmt { return transDefStmt(transV, _r0) })
+	transV := (func(_r0 TypeVar) FType { return transTVByTDCtx(ps.tdctx, _r0) })
+	transD := (func(_r0 DefStmt) DefStmt { return transTVDefStmt(transV, _r0) })
 	ndefs := slice.Map(transD, md.Defs)
 	return MultipleDefs{Defs: ndefs}
 }
