@@ -819,6 +819,14 @@ let hoge t =
 `,
 			"t []string",
 		},
+		{
+			`package main
+
+let hoge () =
+  3*2/3
+`,
+			"((3*2)/3)",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1134,12 +1142,8 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let Map<T, U> : (T->U)->[]T->[]U
-
-
 let hoge () =
-  Map (fun x->x+2) [1; 2; 3]
+  3*2/3
 `
 
 	got := transpile(src)

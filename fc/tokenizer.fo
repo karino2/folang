@@ -48,6 +48,7 @@ type TokenType =
 |	PLUS
 |	MINUS
 |	ASTER
+| SLASH
 |	IF
 |	THEN
 |	ELSE

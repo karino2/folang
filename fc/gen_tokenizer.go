@@ -51,6 +51,7 @@ func (TokenType_AMPAMP) TokenType_Union()       {}
 func (TokenType_PLUS) TokenType_Union()         {}
 func (TokenType_MINUS) TokenType_Union()        {}
 func (TokenType_ASTER) TokenType_Union()        {}
+func (TokenType_SLASH) TokenType_Union()        {}
 func (TokenType_IF) TokenType_Union()           {}
 func (TokenType_THEN) TokenType_Union()         {}
 func (TokenType_ELSE) TokenType_Union()         {}
@@ -281,6 +282,11 @@ type TokenType_ASTER struct {
 }
 
 var New_TokenType_ASTER TokenType = TokenType_ASTER{}
+
+type TokenType_SLASH struct {
+}
+
+var New_TokenType_SLASH TokenType = TokenType_SLASH{}
 
 type TokenType_IF struct {
 }

@@ -223,7 +223,7 @@ func scanTokenAt(buf string, pos int) Token {
 		if isCharAt(buf, pos+1, '*') || isCharAt(buf, pos+1, '/') {
 			return scanSpaceToken(buf, pos)
 		} else {
-			panic("slash, NYI")
+			return newOneCharToken(New_TokenType_SLASH, pos, b)
 		}
 	case 'a' <= b && b <= 'z' ||
 		'A' <= b && b <= 'Z' ||
@@ -449,6 +449,8 @@ var binOpMap = map[TokenType]BinOpInfo{
 	New_TokenType_BRACKET: {3, "frt.OpNotEqual", true},
 	New_TokenType_PLUS:    {4, "+", false},
 	New_TokenType_MINUS:   {4, "-", false},
+	New_TokenType_ASTER:   {5, "*", false},
+	New_TokenType_SLASH:   {5, "/", false},
 }
 
 var binOpMapWrapper = dict.Dict[TokenType, BinOpInfo]{Fdict: binOpMap}
