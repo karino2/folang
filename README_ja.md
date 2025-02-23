@@ -7,6 +7,8 @@ Folangのトランスパイラ自身もFolangで書かれています（セル�
 
 より詳細は[Folangとは何か？](docs/WhatIsFolang_ja.md)を参照ください。
 
+## 簡単な例
+
 ```
 package main
 import frt
@@ -90,6 +92,8 @@ func main() {
    (func(_r0 frt.Tuple2[int, string]) { frt.Printf1("%v\n", _r0) }))
 }
 ```
+
+他の例は[samples/README.md](samples/README.md)を参照
 
 ## セットアップ
 
