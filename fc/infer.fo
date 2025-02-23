@@ -160,9 +160,6 @@ let unifyVETup (veTup: Var*FType) =
   else
     unifyType v.Ftype ft
 
-let vToT (v:Var) =
-  v.Ftype
-
 let varsToTupleType (vars: []Var) =
   let ets = slice.Map vToT vars
   {ElemTypes=ets}
@@ -238,15 +235,16 @@ let NEPToExpr (nep:NEPair) =
 
 
 let collectExprRel (expr:Expr) : []UniRel =
-  let colB = collectBlock collectExprRel (collectStmtRel collectExprRel)
+  let colE = collectExprRel
+  let colB = collectBlock colE (collectStmtRel colE)
   match expr with
   | EFunCall fc ->
-    let inside = slice.Map collectExprRel fc.Args |> slice.Concat
+    let inside = slice.Map colE fc.Args |> slice.Concat
     collectFunCall fc
     |> slice.Append inside
   | EBinOpCall bop ->
-    let insideL = collectExprRel bop.Lhs 
-    let insideR = collectExprRel bop.Rhs
+    let insideL = colE bop.Lhs 
+    let insideR = colE bop.Rhs
     let lft = ExprToType bop.Lhs
     let rft = ExprToType bop.Rhs
     let teq = unifyType lft rft
@@ -256,15 +254,15 @@ let collectExprRel (expr:Expr) : []UniRel =
     let all = [insideL;insideR;teq; retEq]
     slice.Concat all
   | ETupleExpr tes ->
-    slice.Map collectExprRel tes |> slice.Concat    
+    slice.Map colE tes |> slice.Concat    
   | ESlice es ->
-    let inside = slice.Map collectExprRel es |> slice.Concat
+    let inside = slice.Map colE es |> slice.Concat
     collectSlice es
     |> slice.Append inside
   | ERecordGen rg ->
     // NYI: unify to recordType.  
     slice.Map NEPToExpr rg.FieldsNV
-    |> slice.Map collectExprRel
+    |> slice.Map colE
     |> slice.Concat 
   | ELazyBlock lb ->
     colB lb.Block
@@ -276,7 +274,7 @@ let collectExprRel (expr:Expr) : []UniRel =
       slice.Map mrToBlock me.Rules
       |> slice.Map colB
       |> slice.Concat
-      |> slice.Append (collectExprRel me.Target)
+      |> slice.Append (colE me.Target)
   | _ -> emptyRels()
 
 let lfdRetType (lfd:LetFuncDef) =

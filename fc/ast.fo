@@ -113,3 +113,7 @@ let NewPackageInfo (name:string) =
   let ffd = dict.New<string, FuncFactory> ()
   let tfdd = dict.New<string, TypeFactoryData> ()
   {Name=name; FuncInfo=ffd; TypeInfo=tfdd}
+
+let vToT (v:Var) =
+  v.Ftype
+
