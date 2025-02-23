@@ -86,18 +86,24 @@ func fcToFuncType(fc FunCall) FuncType {
 }
 
 func fcToType(fc FunCall) FType {
-	ft := fcToFuncType(fc)
-	tlen := frt.Pipe(fargs(ft), slice.Length)
-	alen := slice.Length(fc.Args)
-	return frt.IfElse(frt.OpEqual(alen, tlen), (func() FType {
-		return freturn(ft)
-	}), (func() FType {
-		if alen > tlen {
-			panic("too many arugments")
-		}
-		newts := slice.Skip(alen, ft.Targets)
-		return New_FType_FFunc(FuncType{Targets: newts})
-	}))
+	firstTp := varRefVarType(fc.TargetFunc)
+	switch (firstTp).(type) {
+	case FType_FTypeVar:
+		return firstTp
+	default:
+		ft := fcToFuncType(fc)
+		tlen := frt.Pipe(fargs(ft), slice.Length)
+		alen := slice.Length(fc.Args)
+		return frt.IfElse(frt.OpEqual(alen, tlen), (func() FType {
+			return freturn(ft)
+		}), (func() FType {
+			if alen > tlen {
+				panic("too many arugments")
+			}
+			newts := slice.Skip(alen, ft.Targets)
+			return New_FType_FFunc(FuncType{Targets: newts})
+		}))
+	}
 }
 
 func ExprToType(expr Expr) FType {

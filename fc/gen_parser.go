@@ -577,6 +577,33 @@ func parseIfExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock fun
 	return frt.Pipe(psConsume(New_TokenType_IF, ps), (func(_r0 ParseState) frt.Tuple2[ParseState, Expr] { return parseIfAfterIfExpr(pExpr, pBlock, _r0) }))
 }
 
+func tvgen2ftvgen(tgen func() TypeVar) FType {
+	return frt.Pipe(tgen(), New_FType_FTypeVar)
+}
+
+func updateFunCallFunType(tgen func() TypeVar, res Resolver, vr VarRef, args []Expr) VarRef {
+	switch _v2 := (vr).(type) {
+	case VarRef_VRVar:
+		v := _v2.Value
+		switch _v3 := (v.Ftype).(type) {
+		case FType_FFunc:
+			return vr
+		case FType_FTypeVar:
+			tv := _v3.Value
+			ntv := frt.Pipe(tgen(), New_FType_FTypeVar)
+			nftype := frt.Pipe(frt.Pipe(slice.Map(ExprToType, args), (func(_r0 []FType) []FType { return slice.PushLast(ntv, _r0) })), newFFunc)
+			frt.Pipe(UniRel{SrcV: tv.Name, Dest: nftype}, (func(_r0 UniRel) []UniRel { return updateResOne(res, _r0) }))
+			return frt.Pipe(Var{Name: v.Name, Ftype: nftype}, New_VarRef_VRVar)
+		default:
+			panic("Union pattern fail. Never reached here.")
+		}
+	case VarRef_VRSVar:
+		return vr
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
 func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, Expr] {
 	switch (psCurrentTT(ps)).(type) {
 	case TokenType_MATCH:
@@ -599,10 +626,12 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v2 := (head).(type) {
+			switch _v4 := (head).(type) {
 			case Expr_EVarRef:
-				vr := _v2.Value
-				fc := FunCall{TargetFunc: vr, Args: tail}
+				vr := _v4.Value
+				tgen := psTypeVarGen(ps2)
+				nvr := updateFunCallFunType(tgen, ps2.tvc.resolver, vr, tail)
+				fc := FunCall{TargetFunc: nvr, Args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
 				frt.Panic("Funcall head is not var")
@@ -685,9 +714,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v3 := (last).(type) {
+	switch _v5 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v3.Value
+		e := _v5.Value
 		return frt.NewTuple2(ps2, Block{Stmts: stmts, FinalExpr: e})
 	default:
 		frt.Panic("block of last is not expr")
@@ -740,9 +769,9 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 	ps4, rhs0 := frt.Destr(pExpr(ps3))
 	rhs := InferExpr(ps4.tvc, rhs0)
 	rtype := ExprToType(rhs)
-	switch _v4 := (rtype).(type) {
+	switch _v6 := (rtype).(type) {
 	case FType_FTuple:
-		tup := _v4.Value
+		tup := _v6.Value
 		v1 := Var{Name: vname1, Ftype: slice.Head(tup.ElemTypes)}
 		v2 := Var{Name: vname2, Ftype: slice.Last(tup.ElemTypes)}
 		defVarIfNecessary(ps4.scope, v1)
@@ -804,9 +833,9 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 
 func rfdToFuncFactory(rfd RootFuncDef) FuncFactory {
 	targets := (func() []FType {
-		switch _v5 := (rfd.Lfd.Fvar.Ftype).(type) {
+		switch _v7 := (rfd.Lfd.Fvar.Ftype).(type) {
 		case FType_FFunc:
-			ft := _v5.Value
+			ft := _v7.Value
 			return ft.Targets
 		default:
 			frt.Panic("root func def let with non func var, bug")

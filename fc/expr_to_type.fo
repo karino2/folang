@@ -60,16 +60,20 @@ let fcToFuncType (fc:FunCall) =
 
 
 let fcToType (fc:FunCall) =
-  let ft = fcToFuncType fc
-  let tlen = fargs ft |> slice.Length
-  let alen = slice.Length fc.Args
-  if alen = tlen then
-    freturn ft
-  else
-    // prtial apply.
-    GoEval "if alen > tlen { panic(\"too many arugments\")}"
-    let newts = slice.Skip alen ft.Targets
-    FFunc {Targets=newts}
+  let firstTp = varRefVarType fc.TargetFunc
+  match firstTp with
+  | FTypeVar _ -> firstTp  
+  | _ ->
+    let ft = fcToFuncType fc
+    let tlen = fargs ft |> slice.Length
+    let alen = slice.Length fc.Args
+    if alen = tlen then
+      freturn ft
+    else
+      // prtial apply.
+      GoEval "if alen > tlen { panic(\"too many arugments\")}"
+      let newts = slice.Skip alen ft.Targets
+      FFunc {Targets=newts}
 
 let ExprToType (expr:Expr) : FType =
   match expr with

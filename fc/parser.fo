@@ -614,6 +614,29 @@ let parseIfExpr (pExpr:ParseState->ParseState*Expr) (pBlock:ParseState->ParseSta
   psConsume IF ps
   |> parseIfAfterIfExpr pExpr pBlock
 
+let tvgen2ftvgen (tgen:()->TypeVar) =
+  tgen () |> FTypeVar
+
+
+let updateFunCallFunType (tgen:()->TypeVar) (res:Resolver) (vr: VarRef) (args:[]Expr) =
+  match vr with
+  | VRVar v ->
+    match v.Ftype with
+    | FFunc _ -> vr // no need to resolve
+    | FTypeVar tv ->
+      // (f arg0 arg1) and f is TypeVar.
+      // We can update to (t0->t1->NewTVar)
+      let ntv = tgen () |> FTypeVar
+      let nftype = slice.Map ExprToType args
+                   |> slice.PushLast ntv
+                   |> newFFunc
+      // unify v.Ftype to nftype.
+      {SrcV=tv.Name; Dest=nftype}
+      |> updateResOne res
+      {Var.Name=v.Name; Ftype=nftype}
+      |> VRVar
+  | VRSVar _ -> vr // currently, this case is just NYI.
+
 let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
   match psCurrentTT ps with
   | MATCH ->
@@ -635,7 +658,9 @@ let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseSta
       let tail = slice.Tail es
       match head with
       | EVarRef vr ->
-        let fc = {TargetFunc=vr; Args=tail}
+        let tgen = psTypeVarGen ps2
+        let nvr = updateFunCallFunType tgen ps2.tvc.resolver vr tail
+        let fc = {TargetFunc=nvr; Args=tail}
         (ps2, EFunCall fc)
       | _ ->
         frt.Panic "Funcall head is not var"

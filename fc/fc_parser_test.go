@@ -795,6 +795,19 @@ let hoge () =
 `,
 			"toS, ([]int{1,2,3})",
 		},
+		{
+			`package main
+
+package_info _ =
+  let PushLast<T>: T->[]T->[]T
+
+let hoge iToS =
+	["abc"; "def"]
+	|> PushLast (iToS 123)
+
+`,
+			"(iToS func (int) string) []string",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1098,13 +1111,13 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info dict =
-  type Dict<K, V>
-  let New<K, V>: () -> Dict<K, V>
+package_info _ =
+  let PushLast<T>: T->[]T->[]T
 
+let hoge iToS =
+	["abc"; "def"]
+	|> PushLast (iToS 123)
 
-let hoge () =
-  dict.New<any, string> ()
 `
 
 	got := transpile(src)

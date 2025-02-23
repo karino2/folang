@@ -198,6 +198,10 @@ func frMatch(frec RecordType, fieldNames []string) bool {
 	}))
 }
 
+func newFFunc(ftypes []FType) FType {
+	return frt.Pipe(FuncType{Targets: ftypes}, New_FType_FFunc)
+}
+
 func funionToGo(fu UnionType) string {
 	return fu.Name
 }

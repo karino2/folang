@@ -406,3 +406,7 @@ func NewPackageInfo(name string) PackageInfo {
 	tfdd := dict.New[string, TypeFactoryData]()
 	return PackageInfo{Name: name, FuncInfo: ffd, TypeInfo: tfdd}
 }
+
+func vToT(v Var) FType {
+	return v.Ftype
+}

@@ -83,6 +83,8 @@ let frMatch (frec: RecordType) (fieldNames: []string)=
                       |> slice.Sort
     sortedInput = sortedFName
 
+let newFFunc (ftypes:[]FType) =
+   {FuncType.Targets=ftypes} |> FFunc
 
 let funionToGo (fu: UnionType) =
   fu.Name
