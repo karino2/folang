@@ -419,18 +419,13 @@ let transTypeBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let fexpr = transE bl.FinalExpr
   {Block.Stmts=nss; FinalExpr=fexpr}
 
-let transType (transTV: TypeVar->FType) (ft:FType) =
-  match ft with
-  | FTypeVar tv -> transTV tv
-  | _ -> ft
-
 /*
   Self transform Var of expr.
   For composite expr, call each element and composite automatically.
 */
 let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
   let transV = transOneVar transTV
-  let transT = transType transTV
+  let transT = transTypeVarFType transTV
   let transE = transTypeExpr transTV
   let transS = (transTypeStmt transTV transE)
   let transB = transTypeBlock transE transS
