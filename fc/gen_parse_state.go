@@ -26,8 +26,7 @@ func transTypeVarFType(transTV func(TypeVar) FType, ftp FType) FType {
 		return frt.Pipe(FieldAccessType{RecType: nrec, FieldName: fa.FieldName}, faResolve)
 	case FType_FFunc:
 		fnt := _v1.Value
-		nts := slice.Map(recurse, fnt.Targets)
-		return frt.Pipe(FuncType{Targets: nts}, New_FType_FFunc)
+		return frt.Pipe(slice.Map(recurse, fnt.Targets), newFFunc)
 	case FType_FParamd:
 		pt := _v1.Value
 		nts := slice.Map(recurse, pt.Targs)
@@ -641,7 +640,7 @@ func newPipeCallNormal(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	t1type := newTvf(t1name)
 	t2name := "T2"
 	t2type := newTvf(t2name)
-	secFncT := New_FType_FFunc(FuncType{Targets: ([]FType{t1type, t2type})})
+	secFncT := newFFunc(([]FType{t1type, t2type}))
 	names := ([]string{t1name, t2name})
 	tps := ([]FType{t1type, secFncT, t2type})
 	args := ([]Expr{lhs, rhs})
@@ -651,7 +650,7 @@ func newPipeCallNormal(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	t1name := "T1"
 	t1type := newTvf(t1name)
-	secFncT := New_FType_FFunc(FuncType{Targets: ([]FType{t1type, New_FType_FUnit})})
+	secFncT := newFFunc(([]FType{t1type, New_FType_FUnit}))
 	names := ([]string{t1name})
 	tps := ([]FType{t1type, secFncT, New_FType_FUnit})
 	args := ([]Expr{lhs, rhs})
@@ -697,8 +696,7 @@ func newBinOpCall(tvgen func() TypeVar, tk TokenType, binfo BinOpInfo, lhs Expr,
 }
 
 func newFnTp(argType FType, retType FType) FType {
-	tgs := ([]FType{argType, retType})
-	return frt.Pipe(FuncType{Targets: tgs}, New_FType_FFunc)
+	return frt.Pipe(([]FType{argType, retType}), newFFunc)
 }
 
 func emptySS() []string {

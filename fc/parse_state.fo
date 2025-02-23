@@ -29,9 +29,8 @@ let transTypeVarFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     {RecType=nrec; FieldName=fa.FieldName}
     |> faResolve
   | FFunc fnt ->
-    let nts = slice.Map recurse fnt.Targets
-    {FuncType.Targets=nts}
-    |> FFunc
+    slice.Map recurse fnt.Targets
+    |> newFFunc
   | FParamd pt ->
     let nts = slice.Map recurse pt.Targs
     {Name=pt.Name; Targs=nts}
@@ -589,7 +588,7 @@ let newPipeCallNormal (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =
   let t1type = newTvf t1name
   let t2name = "T2"
   let t2type = newTvf t2name
-  let secFncT = FFunc {FuncType.Targets=[t1type;t2type]}
+  let secFncT = newFFunc [t1type;t2type]
   let names =  [t1name; t2name]
   let tps = [t1type; secFncT; t2type]
   let args = [lhs;rhs]
@@ -601,7 +600,7 @@ frt.PipeUnit<T>: T->(T->())->()
 let newPipeCallUnit (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
   let t1name = "T1"
   let t1type = newTvf t1name
-  let secFncT = FFunc {FuncType.Targets=[t1type;FUnit]}
+  let secFncT = newFFunc [t1type;FUnit]
   let names =  [t1name]
   let tps = [t1type; secFncT; FUnit]
   let args = [lhs;rhs]
@@ -640,9 +639,8 @@ let newBinOpCall (tvgen: ()->TypeVar) (tk:TokenType) (binfo: BinOpInfo) (lhs: Ex
   | _ -> newBinOpNormal binfo lhs rhs
 
 let newFnTp (argType:FType) (retType:FType) =
-  let tgs = [argType;retType]
-  {FuncType.Targets=tgs}
-  |> FFunc
+  [argType;retType]
+  |> newFFunc
 
 let emptySS () =
   slice.New<string> ()

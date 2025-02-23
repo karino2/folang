@@ -122,8 +122,7 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
     | FFunc tf2 ->
       let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
       let (tps, rels) = compositeTpList compositeTp tf1.Targets tf2.Targets
-      {FuncType.Targets=tps}
-      |> FFunc
+      newFFunc tps
       |> withRels rels
     | FParamd pt2 ->
       let pt1 = GoEval<ParamdType> "lhs.(FType_FParamd).Value"

@@ -163,7 +163,7 @@ let parseType (ps:ParseState) : ParseState*FType =
   if (slice.Length tps) = 1 then
     slice.Head tps |> withPs ps2
   else
-    FFunc {FuncType.Targets=tps}
+    newFFunc tps
     |> withPs ps2
 
 type Param =
@@ -872,7 +872,7 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
                            (ps3, tvf) 
   let paramTypes = slice.Map _.Ftype params
   let defTargets = slice.PushLast rtypeDef paramTypes
-  let defFt = {FuncType.Targets=defTargets} |> FFunc
+  let defFt = newFFunc defTargets
   let defVar = {Var.Name=fname; Ftype=defFt}
   scDefVar ps4.scope fname defVar
   let (ps5, block) = psConsume EQ ps4 |> psSkipEOL |> parseBlock pLet |> CnvL psPopScope
@@ -883,7 +883,7 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
                 else
                   paramTypes
                   |> slice.PushLast rtype
-  let ft = {FuncType.Targets=targets} |> FFunc
+  let ft = newFFunc targets
   let fnvar = {Var.Name=fname; Ftype=ft}
   {Fvar=fnvar; Params=params; Body=block}
   |> withPs ps5

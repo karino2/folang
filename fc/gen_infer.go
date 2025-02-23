@@ -102,7 +102,7 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 			tf2 := _v3.Value
 			tf1 := lhs.(FType_FFunc).Value
 			tps, rels := frt.Destr(compositeTpList(compositeTp, tf1.Targets, tf2.Targets))
-			return frt.Pipe(frt.Pipe(FuncType{Targets: tps}, New_FType_FFunc), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
+			return frt.Pipe(newFFunc(tps), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 		case FType_FParamd:
 			pt2 := _v3.Value
 			pt1 := lhs.(FType_FParamd).Value
