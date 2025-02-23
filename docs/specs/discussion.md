@@ -10,11 +10,11 @@ Since these are just notes, don't worry too much about the format.
 Commas are used in ReScript, semicolons in FSharp.
 
 - [Array & List - ReScript Language Manual](https://rescript-lang.org/docs/manual/v10.0.0/array-and-list)
-- [Record - ReScript Language Manual](https://rescript-lang.org/docs/manual/v10.0.0/record) Records are commas
-- [Tuple - ReScript Language Manual](https://rescript-lang.org/docs/manual/v10.0.0/tuple) Tuples are commas in parentheses
+   - [Record - ReScript Language Manual](https://rescript-lang.org/docs/manual/v10.0.0/record) Records are commas
+   - [Tuple - ReScript Language Manual](https://rescript-lang.org/docs/manual/v10.0.0/tuple) Tuples are commas in parentheses
 - FSharp is semicolon [Lists - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/lists)
-- Records are semicolons
-- Tuples are commas in parentheses [Tuples - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/tuples)
+   - Records are semicolons
+   - Tuples are commas in parentheses [Tuples - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/tuples)
 
 Since I'm using semicolons to separate records, I've decided to standardize on semicolons.
 
