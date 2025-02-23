@@ -106,7 +106,7 @@ When doing this, it is a good idea to decide the order of arguments in F# terms,
 
 Comments support both C-style and C++ one-line comments, just like Golang.
 
-``
+```
 package main
 
 /*
@@ -115,7 +115,7 @@ This is a comment
 
 let ika () =
   123 // This is also a comment.
-``
+```
 
 ## GoEval
 
