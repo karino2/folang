@@ -378,6 +378,22 @@ func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pars
 	}))
 }
 
+func exprOnlyBlock(expr Expr) Block {
+	emp := slice.New[Stmt]()
+	return Block{Stmts: emp, FinalExpr: expr}
+}
+
+func parseUSPropAcc(ps ParseState) frt.Tuple2[ParseState, Expr] {
+	ps2, fname := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_UNDER_SCORE, ps), (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_DOT, _r0) })), psIdentNameNx))
+	tname := uniqueTmpVarName()
+	ttype := frt.Pipe(psNewTypeVar(ps2), New_FType_FTypeVar)
+	tmpVar := Var{Name: tname, Ftype: ttype}
+	vexpr := varToExpr(tmpVar)
+	faExpr := frt.Pipe(FieldAccess{TargetExpr: vexpr, FieldName: fname}, New_Expr_EFieldAccess)
+	body := exprOnlyBlock(faExpr)
+	return frt.Pipe(frt.Pipe(LambdaExpr{Params: ([]Var{tmpVar}), Body: body}, New_Expr_ELambda), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps2, _r0) }))
+}
+
 func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {
 	cur := psCurrent(ps)
 	pn := psNext(ps)
@@ -413,6 +429,8 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 				}))
 			}))
 		}))
+	case TokenType_UNDER_SCORE:
+		return parseUSPropAcc(ps)
 	case TokenType_IDENTIFIER:
 		return frt.IfElse(frt.OpEqual(cur.stringVal, "GoEval"), (func() frt.Tuple2[ParseState, Expr] {
 			return parseGoEval(ps)
@@ -529,11 +547,6 @@ func parseMatchExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock 
 	})), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] { return CnvL(psSkipEOL, _r0) })))
 	ps3, rules := frt.Destr(parseMatchRules(pBlock, target, ps2))
 	return frt.Pipe(MatchExpr{Target: target, Rules: rules}, (func(_r0 MatchExpr) frt.Tuple2[ParseState, MatchExpr] { return withPs(ps3, _r0) }))
-}
-
-func exprOnlyBlock(expr Expr) Block {
-	emp := []Stmt{}
-	return Block{Stmts: emp, FinalExpr: expr}
 }
 
 func parseInlineBlock(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Block] {

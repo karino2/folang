@@ -119,3 +119,5 @@ let NewPackageInfo (name:string) =
 let vToT (v:Var) =
   v.Ftype
 
+let varToExpr (v:Var) =
+  VRVar v |> EVarRef

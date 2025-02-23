@@ -1139,6 +1139,20 @@ let hoge () =
 			`,
 			[]string{"func (x int)int", "return (x+2)"},
 		},
+		{
+			`package main
+
+type Rec = {S: string; I:int}
+
+package_info _ =
+	let Map<T, U> : (T->U)->[]T->[]U
+
+let hoge (rs:[]Rec) =
+  rs |> Map _.S
+
+`,
+			[]string{"func (_v1 Rec)string", "_v1.S"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1154,12 +1168,14 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let Head<T>: []T->T
+type Rec = {S: string; I:int}
 
-let hoge () =
-  [1; 2; 3]
-	|> fun x-> Head x
+package_info _ =
+	let Map<T, U> : (T->U)->[]T->[]U
+
+let hoge (rs:[]Rec) =
+  rs |> Map _.S
+
 `
 
 	got := transpile(src)

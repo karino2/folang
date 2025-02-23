@@ -405,8 +405,31 @@ let parseSliceExpr (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
    |> CnvL (psConsume RSBRACKET)
    |> CnvR ESlice
 
+let exprOnlyBlock (expr:Expr) =
+  let emp = slice.New<Stmt> ()
+  {Block.Stmts=emp; FinalExpr=expr}
+
 /*
-  ATOM = LITERAL | (EXPR) | RECORD_GEN | SLICE_EXPR | VAR_REF
+  US_PROP_AC = '_' '.' IDENT
+
+  convert to: fun _V0 -> _V0.IDENT
+*/
+let parseUSPropAcc ps = 
+  let (ps2, fname) = psConsume UNDER_SCORE ps
+                      |> psConsume DOT
+                      |> psIdentNameNx
+  let tname = uniqueTmpVarName ()
+  let ttype = psNewTypeVar ps2 |> FTypeVar
+  let tmpVar = {Var.Name=tname; Ftype=ttype}
+  let vexpr = varToExpr tmpVar
+  let faExpr = {TargetExpr=vexpr; FieldName=fname} |> EFieldAccess
+  let body = exprOnlyBlock faExpr
+  {LambdaExpr.Params=[tmpVar]; Body=body}
+  |> ELambda
+  |> withPs ps2
+
+/*
+  ATOM = LITERAL | (EXPR) | RECORD_GEN | SLICE_EXPR | VAR_REF | US_PROP_AC
 */
 let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let cur = psCurrent ps
@@ -440,6 +463,8 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
       else
         (ps2, e1)
         |> CnvL (psConsume RPAREN)
+  | UNDER_SCORE ->
+    parseUSPropAcc ps
   | IDENTIFIER ->
     if cur.stringVal = "GoEval" then
       parseGoEval ps
@@ -548,11 +573,6 @@ let parseMatchExpr (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->Par
   parseIfExpr related
 */
 
-
-let exprOnlyBlock (expr:Expr) =
-   let emp = GoEval<[]Stmt> "[]Stmt{}"
-   {Block.Stmts=emp; FinalExpr=expr}
-  
 
 /*
 parse single expr and return as block.

@@ -421,3 +421,7 @@ func NewPackageInfo(name string) PackageInfo {
 func vToT(v Var) FType {
 	return v.Ftype
 }
+
+func varToExpr(v Var) Expr {
+	return frt.Pipe(New_VarRef_VRVar(v), New_Expr_EVarRef)
+}
