@@ -8,6 +8,8 @@ The Folang transpiler itself is written in Folang (self-hosted).
 
 For more information, see [What is Folang?](docs/WhatIsFolang.md).
 
+[日本語版 README_ja.md](README_ja.md)
+
 ## Simple example
 
 
