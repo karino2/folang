@@ -152,11 +152,11 @@ Write down what I want to make.
 
 1. Can be written succinctly `>` Natural as Go
 2. Generated code is natural as Go `>` ML-like goodness, consistency
-  - let should be a statement
-  - Records should be simple structs
-  - Unions should be interfaces
-  - Exhaustive checks should be kept to a minimum
-  - Compromise with ad-hoc processing if practical
+   - let should be a statement
+   - Records should be simple structs
+   - Unions should be interfaces
+   - Exhaustive checks should be kept to a minimum
+   - Compromise with ad-hoc processing if practical
 3. Easy to implement `>` Completeness
 
 The greater than symbol is used to clarify relative priorities (the left side is the priority item, meaning that the first one is important for "being concise to write").
