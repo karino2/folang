@@ -11,6 +11,7 @@ require (
 	github.com/karino2/folang/pkg/dict v0.0.0-00010101000000-000000000000
 	github.com/karino2/folang/pkg/frt v0.0.0-20250219013249-bc0f666cc0b1
 	github.com/karino2/folang/pkg/slice v0.0.0-00010101000000-000000000000
+	github.com/karino2/folang/pkg/strings v0.0.0-20250223114517-43b354958ab2
 )
 
 require (

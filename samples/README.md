@@ -341,3 +341,24 @@ let main () =
 
 generated go: [gen_type_inference.go](./gen_type_inference.go)
 
+
+### Shorthand property access notation
+
+```
+package main
+
+import slice
+import frt
+import strings
+
+type Rec = {SField: string; IField: int}
+
+let main () =
+  let r1 = {SField="abc"; IField=123}
+  let r2 = {SField="def"; IField=456}
+  [r1; r2] |> slice.Map _.SField |> strings.Concat ", " |> frt.Println 
+
+```
+
+generated go: [gen_shorthand_prop.go](./gen_shorthand_prop.go)
+

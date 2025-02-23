@@ -15,3 +15,4 @@ generic_specify.fo Explicit type argument
 dict_sample.fo Dictionary
 generic_func.fo Generic function
 type_inference.fo Type inference
+shorthand_prop.fo Shorthand property access notation
