@@ -276,7 +276,7 @@ This is the true nature of pkg_all.foi, which is always passed to the fc command
 - For programs of a certain size or larger, use a .go file wrapped in a pipeline-friendly form from the .fo file.
 - Use a .go file to avoid NYI and missing functions in .fo.
 
-## Conclusion
+## Further readings
 
 This is the end of this tutorial.
 
