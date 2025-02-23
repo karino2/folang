@@ -250,7 +250,7 @@ type Buffer = *bytes.Buffer
 
 You can then use it from the .fo file as follows:
 
-``
+```
 package_info _ =
   type Buffer
   let BufferNew: ()->Buffer
