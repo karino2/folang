@@ -233,6 +233,14 @@ let mrToBlock (mr:MatchRule) =
 let NEPToExpr (nep:NEPair) =
   nep.Expr
 
+let NEPToNT (nep:NEPair) =
+  (nep.Name, ExprToType nep.Expr)
+
+let recNTUnify (rec:RecordType) (ntp: string*FType) =
+   let (name, ftp) = ntp
+   let rpair = frGetField rec name
+   unifyType ftp rpair.Ftype
+
 
 let collectExprRel (expr:Expr) : []UniRel =
   let colE = collectExprRel
@@ -260,10 +268,14 @@ let collectExprRel (expr:Expr) : []UniRel =
     collectSlice es
     |> slice.Append inside
   | ERecordGen rg ->
-    // NYI: unify to recordType.  
-    slice.Map NEPToExpr rg.FieldsNV
-    |> slice.Map colE
-    |> slice.Concat 
+    let fieldValEs = slice.Map NEPToExpr rg.FieldsNV
+    let inside = fieldValEs
+                |> slice.Map colE
+                |> slice.Concat
+    slice.Map NEPToNT rg.FieldsNV
+    |> slice.Map (recNTUnify rg.RecordType)
+    |> slice.Concat
+    |> slice.Append inside
   | ELazyBlock lb ->
     colB lb.Block
   | EReturnableExpr re ->

@@ -808,6 +808,17 @@ let hoge iToS =
 `,
 			"(iToS func (int) string) []string",
 		},
+		{
+			`package main
+
+type Rec={Slice: []string}
+
+let hoge t =
+  {Slice=t}
+
+`,
+			"t []string",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1111,12 +1122,10 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let PushLast<T>: T->[]T->[]T
+type Rec={Slice: []string}
 
-let hoge iToS =
-	["abc"; "def"]
-	|> PushLast (iToS 123)
+let hoge t =
+  {Slice=t}
 
 `
 

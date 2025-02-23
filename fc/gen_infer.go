@@ -178,7 +178,7 @@ func collectStmtRel(ec func(Expr) []UniRel, stmt Stmt) []UniRel {
 	}
 }
 
-func collectFunCall(tgen func() TypeVar, fc FunCall) []UniRel {
+func collectFunCall(fc FunCall) []UniRel {
 	tftype := varRefVarType(fc.TargetFunc)
 	switch _v9 := (tftype).(type) {
 	case FType_FFunc:
@@ -186,14 +186,8 @@ func collectFunCall(tgen func() TypeVar, fc FunCall) []UniRel {
 		argTps := slice.Map(ExprToType, fc.Args)
 		tpArgTps := frt.Pipe(fargs(fft), (func(_r0 []FType) []FType { return slice.Take(slice.Length(argTps), _r0) }))
 		return frt.Pipe(frt.Pipe(slice.Zip(argTps, tpArgTps), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel { return slice.Map(unifyTupArg, _r0) })), slice.Concat)
-	case FType_FTypeVar:
-		tv := _v9.Value
-		tv2 := tgen()
-		ftv2 := New_FType_FTypeVar(tv2)
-		callTps := frt.Pipe(slice.Map(ExprToType, fc.Args), (func(_r0 []FType) []FType { return slice.PushLast(ftv2, _r0) }))
-		return frt.Pipe(frt.Pipe(FuncType{Targets: callTps}, New_FType_FFunc), (func(_r0 FType) []UniRel { return unifyType(New_FType_FTypeVar(tv), _r0) }))
 	default:
-		frt.Panic("funcall with neither func first arg nor TypeVar.")
+		frt.Panic("funcall with non func first arg, possibly TypeVar, NYI.")
 		return emptyRels()
 	}
 }
@@ -221,8 +215,18 @@ func NEPToExpr(nep NEPair) Expr {
 	return nep.Expr
 }
 
-func collectExprRel(tgen func() TypeVar, expr Expr) []UniRel {
-	colE := (func(_r0 Expr) []UniRel { return collectExprRel(tgen, _r0) })
+func NEPToNT(nep NEPair) frt.Tuple2[string, FType] {
+	return frt.NewTuple2(nep.Name, ExprToType(nep.Expr))
+}
+
+func recNTUnify(rec RecordType, ntp frt.Tuple2[string, FType]) []UniRel {
+	name, ftp := frt.Destr(ntp)
+	rpair := frGetField(rec, name)
+	return unifyType(ftp, rpair.Ftype)
+}
+
+func collectExprRel(expr Expr) []UniRel {
+	colE := collectExprRel
 	colB := (func(_r0 Block) []UniRel {
 		return collectBlock(colE, (func(_r0 Stmt) []UniRel { return collectStmtRel(colE, _r0) }), _r0)
 	})
@@ -230,7 +234,7 @@ func collectExprRel(tgen func() TypeVar, expr Expr) []UniRel {
 	case Expr_EFunCall:
 		fc := _v10.Value
 		inside := frt.Pipe(slice.Map(colE, fc.Args), slice.Concat)
-		return frt.Pipe(collectFunCall(tgen, fc), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
+		return frt.Pipe(collectFunCall(fc), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_EBinOpCall:
 		bop := _v10.Value
 		insideL := colE(bop.Lhs)
@@ -257,7 +261,11 @@ func collectExprRel(tgen func() TypeVar, expr Expr) []UniRel {
 		return frt.Pipe(collectSlice(es), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ERecordGen:
 		rg := _v10.Value
-		return frt.Pipe(frt.Pipe(slice.Map(NEPToExpr, rg.FieldsNV), (func(_r0 []Expr) [][]UniRel { return slice.Map(colE, _r0) })), slice.Concat)
+		fieldValEs := slice.Map(NEPToExpr, rg.FieldsNV)
+		inside := frt.Pipe(frt.Pipe(fieldValEs, (func(_r0 []Expr) [][]UniRel { return slice.Map(colE, _r0) })), slice.Concat)
+		return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(NEPToNT, rg.FieldsNV), (func(_r0 []frt.Tuple2[string, FType]) [][]UniRel {
+			return slice.Map((func(_r0 frt.Tuple2[string, FType]) []UniRel { return recNTUnify(rg.RecordType, _r0) }), _r0)
+		})), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ELazyBlock:
 		lb := _v10.Value
 		return colB(lb.Block)
@@ -289,8 +297,8 @@ func lfdRetType(lfd LetFuncDef) FType {
 	}
 }
 
-func collectLfdRels(tgen func() TypeVar, lfd LetFuncDef) []UniRel {
-	brels := frt.Pipe(blockToExpr(lfd.Body), (func(_r0 Expr) []UniRel { return collectExprRel(tgen, _r0) }))
+func collectLfdRels(lfd LetFuncDef) []UniRel {
+	brels := frt.Pipe(blockToExpr(lfd.Body), collectExprRel)
 	lastExprType := frt.Pipe(lfd.Body.FinalExpr, ExprToType)
 	return frt.Pipe(unifyType(lfdRetType(lfd), lastExprType), (func(_r0 []UniRel) []UniRel { return slice.Append(brels, _r0) }))
 }
@@ -649,8 +657,7 @@ func resolveLfd(rsv Resolver, lfd LetFuncDef) LetFuncDef {
 }
 
 func InferExpr(tvc TypeVarCtx, expr Expr) Expr {
-	tgen := tvcToTypeVarGen(tvc)
-	rels := collectExprRel(tgen, expr)
+	rels := collectExprRel(expr)
 	updateResolver(tvc.resolver, rels)
 	return resolveExprType(tvc.resolver, expr)
 }
@@ -681,8 +688,7 @@ func hoistTVar(unresT []string, lfd LetFuncDef) frt.Tuple2[[]string, LetFuncDef]
 }
 
 func InferLfd(tvc TypeVarCtx, lfd LetFuncDef) RootFuncDef {
-	tgen := tvcToTypeVarGen(tvc)
-	rels := collectLfdRels(tgen, lfd)
+	rels := collectLfdRels(lfd)
 	updateResolver(tvc.resolver, rels)
 	nlfd := resolveLfd(tvc.resolver, lfd)
 	unresTvs := frt.Pipe(collectTVarLfd(nlfd), slice.Distinct)
