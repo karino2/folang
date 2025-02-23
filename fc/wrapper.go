@@ -48,6 +48,7 @@ var keywordMap = map[string]TokenType{
 	"else":         New_TokenType_ELSE,
 	"elif":         New_TokenType_ELIF,
 	"not":          New_TokenType_NOT,
+	"fun":          New_TokenType_FUN,
 }
 
 func newToken(ttype TokenType, begin int, len int) Token {

@@ -453,7 +453,7 @@ func transTypeExpr(transTV func(TypeVar) FType, expr Expr) Expr {
 	transT := (func(_r0 FType) FType { return transType(transTV, _r0) })
 	transE := (func(_r0 Expr) Expr { return transTypeExpr(transTV, _r0) })
 	transS := (func(_r0 Stmt) Stmt { return transTypeStmt(transTV, transE, _r0) })
-	recurse := (func(_r0 Expr) Expr { return transTypeExpr(transTV, _r0) })
+	transB := (func(_r0 Block) Block { return transTypeBlock(transE, transS, _r0) })
 	switch _v17 := (expr).(type) {
 	case Expr_EVarRef:
 		rv := _v17.Value
@@ -479,14 +479,19 @@ func transTypeExpr(transTV func(TypeVar) FType, expr Expr) Expr {
 		return frt.Pipe(BinOpCall{Op: bop.Op, Rtype: nret, Lhs: nlhs, Rhs: nrhs}, New_Expr_EBinOpCall)
 	case Expr_ETupleExpr:
 		es := _v17.Value
-		return frt.Pipe(slice.Map(recurse, es), New_Expr_ETupleExpr)
+		return frt.Pipe(slice.Map(transE, es), New_Expr_ETupleExpr)
+	case Expr_ELambda:
+		le := _v17.Value
+		nparams := slice.Map(transV, le.Params)
+		nbody := transB(le.Body)
+		return frt.Pipe(LambdaExpr{Params: nparams, Body: nbody}, New_Expr_ELambda)
 	case Expr_ERecordGen:
 		rg := _v17.Value
 		newNV := slice.Map((func(_r0 NEPair) NEPair { return transExprNE(transE, _r0) }), rg.FieldsNV)
 		return frt.Pipe(RecordGen{FieldsNV: newNV, RecordType: rg.RecordType}, New_Expr_ERecordGen)
 	case Expr_ELazyBlock:
 		lb := _v17.Value
-		nbl := transTypeBlock(transE, transS, lb.Block)
+		nbl := transB(lb.Block)
 		return frt.Pipe(LazyBlock{Block: nbl}, New_Expr_ELazyBlock)
 	case Expr_EReturnableExpr:
 		re := _v17.Value

@@ -9,6 +9,7 @@ type TokenType =
 |	IDENTIFIER
 |	EQ
 |	LET
+| FUN
 |	TYPE
 |	EOL
 |	PACKAGE

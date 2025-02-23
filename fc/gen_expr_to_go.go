@@ -313,9 +313,27 @@ func faToGo(eGo func(Expr) string, fa FieldAccess) string {
 	return ((target + ".") + fa.FieldName)
 }
 
+func paramsToGo(pm Var) string {
+	ts := FTypeToGo(pm.Ftype)
+	return ((pm.Name + " ") + ts)
+}
+
+func lambdaToGo(bToGoRet func(Block) string, le LambdaExpr) string {
+	b := buf.New()
+	buf.Write(b, "func (")
+	frt.PipeUnit(frt.Pipe(slice.Map(paramsToGo, le.Params), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, ")")
+	frt.PipeUnit(frt.Pipe(blockToType(ExprToType, le.Body), FTypeToGo), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "{\n")
+	frt.PipeUnit(bToGoRet(le.Body), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "\n}")
+	return buf.String(b)
+}
+
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
+	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, reToGoRet, _r0) })
 	switch _v5 := (expr).(type) {
 	case Expr_EBoolLiteral:
 		b := _v5.Value
@@ -343,6 +361,9 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	case Expr_ETupleExpr:
 		es := _v5.Value
 		return tupleToGo(eToGo, es)
+	case Expr_ELambda:
+		le := _v5.Value
+		return lambdaToGo(bToGoRet, le)
 	case Expr_EBinOpCall:
 		bop := _v5.Value
 		return binOpToGo(eToGo, bop)
@@ -357,7 +378,7 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 		return fcToGo(FTypeToGo, eToGo, fc)
 	case Expr_ELazyBlock:
 		lb := _v5.Value
-		return lbToGo((func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, reToGoRet, _r0) }), lb)
+		return lbToGo(bToGoRet, lb)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

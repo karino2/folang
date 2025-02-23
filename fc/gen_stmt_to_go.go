@@ -16,11 +16,6 @@ func pmToGo(pn string) string {
 	return frt.Sprintf1("package %s", pn)
 }
 
-func paramsToGo(pm Var) string {
-	ts := FTypeToGo(pm.Ftype)
-	return ((pm.Name + " ") + ts)
-}
-
 func lfdParamsToGo(lfd LetFuncDef) string {
 	return frt.Pipe(frt.Pipe(lfd.Params, (func(_r0 []Var) []string { return slice.Map(paramsToGo, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
 }

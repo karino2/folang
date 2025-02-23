@@ -12,6 +12,7 @@ func (TokenType_SPACE) TokenType_Union()        {}
 func (TokenType_IDENTIFIER) TokenType_Union()   {}
 func (TokenType_EQ) TokenType_Union()           {}
 func (TokenType_LET) TokenType_Union()          {}
+func (TokenType_FUN) TokenType_Union()          {}
 func (TokenType_TYPE) TokenType_Union()         {}
 func (TokenType_EOL) TokenType_Union()          {}
 func (TokenType_PACKAGE) TokenType_Union()      {}
@@ -85,6 +86,11 @@ type TokenType_LET struct {
 }
 
 var New_TokenType_LET TokenType = TokenType_LET{}
+
+type TokenType_FUN struct {
+}
+
+var New_TokenType_FUN TokenType = TokenType_FUN{}
 
 type TokenType_TYPE struct {
 }

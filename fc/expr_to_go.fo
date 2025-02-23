@@ -307,9 +307,30 @@ let faToGo (eGo:Expr->string) (fa:FieldAccess) =
   let target = eGo fa.TargetExpr
   target + "." + fa.FieldName
 
+let paramsToGo (pm: Var) =
+   let ts = FTypeToGo pm.Ftype
+   pm.Name + " " + ts
+
+let lambdaToGo (bToGoRet: Block->string) (le:LambdaExpr) =
+  let b = buf.New ()
+  buf.Write b "func ("
+  slice.Map paramsToGo le.Params
+  |> strings.Concat ", "
+  |> buf.Write b
+  buf.Write b ")"
+  blockToType ExprToType le.Body |> FTypeToGo |> buf.Write b
+  buf.Write b "{\n"
+  bToGoRet le.Body |> buf.Write b
+  buf.Write b "\n}"
+  buf.String b
+
+
+  
+
 let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   let eToGo = ExprToGo sToGo
   let reToGoRet = reToGoReturn sToGo eToGo 
+  let bToGoRet = blockToGoReturn sToGo eToGo reToGoRet
   match expr with
   | EBoolLiteral b -> frt.Sprintf1 "%t" b
   | EGoEvalExpr ge -> reinterpretEscape ge.GoStmt
@@ -320,10 +341,11 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | EVarRef vr ->varRefName vr
   | ESlice es -> sliceToGo FTypeToGo eToGo es
   | ETupleExpr es -> tupleToGo eToGo es
+  | ELambda le -> lambdaToGo bToGoRet le
   | EBinOpCall bop -> binOpToGo eToGo bop
   | ERecordGen rg -> rgToGo eToGo rg
   | EReturnableExpr re -> reToGo sToGo eToGo re
   | EFunCall fc -> fcToGo FTypeToGo eToGo fc
   | ELazyBlock lb ->
-    lbToGo (blockToGoReturn sToGo eToGo reToGoRet) lb
+    lbToGo bToGoRet lb
 

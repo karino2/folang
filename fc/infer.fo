@@ -438,7 +438,7 @@ let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
   let transT = transType transTV
   let transE = transTypeExpr transTV
   let transS = (transTypeStmt transTV transE)
-  let recurse = transTypeExpr transTV
+  let transB = transTypeBlock transE transS
   match expr with
   | EVarRef rv ->
     match rv with
@@ -455,13 +455,18 @@ let transTypeExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
      let nret = transT bop.Rtype
      {Op=bop.Op; Rtype=nret; Lhs=nlhs; Rhs=nrhs}
      |> EBinOpCall
-  | ETupleExpr es -> slice.Map recurse es |> ETupleExpr
+  | ETupleExpr es -> slice.Map transE es |> ETupleExpr
+  | ELambda le ->
+    let nparams = slice.Map transV le.Params
+    let nbody = transB le.Body
+    {LambdaExpr.Params=nparams; Body=nbody}
+    |> ELambda
   | ERecordGen rg ->
     let newNV = slice.Map (transExprNE transE) rg.FieldsNV
     {FieldsNV=newNV; RecordType=rg.RecordType}
     |> ERecordGen
   | ELazyBlock lb ->
-    let nbl = transTypeBlock transE transS lb.Block
+    let nbl = transB lb.Block
     {LazyBlock.Block=nbl}
     |> ELazyBlock
   | EReturnableExpr re -> 

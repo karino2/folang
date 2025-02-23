@@ -114,6 +114,7 @@ func (Expr_ESlice) Expr_Union()          {}
 func (Expr_ERecordGen) Expr_Union()      {}
 func (Expr_ELazyBlock) Expr_Union()      {}
 func (Expr_ETupleExpr) Expr_Union()      {}
+func (Expr_ELambda) Expr_Union()         {}
 func (Expr_EBinOpCall) Expr_Union()      {}
 func (Expr_EReturnableExpr) Expr_Union() {}
 
@@ -188,6 +189,12 @@ type Expr_ETupleExpr struct {
 
 func New_Expr_ETupleExpr(v []Expr) Expr { return Expr_ETupleExpr{v} }
 
+type Expr_ELambda struct {
+	Value LambdaExpr
+}
+
+func New_Expr_ELambda(v LambdaExpr) Expr { return Expr_ELambda{v} }
+
 type Expr_EBinOpCall struct {
 	Value BinOpCall
 }
@@ -203,6 +210,10 @@ func New_Expr_EReturnableExpr(v ReturnableExpr) Expr { return Expr_EReturnableEx
 type FunCall struct {
 	TargetFunc VarRef
 	Args       []Expr
+}
+type LambdaExpr struct {
+	Params []Var
+	Body   Block
 }
 type FieldAccess struct {
 	TargetExpr Expr

@@ -16,9 +16,6 @@ let pmToGo (pn:string) =
 
 */
 
-let paramsToGo (pm: Var) =
-   let ts = FTypeToGo pm.Ftype
-   pm.Name + " " + ts
 
 /*
   Emit parameters of func defs like following:

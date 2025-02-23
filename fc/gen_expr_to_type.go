@@ -106,6 +106,10 @@ func fcToType(fc FunCall) FType {
 	}
 }
 
+func lambdaToType(bToT func(Block) FType, le LambdaExpr) FType {
+	return frt.Pipe(frt.Pipe(slice.Map(vToT, le.Params), (func(_r0 []FType) []FType { return slice.PushLast(bToT(le.Body), _r0) })), newFFunc)
+}
+
 func ExprToType(expr Expr) FType {
 	switch _v6 := (expr).(type) {
 	case Expr_EGoEvalExpr:
@@ -122,6 +126,9 @@ func ExprToType(expr Expr) FType {
 	case Expr_EFieldAccess:
 		fa := _v6.Value
 		return faToType(ExprToType, fa)
+	case Expr_ELambda:
+		le := _v6.Value
+		return lambdaToType((func(_r0 Block) FType { return blockToType(ExprToType, _r0) }), le)
 	case Expr_EVarRef:
 		vr := _v6.Value
 		v := varRefVar(vr)

@@ -637,12 +637,22 @@ let updateFunCallFunType (tgen:()->TypeVar) (res:Resolver) (vr: VarRef) (args:[]
       |> VRVar
   | VRSVar _ -> vr // currently, this case is just NYI.
 
+/*
+  FUNC_EXPR = 'fun' PARAMS '->' block
+*/
+let parseFunExpr (pBlock:ParseState->ParseState*Block) ps =
+  let (ps2, params) = psConsume FUN ps |> psPushScope |> parseParams |> CnvL (psConsume RARROW)
+  let (ps3, body) = pBlock ps2 |> CnvL psPopScope
+  (ps3, ELambda {LambdaExpr.Params=params; Body=body} )
+
 let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseState*Block) (ps:ParseState) : ParseState*Expr =
   match psCurrentTT ps with
   | MATCH ->
      parseMatchExpr pExpr pBlock ps
      |> CnvR RMatchExpr |> CnvR EReturnableExpr
   | LSBRACKET -> parseSliceExpr pExpr ps
+  | FUN ->
+    parseFunExpr pBlock ps
   | IF -> parseIfExpr pExpr pBlock ps 
   | NOT ->
     let (ps2, target) = psConsume NOT ps |> parseTerm pExpr pBlock
@@ -719,8 +729,8 @@ let parseStmt (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState
 
 let isEndOfBlock (ps:ParseState) =
   let isOffside = (psCurCol ps) < (psCurOffside ps)
-  let isEof = (psCurrentTT ps) = EOF
-  isOffside || isEof
+  // for (fun x -> x+2), RPAREN must be end of block.
+  isOffside || (psCurIs EOF ps) || (psCurIs RPAREN ps)
 
 let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : ParseState*[]Stmt =
   let (ps2, one) = parseStmt pExpr pLet ps |> CnvL psSkipEOL

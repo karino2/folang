@@ -75,6 +75,11 @@ let fcToType (fc:FunCall) =
       let newts = slice.Skip alen ft.Targets
       FFunc {Targets=newts}
 
+let lambdaToType bToT (le:LambdaExpr) =  
+  slice.Map vToT le.Params  
+  |> slice.PushLast (bToT le.Body)
+  |> newFFunc
+
 let ExprToType (expr:Expr) : FType =
   match expr with
   | EGoEvalExpr ge -> ge.TypeArg
@@ -83,6 +88,7 @@ let ExprToType (expr:Expr) : FType =
   | EUnit -> FUnit
   | EBoolLiteral _ -> FBool
   | EFieldAccess fa -> faToType ExprToType fa
+  | ELambda le -> lambdaToType (blockToType ExprToType) le
   | EVarRef vr -> 
       let v = varRefVar vr
       v.Ftype

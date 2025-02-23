@@ -604,6 +604,14 @@ func updateFunCallFunType(tgen func() TypeVar, res Resolver, vr VarRef, args []E
 	}
 }
 
+func parseFunExpr(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, Expr] {
+	ps2, params := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_FUN, ps), psPushScope), parseParams), (func(_r0 frt.Tuple2[ParseState, []Var]) frt.Tuple2[ParseState, []Var] {
+		return CnvL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RARROW, _r0) }), _r0)
+	})))
+	ps3, body := frt.Destr(frt.Pipe(pBlock(ps2), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return CnvL(psPopScope, _r0) })))
+	return frt.NewTuple2(ps3, New_Expr_ELambda(LambdaExpr{Params: params, Body: body}))
+}
+
 func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, Expr] {
 	switch (psCurrentTT(ps)).(type) {
 	case TokenType_MATCH:
@@ -614,6 +622,8 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 		}))
 	case TokenType_LSBRACKET:
 		return parseSliceExpr(pExpr, ps)
+	case TokenType_FUN:
+		return parseFunExpr(pBlock, ps)
 	case TokenType_IF:
 		return parseIfExpr(pExpr, pBlock, ps)
 	case TokenType_NOT:
@@ -693,8 +703,7 @@ func parseStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet func(Pa
 
 func isEndOfBlock(ps ParseState) bool {
 	isOffside := (psCurCol(ps) < psCurOffside(ps))
-	isEof := frt.OpEqual(psCurrentTT(ps), New_TokenType_EOF)
-	return (isOffside || isEof)
+	return ((isOffside || psCurIs(New_TokenType_EOF, ps)) || psCurIs(New_TokenType_RPAREN, ps))
 }
 
 func parseStmtList(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, []Stmt] {

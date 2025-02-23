@@ -64,6 +64,7 @@ type Expr =
 | ERecordGen of RecordGen
 | ELazyBlock of LazyBlock
 | ETupleExpr of []Expr
+| ELambda of LambdaExpr
 | EBinOpCall of BinOpCall
 /*
   For some expr, normally we need to wrap with func() to become expr in go stmt
@@ -72,6 +73,7 @@ type Expr =
 */
 | EReturnableExpr of ReturnableExpr
 and FunCall = {TargetFunc: VarRef; Args: []Expr}
+and LambdaExpr = {Params: []Var; Body:Block}
 and FieldAccess = {TargetExpr: Expr; FieldName: string} // stands for record field access of form: targetName.FieldName
 and BinOpCall = {Op: string; Rtype: FType; Lhs: Expr; Rhs: Expr}
 and NEPair = {Name: string; Expr: Expr}
