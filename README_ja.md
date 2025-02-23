@@ -7,6 +7,40 @@ Folangのトランスパイラ自身もFolangで書かれています（セル�
 
 より詳細は[Folangとは何か？](docs/WhatIsFolang_ja.md)を参照ください。
 
+```
+package main
+import frt
+
+import slice
+import strings
+
+let main () =
+  [1; 2; 3]
+  |> slice.Map (frt.Sprintf1 "This is %d")
+  |> strings.Concat ", "
+  |> frt.Println
+
+```
+
+```
+package main
+
+import frt
+
+let ApplyL fn tup =
+  let nl = frt.Fst tup |> fn
+  (nl, frt.Snd tup)
+
+
+let add (a:int) b = 
+  a+b
+
+let main () =
+  (123, "hoge")
+  |> ApplyL (add 456)
+  |> frt.Printf1 "%v\n" 
+```
+
 ## セットアップ
 
 [tutorials/1_GettingStarted_ja.md](docs/tutorials/1_GettingStarted_ja.md)を参照ください。
