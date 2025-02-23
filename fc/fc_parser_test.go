@@ -827,6 +827,18 @@ let hoge () =
 `,
 			"((3*2)/3)",
 		},
+		{
+			`package main
+
+package_info _ =
+  let Head<T>: []T->T
+
+let hoge () =
+  [1; 2; 3]
+	|> fun x-> Head x
+`,
+			"(x []int)int",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1142,8 +1154,12 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
+package_info _ =
+  let Head<T>: []T->T
+
 let hoge () =
-  3*2/3
+  [1; 2; 3]
+	|> fun x-> Head x
 `
 
 	got := transpile(src)

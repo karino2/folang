@@ -255,6 +255,9 @@ func collectExprRel(expr Expr) []UniRel {
 	case Expr_ETupleExpr:
 		tes := _v10.Value
 		return frt.Pipe(slice.Map(colE, tes), slice.Concat)
+	case Expr_ELambda:
+		le := _v10.Value
+		return colB(le.Body)
 	case Expr_ESlice:
 		es := _v10.Value
 		inside := frt.Pipe(slice.Map(colE, es), slice.Concat)
@@ -596,6 +599,10 @@ func collectTVarExpr(expr Expr) []string {
 	case Expr_ETupleExpr:
 		es := _v22.Value
 		return slice.Collect(recurse, es)
+	case Expr_ELambda:
+		le := _v22.Value
+		pas := frt.Pipe(slice.Map(vToT, le.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
+		return frt.Pipe(collB(le.Body), (func(_r0 []string) []string { return slice.Append(pas, _r0) }))
 	case Expr_ERecordGen:
 		rg := _v22.Value
 		return frt.Pipe(slice.Map(NEPToExpr, rg.FieldsNV), (func(_r0 []Expr) []string { return slice.Collect(recurse, _r0) }))

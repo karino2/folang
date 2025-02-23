@@ -262,7 +262,9 @@ let collectExprRel (expr:Expr) : []UniRel =
     let all = [insideL;insideR;teq; retEq]
     slice.Concat all
   | ETupleExpr tes ->
-    slice.Map colE tes |> slice.Concat    
+    slice.Map colE tes |> slice.Concat   
+  | ELambda le ->
+    colB le.Body
   | ESlice es ->
     let inside = slice.Map colE es |> slice.Concat
     collectSlice es
@@ -551,6 +553,10 @@ let collectTVarExpr (expr:Expr) : []string =
      let rres = recurse bop.Rhs
      slice.Append lres rres
   | ETupleExpr es -> slice.Collect recurse es
+  | ELambda le ->
+    let pas = slice.Map vToT le.Params |> slice.Collect collectTVarFType
+    collB le.Body
+    |> slice.Append pas
   | ERecordGen rg ->
     slice.Map NEPToExpr rg.FieldsNV
     |> slice.Collect recurse
