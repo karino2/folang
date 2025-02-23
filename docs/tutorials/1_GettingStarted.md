@@ -165,6 +165,6 @@ A quick summary of the above.
 - Arguments must be followed by `=`
 - The body is indented (same as Python, etc.)
 
-## Next time: Using the frt package (Explanation of pkg_all.foi)
+## Next time: Using the frt package (explanation of pkg_all.foi)
 
-[2. Using the frt package (Explanation of pkg_all.foi)](2_UseFrtPackage.md)
+[2. Using the frt package (explanation of pkg_all.foi)](2_UseFrtPackage.md)
