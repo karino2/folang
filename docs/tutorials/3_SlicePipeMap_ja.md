@@ -13,7 +13,7 @@ Mapやパイプラインはその典型的なものとなります。
 
 スライスは以下のようにセミコロンで区切って作ります。
 
-```
+```fsharp
 let main () =
   let s = [1; 2; 3]
   frt.Printf1 "%v\n" s
@@ -55,6 +55,7 @@ let main () =
   |> slice.Map (frt.Sprintf1 "This is %d")
   |> strings.Concat ", "
   |> frt.Println
+
 ```
 
 実行すると以下のように表示されます。

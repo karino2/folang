@@ -127,7 +127,7 @@ Hello World
 
 - Folangは普通frtをimportする
 - frtをimportする場合は pkg_all.foiというファイルをfcファイルの前に置く
-- 外部パッケージの使用には通常のGo言語と同様にgo getなどが必要
+- Folangの標準パッケージ(Goにとっての外部パッケージ)の使用には通常のGo言語と同様にgo getなどが必要
 
 となります。
 
