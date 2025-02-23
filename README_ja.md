@@ -99,6 +99,12 @@ func main() {
 
 [tutorials/Index_ja.md](docs/tutorials/Index_ja.md)
 
+## 仕様関連
+
+F#やGolangと違って注意が必要な所を中心としたメモ。
+
+[specs/note_ja.md](docs/specs/note_ja.md)
+
 ## レポジトリ構成
 
 - cmd このサイトを作るツールなど

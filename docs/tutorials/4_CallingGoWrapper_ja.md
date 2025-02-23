@@ -291,6 +291,8 @@ package_info _ =
 また、[fcコマンドのmain.fo](../../fc/main.fo)は、
 コマンドラインのツールを書く時の参考になると思います。
 
+F#やGolangとの違いで注意が必要な所は、[specノート](../specs/note_ja.md)に記述があります（開発中のメモくらいなので書き殴りですが）。
+
 実装済みの機能を一番正しく知る方法は、[fc/fc_parser_test.go](../../fc/fc_parser_test.go)にある、
 TestTranspileContainとTestTranspileContainsMultiにあるコードです。
 あまり見やすいものではありませんが、基本的には実装済みの機能は全てここに入っています。

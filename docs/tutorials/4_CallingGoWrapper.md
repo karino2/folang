@@ -294,6 +294,8 @@ and can be used as an example of writing such a tool in a throw-away manner.
 Also, [fc command's main.fo](../../fc/main.fo)
 can be used as a reference when writing command line tools.
 
+Differences with F# and Golang that require attention are described in the [spec notes](../specs/note.md) (although these are just development notes, so they are scribbled down).
+
 The most accurate way to find out what functions have been implemented is the code in
 TestTranspileContain and TestTranspileContainsMulti in [fc/fc_parser_test.go](../../fc/fc_parser_test.go).
 
