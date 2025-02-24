@@ -161,6 +161,10 @@ let collectTVarFType (ft:FType) : []string =
     slice.Collect recurse ftup.ElemTypes
   | FFieldAccess fa ->
     recurse fa.RecType
+  | FRecord rt ->
+    rt.Fields
+    |> slice.Map _.Ftype
+    |> slice.Collect recurse
   | FFunc fnt ->
     slice.Collect recurse fnt.Targets
   | _ ->
