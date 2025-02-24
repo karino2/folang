@@ -1045,8 +1045,7 @@ let parseTypeDefBodyList (ps:ParseState) : ParseState*[]DefStmt =
 // TYPE_DEF = 'type' TYPE_DEF_BODY_LIST
 let parseTypeDef (ps:ParseState) =
   let (ps2, defList) = psEnterTypeDef ps |> psPushScope |> psConsume TYPE |> parseTypeDefBodyList |> CnvL psPopScope |> CnvL psLeaveTypeDef
-  let mdefs = {Defs=defList}
-  let nmdefs = resolveFwrdDecl mdefs ps2
+  let nmdefs = {Defs=defList} |> resolveFwrdDecl ps2
   psRegMdTypes nmdefs ps2
   nmdefs
   |> RSMultipleDefs

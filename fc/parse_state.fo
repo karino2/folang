@@ -99,6 +99,92 @@ let transExpr (transT: FType->FType) (transV:Var->Var) (transS: Stmt->Stmt) (tra
     |> EFieldAccess
 
 /*
+collectTVar related.
+collect TypeVar from AST.
+*/
+
+let collectTVarFType (ft:FType) : []string =
+  let recurse = collectTVarFType
+  match ft with
+  | FTypeVar tv -> [tv.Name]
+  | FSlice ts ->
+    recurse ts.ElemType
+  | FTuple ftup ->
+    slice.Collect recurse ftup.ElemTypes
+  | FFieldAccess fa ->
+    recurse fa.RecType
+  | FRecord rt ->
+    rt.Fields
+    |> slice.Map _.Ftype
+    |> slice.Collect recurse
+  | FFunc fnt ->
+    slice.Collect recurse fnt.Targets
+  | _ ->
+    GoEval<[]string> "[]string{}"
+
+let collectTVarStmt (collE:Expr->[]string) (stmt:Stmt) =
+  match stmt with
+  | SLetVarDef llvd ->
+    match llvd with
+    | LLOneVarDef lvd ->
+      let nvar = collectTVarFType lvd.Lvar.Ftype
+      let nrhs = collE lvd.Rhs
+      slice.Append nvar nrhs
+    | LLDestVarDef ldvd ->
+      let nvars = slice.Map _.Ftype ldvd.Lvars |> slice.Collect collectTVarFType
+      let nrhs = collE ldvd.Rhs
+      slice.Append nvars nrhs
+  | SExprStmt e -> 
+    collE e
+
+let collectTVarBlock (collE:Expr->[]string) (collS:Stmt->[]string) (bl:Block) =
+  let nss = bl.Stmts |> slice.Collect collS
+  let fexpr = collE bl.FinalExpr
+  slice.Append nss fexpr
+
+let collectTVarExpr (expr:Expr) : []string =
+  let recurse = collectTVarExpr
+  let collS = collectTVarStmt recurse
+  let collB = collectTVarBlock recurse collS
+  match expr with
+  | EVarRef vr ->
+     varRefVarType vr |> collectTVarFType
+  | ESlice es -> slice.Collect recurse es
+  | EBinOpCall bop ->
+     let lres = recurse bop.Lhs
+     let rres = recurse bop.Rhs
+     slice.Append lres rres
+  | ETupleExpr es -> slice.Collect recurse es
+  | ELambda le ->
+    let pas = slice.Map _.Ftype le.Params |> slice.Collect collectTVarFType
+    collB le.Body
+    |> slice.Append pas
+  | ERecordGen rg ->
+    slice.Map _.Expr rg.FieldsNV
+    |> slice.Collect recurse
+  | ELazyBlock lb ->
+    collB lb.Block
+  | EReturnableExpr re -> 
+    match re with
+    | RBlock bl ->
+      collB bl
+    | RMatchExpr me ->
+      slice.Map _.Body me.Rules |> slice.Collect collB
+      |> slice.Append (recurse me.Target)
+  | EFunCall fc ->
+    let colt = varRefVarType fc.TargetFunc |> collectTVarFType 
+    slice.Collect recurse fc.Args
+    |> slice.Append colt
+  | EFieldAccess fa ->
+    recurse fa.TargetExpr
+  | _ -> GoEval<[]string> "[]string{}"
+
+let collectTVarBlockFacade (b:Block) =
+  let collE = collectTVarExpr
+  let collS = collectTVarStmt collE
+  collectTVarBlock collE collS b
+
+/*
   transTV related.
   TV is TypeVar and transform basicc is:
     TypeVar->FType
@@ -130,17 +216,36 @@ let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     let nts = slice.Map recurse pt.Targs
     {Name=pt.Name; Targs=nts}
     |> FParamd
+  | FRecord rt ->
+    let ntps = slice.Map _.Ftype rt.Fields |> slice.Map recurse
+    let names = slice.Map _.Name rt.Fields
+    let nfields = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
+    {RecordType.Name=rt.Name; Fields=nfields}
+    |> FRecord
   | _ -> ftp
 
 let transTVVar (transTV: TypeVar->FType) (v:Var) =
   let ntp = transTVFType transTV v.Ftype
   {Var.Name=v.Name; Ftype=ntp}
 
+let transTRecurse (transT: FType->FType) (count:int) (ft:FType) : FType =
+  if count > 1000 then
+    frt.Panic "Too deep recurse fwddecl, maybe cyclic, give up"
+  let nt = transT ft
+  let tvNotFound = collectTVarFType nt |> slice.IsEmpty
+  if tvNotFound then
+    nt
+  else
+    transTRecurse transT (count+1) nt
+
+
 let transTVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
-  let nt = transTVFType transV ntp.Ftype
+  let transTOne = transTVFType transV
+  let nt = transTRecurse transTOne 0 ntp.Ftype
   {NameTypePair.Name=ntp.Name; Ftype=nt}
 
-let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) =
+
+let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) : DefStmt =
   match df with
   | DRecordDef rd ->
     let nfields = slice.Map (transTVNTPair transTV) rd.Fields
@@ -151,24 +256,6 @@ let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) =
     {UnionDef.Name=ud.Name; Cases=ncases}
     |> DUnionDef
 
-let collectTVarFType (ft:FType) : []string =
-  let recurse = collectTVarFType
-  match ft with
-  | FTypeVar tv -> [tv.Name]
-  | FSlice ts ->
-    recurse ts.ElemType
-  | FTuple ftup ->
-    slice.Collect recurse ftup.ElemTypes
-  | FFieldAccess fa ->
-    recurse fa.RecType
-  | FRecord rt ->
-    rt.Fields
-    |> slice.Map _.Ftype
-    |> slice.Collect recurse
-  | FFunc fnt ->
-    slice.Collect recurse fnt.Targets
-  | _ ->
-    GoEval<[]string> "[]string{}"
 
 let transTVExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
   let transE = transTVExpr transTV
@@ -845,9 +932,9 @@ let transTVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
   else
     FTypeVar tv
 
-let resolveFwrdDecl (md:MultipleDefs) (ps:ParseState) =
-  let transV = transTVByTDCtx ps.tdctx
-  let transD = transTVDefStmt transV
+let resolveFwrdDecl (ps:ParseState) (md:MultipleDefs) : MultipleDefs =
+  let transTV = transTVByTDCtx ps.tdctx
+  let transD = transTVDefStmt transTV
   let ndefs = slice.Map transD md.Defs
   {Defs=ndefs}
 

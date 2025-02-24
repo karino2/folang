@@ -405,112 +405,13 @@ func transTypeLfd(transTV func(TypeVar) FType, lfd LetFuncDef) LetFuncDef {
 	return LetFuncDef{Fvar: nfvar, Params: nparams, Body: nbody}
 }
 
-func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
-	switch _v14 := (stmt).(type) {
-	case Stmt_SLetVarDef:
-		llvd := _v14.Value
-		switch _v15 := (llvd).(type) {
-		case LLetVarDef_LLOneVarDef:
-			lvd := _v15.Value
-			nvar := collectTVarFType(lvd.Lvar.Ftype)
-			nrhs := collE(lvd.Rhs)
-			return slice.Append(nvar, nrhs)
-		case LLetVarDef_LLDestVarDef:
-			ldvd := _v15.Value
-			nvars := frt.Pipe(slice.Map(func(_v1 Var) FType {
-				return _v1.Ftype
-			}, ldvd.Lvars), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
-			nrhs := collE(ldvd.Rhs)
-			return slice.Append(nvars, nrhs)
-		default:
-			panic("Union pattern fail. Never reached here.")
-		}
-	case Stmt_SExprStmt:
-		e := _v14.Value
-		return collE(e)
-	default:
-		panic("Union pattern fail. Never reached here.")
-	}
-}
-
-func collectTVarBlock(collE func(Expr) []string, collS func(Stmt) []string, bl Block) []string {
-	nss := frt.Pipe(bl.Stmts, (func(_r0 []Stmt) []string { return slice.Collect(collS, _r0) }))
-	fexpr := collE(bl.FinalExpr)
-	return slice.Append(nss, fexpr)
-}
-
-func collectTVarExpr(expr Expr) []string {
-	recurse := collectTVarExpr
-	collS := (func(_r0 Stmt) []string { return collectTVarStmt(recurse, _r0) })
-	collB := (func(_r0 Block) []string { return collectTVarBlock(recurse, collS, _r0) })
-	switch _v16 := (expr).(type) {
-	case Expr_EVarRef:
-		vr := _v16.Value
-		return frt.Pipe(varRefVarType(vr), collectTVarFType)
-	case Expr_ESlice:
-		es := _v16.Value
-		return slice.Collect(recurse, es)
-	case Expr_EBinOpCall:
-		bop := _v16.Value
-		lres := recurse(bop.Lhs)
-		rres := recurse(bop.Rhs)
-		return slice.Append(lres, rres)
-	case Expr_ETupleExpr:
-		es := _v16.Value
-		return slice.Collect(recurse, es)
-	case Expr_ELambda:
-		le := _v16.Value
-		pas := frt.Pipe(slice.Map(func(_v1 Var) FType {
-			return _v1.Ftype
-		}, le.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
-		return frt.Pipe(collB(le.Body), (func(_r0 []string) []string { return slice.Append(pas, _r0) }))
-	case Expr_ERecordGen:
-		rg := _v16.Value
-		return frt.Pipe(slice.Map(func(_v2 NEPair) Expr {
-			return _v2.Expr
-		}, rg.FieldsNV), (func(_r0 []Expr) []string { return slice.Collect(recurse, _r0) }))
-	case Expr_ELazyBlock:
-		lb := _v16.Value
-		return collB(lb.Block)
-	case Expr_EReturnableExpr:
-		re := _v16.Value
-		switch _v17 := (re).(type) {
-		case ReturnableExpr_RBlock:
-			bl := _v17.Value
-			return collB(bl)
-		case ReturnableExpr_RMatchExpr:
-			me := _v17.Value
-			return frt.Pipe(frt.Pipe(slice.Map(func(_v3 MatchRule) Block {
-				return _v3.Body
-			}, me.Rules), (func(_r0 []Block) []string { return slice.Collect(collB, _r0) })), (func(_r0 []string) []string { return slice.Append(recurse(me.Target), _r0) }))
-		default:
-			panic("Union pattern fail. Never reached here.")
-		}
-	case Expr_EFunCall:
-		fc := _v16.Value
-		colt := frt.Pipe(varRefVarType(fc.TargetFunc), collectTVarFType)
-		return frt.Pipe(slice.Collect(recurse, fc.Args), (func(_r0 []string) []string { return slice.Append(colt, _r0) }))
-	case Expr_EFieldAccess:
-		fa := _v16.Value
-		return recurse(fa.TargetExpr)
-	default:
-		return []string{}
-	}
-}
-
-func collectTVarBlockFacade(b Block) []string {
-	collE := collectTVarExpr
-	collS := (func(_r0 Stmt) []string { return collectTVarStmt(collE, _r0) })
-	return collectTVarBlock(collE, collS, b)
-}
-
 func resolveOneTypeVar(rsv Resolver, tv TypeVar) FType {
 	recurse := (func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) })
 	ei := rsLookupEI(rsv, tv.Name)
 	rcand := ei.resType
-	switch _v18 := (rcand).(type) {
+	switch _v14 := (rcand).(type) {
 	case FType_FTypeVar:
-		tv2 := _v18.Value
+		tv2 := _v14.Value
 		return frt.IfElse(frt.OpEqual(tv2.Name, tv.Name), (func() FType {
 			return rcand
 		}), (func() FType {

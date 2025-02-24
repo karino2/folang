@@ -839,6 +839,23 @@ let hoge () =
 `,
 			"(x []int)int",
 		},
+		{
+			`package main
+
+type A =
+| UB of B
+and B = {Fc: C}
+and C = {Fd: D}
+and D =
+| I of int
+| S of string
+
+let hoge c =
+  {Fc=c}
+
+`,
+			"hoge(c C)",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1168,13 +1185,16 @@ let hoge (rs:[]Rec) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type Rec = {S: string; I:int}
+type A =
+| UB of B
+and B = {Fc: C}
+and C = {Fd: D}
+and D =
+| I of int
+| S of string
 
-package_info _ =
-	let Map<T, U> : (T->U)->[]T->[]U
-
-let hoge (rs:[]Rec) =
-  rs |> Map _.S
+let hoge c =
+  {Fc=c}
 
 `
 

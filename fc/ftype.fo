@@ -70,8 +70,8 @@ let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
 let frGetField (frec: RecordType) (fieldName: string) =
   lookupPairByName fieldName frec.Fields
 
-let npName (pair:NameTypePair) =
-  pair.Name
+let newNTPair name ft =
+  {NameTypePair.Name=name; Ftype=ft}
 
 let frMatch (frec: RecordType) (fieldNames: []string)=
   if (slice.Length fieldNames) <> (slice.Length frec.Fields) then
@@ -79,7 +79,7 @@ let frMatch (frec: RecordType) (fieldNames: []string)=
   else
     // let sortedInput = slice.Sort fieldNames
     let sortedInput = fieldNames |> slice.Sort
-    let sortedFName = slice.Map npName frec.Fields
+    let sortedFName = slice.Map _.Name frec.Fields
                       |> slice.Sort
     sortedInput = sortedFName
 

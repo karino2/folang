@@ -184,8 +184,8 @@ func frGetField(frec RecordType, fieldName string) NameTypePair {
 	return lookupPairByName(fieldName, frec.Fields)
 }
 
-func npName(pair NameTypePair) string {
-	return pair.Name
+func newNTPair(name string, ft FType) NameTypePair {
+	return NameTypePair{Name: name, Ftype: ft}
 }
 
 func frMatch(frec RecordType, fieldNames []string) bool {
@@ -193,7 +193,9 @@ func frMatch(frec RecordType, fieldNames []string) bool {
 		return false
 	}), (func() bool {
 		sortedInput := frt.Pipe(fieldNames, slice.Sort)
-		sortedFName := frt.Pipe(slice.Map(npName, frec.Fields), slice.Sort)
+		sortedFName := frt.Pipe(slice.Map(func(_v1 NameTypePair) string {
+			return _v1.Name
+		}, frec.Fields), slice.Sort)
 		return frt.OpEqual(sortedInput, sortedFName)
 	}))
 }

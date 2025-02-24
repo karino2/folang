@@ -126,31 +126,174 @@ func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt)
 	}
 }
 
-func transTVFType(transTV func(TypeVar) FType, ftp FType) FType {
-	recurse := (func(_r0 FType) FType { return transTVFType(transTV, _r0) })
-	switch _v6 := (ftp).(type) {
+func collectTVarFType(ft FType) []string {
+	recurse := collectTVarFType
+	switch _v6 := (ft).(type) {
 	case FType_FTypeVar:
 		tv := _v6.Value
-		return transTV(tv)
+		return ([]string{tv.Name})
 	case FType_FSlice:
 		ts := _v6.Value
+		return recurse(ts.ElemType)
+	case FType_FTuple:
+		ftup := _v6.Value
+		return slice.Collect(recurse, ftup.ElemTypes)
+	case FType_FFieldAccess:
+		fa := _v6.Value
+		return recurse(fa.RecType)
+	case FType_FRecord:
+		rt := _v6.Value
+		return frt.Pipe(frt.Pipe(rt.Fields, (func(_r0 []NameTypePair) []FType {
+			return slice.Map(func(_v1 NameTypePair) FType {
+				return _v1.Ftype
+			}, _r0)
+		})), (func(_r0 []FType) []string { return slice.Collect(recurse, _r0) }))
+	case FType_FFunc:
+		fnt := _v6.Value
+		return slice.Collect(recurse, fnt.Targets)
+	default:
+		return []string{}
+	}
+}
+
+func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
+	switch _v7 := (stmt).(type) {
+	case Stmt_SLetVarDef:
+		llvd := _v7.Value
+		switch _v8 := (llvd).(type) {
+		case LLetVarDef_LLOneVarDef:
+			lvd := _v8.Value
+			nvar := collectTVarFType(lvd.Lvar.Ftype)
+			nrhs := collE(lvd.Rhs)
+			return slice.Append(nvar, nrhs)
+		case LLetVarDef_LLDestVarDef:
+			ldvd := _v8.Value
+			nvars := frt.Pipe(slice.Map(func(_v1 Var) FType {
+				return _v1.Ftype
+			}, ldvd.Lvars), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
+			nrhs := collE(ldvd.Rhs)
+			return slice.Append(nvars, nrhs)
+		default:
+			panic("Union pattern fail. Never reached here.")
+		}
+	case Stmt_SExprStmt:
+		e := _v7.Value
+		return collE(e)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func collectTVarBlock(collE func(Expr) []string, collS func(Stmt) []string, bl Block) []string {
+	nss := frt.Pipe(bl.Stmts, (func(_r0 []Stmt) []string { return slice.Collect(collS, _r0) }))
+	fexpr := collE(bl.FinalExpr)
+	return slice.Append(nss, fexpr)
+}
+
+func collectTVarExpr(expr Expr) []string {
+	recurse := collectTVarExpr
+	collS := (func(_r0 Stmt) []string { return collectTVarStmt(recurse, _r0) })
+	collB := (func(_r0 Block) []string { return collectTVarBlock(recurse, collS, _r0) })
+	switch _v9 := (expr).(type) {
+	case Expr_EVarRef:
+		vr := _v9.Value
+		return frt.Pipe(varRefVarType(vr), collectTVarFType)
+	case Expr_ESlice:
+		es := _v9.Value
+		return slice.Collect(recurse, es)
+	case Expr_EBinOpCall:
+		bop := _v9.Value
+		lres := recurse(bop.Lhs)
+		rres := recurse(bop.Rhs)
+		return slice.Append(lres, rres)
+	case Expr_ETupleExpr:
+		es := _v9.Value
+		return slice.Collect(recurse, es)
+	case Expr_ELambda:
+		le := _v9.Value
+		pas := frt.Pipe(slice.Map(func(_v1 Var) FType {
+			return _v1.Ftype
+		}, le.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
+		return frt.Pipe(collB(le.Body), (func(_r0 []string) []string { return slice.Append(pas, _r0) }))
+	case Expr_ERecordGen:
+		rg := _v9.Value
+		return frt.Pipe(slice.Map(func(_v2 NEPair) Expr {
+			return _v2.Expr
+		}, rg.FieldsNV), (func(_r0 []Expr) []string { return slice.Collect(recurse, _r0) }))
+	case Expr_ELazyBlock:
+		lb := _v9.Value
+		return collB(lb.Block)
+	case Expr_EReturnableExpr:
+		re := _v9.Value
+		switch _v10 := (re).(type) {
+		case ReturnableExpr_RBlock:
+			bl := _v10.Value
+			return collB(bl)
+		case ReturnableExpr_RMatchExpr:
+			me := _v10.Value
+			return frt.Pipe(frt.Pipe(slice.Map(func(_v3 MatchRule) Block {
+				return _v3.Body
+			}, me.Rules), (func(_r0 []Block) []string { return slice.Collect(collB, _r0) })), (func(_r0 []string) []string { return slice.Append(recurse(me.Target), _r0) }))
+		default:
+			panic("Union pattern fail. Never reached here.")
+		}
+	case Expr_EFunCall:
+		fc := _v9.Value
+		colt := frt.Pipe(varRefVarType(fc.TargetFunc), collectTVarFType)
+		return frt.Pipe(slice.Collect(recurse, fc.Args), (func(_r0 []string) []string { return slice.Append(colt, _r0) }))
+	case Expr_EFieldAccess:
+		fa := _v9.Value
+		return recurse(fa.TargetExpr)
+	default:
+		return []string{}
+	}
+}
+
+func collectTVarBlockFacade(b Block) []string {
+	collE := collectTVarExpr
+	collS := (func(_r0 Stmt) []string { return collectTVarStmt(collE, _r0) })
+	return collectTVarBlock(collE, collS, b)
+}
+
+func transTVFType(transTV func(TypeVar) FType, ftp FType) FType {
+	recurse := (func(_r0 FType) FType { return transTVFType(transTV, _r0) })
+	switch _v11 := (ftp).(type) {
+	case FType_FTypeVar:
+		tv := _v11.Value
+		return transTV(tv)
+	case FType_FSlice:
+		ts := _v11.Value
 		et := recurse(ts.ElemType)
 		return New_FType_FSlice(SliceType{ElemType: et})
 	case FType_FTuple:
-		ftup := _v6.Value
+		ftup := _v11.Value
 		nts := slice.Map(recurse, ftup.ElemTypes)
 		return frt.Pipe(TupleType{ElemTypes: nts}, New_FType_FTuple)
 	case FType_FFieldAccess:
-		fa := _v6.Value
+		fa := _v11.Value
 		nrec := recurse(fa.RecType)
 		return frt.Pipe(FieldAccessType{RecType: nrec, FieldName: fa.FieldName}, faResolve)
 	case FType_FFunc:
-		fnt := _v6.Value
+		fnt := _v11.Value
 		return frt.Pipe(slice.Map(recurse, fnt.Targets), newFFunc)
 	case FType_FParamd:
-		pt := _v6.Value
+		pt := _v11.Value
 		nts := slice.Map(recurse, pt.Targs)
 		return frt.Pipe(ParamdType{Name: pt.Name, Targs: nts}, New_FType_FParamd)
+	case FType_FRecord:
+		rt := _v11.Value
+		ntps := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+			return _v1.Ftype
+		}, rt.Fields), (func(_r0 []FType) []FType { return slice.Map(recurse, _r0) }))
+		names := slice.Map(func(_v2 NameTypePair) string {
+			return _v2.Name
+		}, rt.Fields)
+		nfields := frt.Pipe(slice.Zip(names, ntps), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair {
+			return slice.Map(func(tp frt.Tuple2[string, FType]) NameTypePair {
+				return newNTPair(frt.Fst(tp), frt.Snd(tp))
+			}, _r0)
+		}))
+		return frt.Pipe(RecordType{Name: rt.Name, Fields: nfields}, New_FType_FRecord)
 	default:
 		return ftp
 	}
@@ -161,53 +304,37 @@ func transTVVar(transTV func(TypeVar) FType, v Var) Var {
 	return Var{Name: v.Name, Ftype: ntp}
 }
 
+func transTRecurse(transT func(FType) FType, count int, ft FType) FType {
+	frt.IfOnly((count > 1000), (func() {
+		frt.Panic("Too deep recurse fwddecl, maybe cyclic, give up")
+	}))
+	nt := transT(ft)
+	tvNotFound := frt.Pipe(collectTVarFType(nt), slice.IsEmpty)
+	return frt.IfElse(tvNotFound, (func() FType {
+		return nt
+	}), (func() FType {
+		return transTRecurse(transT, (count + 1), nt)
+	}))
+}
+
 func transTVNTPair(transV func(TypeVar) FType, ntp NameTypePair) NameTypePair {
-	nt := transTVFType(transV, ntp.Ftype)
+	transTOne := (func(_r0 FType) FType { return transTVFType(transV, _r0) })
+	nt := transTRecurse(transTOne, 0, ntp.Ftype)
 	return NameTypePair{Name: ntp.Name, Ftype: nt}
 }
 
 func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
-	switch _v7 := (df).(type) {
+	switch _v12 := (df).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v7.Value
+		rd := _v12.Value
 		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), rd.Fields)
 		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
-		ud := _v7.Value
+		ud := _v12.Value
 		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), ud.Cases)
 		return frt.Pipe(UnionDef{Name: ud.Name, Cases: ncases}, New_DefStmt_DUnionDef)
 	default:
 		panic("Union pattern fail. Never reached here.")
-	}
-}
-
-func collectTVarFType(ft FType) []string {
-	recurse := collectTVarFType
-	switch _v8 := (ft).(type) {
-	case FType_FTypeVar:
-		tv := _v8.Value
-		return ([]string{tv.Name})
-	case FType_FSlice:
-		ts := _v8.Value
-		return recurse(ts.ElemType)
-	case FType_FTuple:
-		ftup := _v8.Value
-		return slice.Collect(recurse, ftup.ElemTypes)
-	case FType_FFieldAccess:
-		fa := _v8.Value
-		return recurse(fa.RecType)
-	case FType_FRecord:
-		rt := _v8.Value
-		return frt.Pipe(frt.Pipe(rt.Fields, (func(_r0 []NameTypePair) []FType {
-			return slice.Map(func(_v1 NameTypePair) FType {
-				return _v1.Ftype
-			}, _r0)
-		})), (func(_r0 []FType) []string { return slice.Collect(recurse, _r0) }))
-	case FType_FFunc:
-		fnt := _v8.Value
-		return slice.Collect(recurse, fnt.Targets)
-	default:
-		return []string{}
 	}
 }
 
@@ -822,9 +949,9 @@ func newPipeCallUnit(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 
 func newPipeCall(tvgen func() TypeVar, lhs Expr, rhs Expr) Expr {
 	rht := ExprToType(rhs)
-	switch _v9 := (rht).(type) {
+	switch _v13 := (rht).(type) {
 	case FType_FFunc:
-		ft := _v9.Value
+		ft := _v13.Value
 		switch (freturn(ft)).(type) {
 		case FType_FUnit:
 			return newPipeCallUnit(tvgen, lhs, rhs)
@@ -934,20 +1061,20 @@ func transTVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
 	}))
 }
 
-func resolveFwrdDecl(md MultipleDefs, ps ParseState) MultipleDefs {
-	transV := (func(_r0 TypeVar) FType { return transTVByTDCtx(ps.tdctx, _r0) })
-	transD := (func(_r0 DefStmt) DefStmt { return transTVDefStmt(transV, _r0) })
+func resolveFwrdDecl(ps ParseState, md MultipleDefs) MultipleDefs {
+	transTV := (func(_r0 TypeVar) FType { return transTVByTDCtx(ps.tdctx, _r0) })
+	transD := (func(_r0 DefStmt) DefStmt { return transTVDefStmt(transTV, _r0) })
 	ndefs := slice.Map(transD, md.Defs)
 	return MultipleDefs{Defs: ndefs}
 }
 
 func scRegDefStmtType(sc Scope, df DefStmt) {
-	switch _v10 := (df).(type) {
+	switch _v14 := (df).(type) {
 	case DefStmt_DRecordDef:
-		rd := _v10.Value
+		rd := _v14.Value
 		frt.PipeUnit(rdToRecType(rd), (func(_r0 RecordType) { scRegisterRecType(sc, _r0) }))
 	case DefStmt_DUnionDef:
-		ud := _v10.Value
+		ud := _v14.Value
 		udRegisterCsCtors(sc, ud)
 		fut := udToFUt(ud)
 		scRegisterType(sc, ud.Name, fut)

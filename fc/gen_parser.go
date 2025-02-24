@@ -1011,8 +1011,7 @@ func parseTypeDef(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
 	})), (func(_r0 frt.Tuple2[ParseState, []DefStmt]) frt.Tuple2[ParseState, []DefStmt] {
 		return CnvL(psLeaveTypeDef, _r0)
 	})))
-	mdefs := MultipleDefs{Defs: defList}
-	nmdefs := resolveFwrdDecl(mdefs, ps2)
+	nmdefs := frt.Pipe(MultipleDefs{Defs: defList}, (func(_r0 MultipleDefs) MultipleDefs { return resolveFwrdDecl(ps2, _r0) }))
 	psRegMdTypes(nmdefs, ps2)
 	return frt.Pipe(frt.Pipe(nmdefs, New_RootStmt_RSMultipleDefs), (func(_r0 RootStmt) frt.Tuple2[ParseState, RootStmt] { return withPs(ps2, _r0) }))
 }
