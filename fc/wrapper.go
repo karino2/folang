@@ -358,6 +358,30 @@ func reinterpretEscape(buf string) string {
 }
 
 /*
+  To break mutual recursive cycle, we treat Union as pointer.
+  Slice is already pointer under the food, but we want to make it clear to be golang type.
+*/
+
+type NTPsPtr = struct {
+	NTPSlice []NameTypePair
+}
+
+func NewNTPsPtr(ntps []NameTypePair) NTPsPtr {
+	return NTPsPtr{ntps}
+}
+
+func NTPsPtrGet(ptr NTPsPtr) []NameTypePair {
+	return ptr.NTPSlice
+}
+
+func NTPsUpdate(ptr NTPsPtr, ntps []NameTypePair) {
+	if len(ptr.NTPSlice) != len(ntps) {
+		panic("Wrong slice number update")
+	}
+	_ = copy(ptr.NTPSlice, ntps)
+}
+
+/*
 	  Recursive type need pointer, but Folang does not suppport it.
 		write in GoLang.
 */

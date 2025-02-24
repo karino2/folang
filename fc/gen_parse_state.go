@@ -126,8 +126,25 @@ func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt)
 	}
 }
 
-func collectTVarFType(ft FType) []string {
-	recurse := collectTVarFType
+type SSet struct {
+	Dict dict.Dict[string, bool]
+}
+
+func NewSSet() SSet {
+	return SSet{Dict: dict.New[string, bool]()}
+}
+
+func SSetHasKey(st SSet, key string) bool {
+	_, ok := frt.Destr(dict.TryFind(st.Dict, key))
+	return ok
+}
+
+func SSetPut(st SSet, key string) {
+	dict.Add(st.Dict, key, true)
+}
+
+func collectTVarFTypeWithSet(visited SSet, ft FType) []string {
+	recurse := (func(_r0 FType) []string { return collectTVarFTypeWithSet(visited, _r0) })
 	switch _v6 := (ft).(type) {
 	case FType_FTypeVar:
 		tv := _v6.Value
@@ -148,12 +165,30 @@ func collectTVarFType(ft FType) []string {
 				return _v1.Ftype
 			}, _r0)
 		})), (func(_r0 []FType) []string { return slice.Collect(recurse, _r0) }))
+	case FType_FUnion:
+		ut := _v6.Value
+		uname := utName(ut)
+		return frt.IfElse(SSetHasKey(visited, uname), (func() []string {
+			return slice.New[string]()
+		}), (func() []string {
+			SSetPut(visited, uname)
+			return frt.Pipe(frt.Pipe(utCases(ut), (func(_r0 []NameTypePair) []FType {
+				return slice.Map(func(_v2 NameTypePair) FType {
+					return _v2.Ftype
+				}, _r0)
+			})), (func(_r0 []FType) []string { return slice.Collect(recurse, _r0) }))
+		}))
 	case FType_FFunc:
 		fnt := _v6.Value
 		return slice.Collect(recurse, fnt.Targets)
 	default:
 		return []string{}
 	}
+}
+
+func collectTVarFType(ft FType) []string {
+	visited := NewSSet()
+	return collectTVarFTypeWithSet(visited, ft)
 }
 
 func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
@@ -255,8 +290,8 @@ func collectTVarBlockFacade(b Block) []string {
 	return collectTVarBlock(collE, collS, b)
 }
 
-func transTVFType(transTV func(TypeVar) FType, ftp FType) FType {
-	recurse := (func(_r0 FType) FType { return transTVFType(transTV, _r0) })
+func transTVFTypeWithSet(visited SSet, transTV func(TypeVar) FType, ftp FType) FType {
+	recurse := (func(_r0 FType) FType { return transTVFTypeWithSet(visited, transTV, _r0) })
 	switch _v11 := (ftp).(type) {
 	case FType_FTypeVar:
 		tv := _v11.Value
@@ -294,9 +329,36 @@ func transTVFType(transTV func(TypeVar) FType, ftp FType) FType {
 			}, _r0)
 		}))
 		return frt.Pipe(RecordType{Name: rt.Name, Fields: nfields}, New_FType_FRecord)
+	case FType_FUnion:
+		ut := _v11.Value
+		uname := utName(ut)
+		return frt.IfElse(SSetHasKey(visited, uname), (func() FType {
+			return ftp
+		}), (func() FType {
+			SSetPut(visited, uname)
+			cases := utCases(ut)
+			ntps := frt.Pipe(slice.Map(func(_v3 NameTypePair) FType {
+				return _v3.Ftype
+			}, cases), (func(_r0 []FType) []FType { return slice.Map(recurse, _r0) }))
+			names := slice.Map(func(_v4 NameTypePair) string {
+				return _v4.Name
+			}, cases)
+			ncases := frt.Pipe(slice.Zip(names, ntps), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair {
+				return slice.Map(func(tp frt.Tuple2[string, FType]) NameTypePair {
+					return newNTPair(frt.Fst(tp), frt.Snd(tp))
+				}, _r0)
+			}))
+			utUpdateCases(ut, ncases)
+			return New_FType_FUnion(ut)
+		}))
 	default:
 		return ftp
 	}
+}
+
+func transTVFType(transTV func(TypeVar) FType, ftp FType) FType {
+	visited := NewSSet()
+	return transTVFTypeWithSet(visited, transTV, ftp)
 }
 
 func transTVVar(transTV func(TypeVar) FType, v Var) Var {
@@ -328,11 +390,26 @@ func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
 	case DefStmt_DRecordDef:
 		rd := _v12.Value
 		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), rd.Fields)
+		noTvFound := frt.Pipe(frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+			return _v1.Ftype
+		}, nfields), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) })), slice.IsEmpty)
+		frt.IfOnly(frt.OpNot(noTvFound), (func() {
+			frt.Panic("Unresolve type")
+		}))
 		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
 		ud := _v12.Value
-		ncases := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), ud.Cases)
-		return frt.Pipe(UnionDef{Name: ud.Name, Cases: ncases}, New_DefStmt_DUnionDef)
+		ncases := frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []NameTypePair {
+			return slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), _r0)
+		}))
+		noTvFound := frt.Pipe(frt.Pipe(slice.Map(func(_v2 NameTypePair) FType {
+			return _v2.Ftype
+		}, ncases), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) })), slice.IsEmpty)
+		frt.IfOnly(frt.OpNot(noTvFound), (func() {
+			frt.Panic("Unresolve type2")
+		}))
+		udUpdate(ud, ncases)
+		return df
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
@@ -834,7 +911,7 @@ func psIsNeighborLT(ps ParseState) bool {
 }
 
 func udToUt(ud UnionDef) UnionType {
-	return UnionType(ud)
+	return UnionType{Name: ud.Name, CasesPtr: ud.CasesPtr}
 }
 
 func udToFUt(ud UnionDef) FType {
@@ -858,7 +935,7 @@ func csRegisterCtor(sc Scope, ud UnionDef, cas NameTypePair) {
 }
 
 func udRegisterCsCtors(sc Scope, ud UnionDef) {
-	frt.PipeUnit(ud.Cases, (func(_r0 []NameTypePair) { slice.Iter((func(_r0 NameTypePair) { csRegisterCtor(sc, ud, _r0) }), _r0) }))
+	frt.PipeUnit(udCases(ud), (func(_r0 []NameTypePair) { slice.Iter((func(_r0 NameTypePair) { csRegisterCtor(sc, ud, _r0) }), _r0) }))
 }
 
 func piFullName(pi PackageInfo, name string) string {

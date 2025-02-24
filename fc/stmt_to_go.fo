@@ -141,7 +141,7 @@ func (IntOrString_B) IntOrString_Union(){}
 */
 let udCSConformMethods (ud:UnionDef) =
   let method = ud.Name + "_Union(){}\n"
-  ud.Cases |> slice.Map (csToConformMethod ud.Name method) |> strings.Concat ""
+  udCases ud |> slice.Map (csToConformMethod ud.Name method) |> strings.Concat ""
 
 /*
 	type IntOrString_I struct {
@@ -220,7 +220,7 @@ let udfToGo (ud:UnionDef) =
   buf.Write b "\n"
   udCSConformMethods ud |> buf.Write b
   buf.Write b "\n"
-  ud.Cases |> slice.Map (caseToGo ud) |> strings.Concat "" |> buf.Write b
+  udCases ud |> slice.Map (caseToGo ud) |> strings.Concat "" |> buf.Write b
   buf.String b
 
 /*

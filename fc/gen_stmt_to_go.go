@@ -107,7 +107,7 @@ func csToConformMethod(uname string, method string, cas NameTypePair) string {
 
 func udCSConformMethods(ud UnionDef) string {
 	method := (ud.Name + "_Union(){}\n")
-	return frt.Pipe(frt.Pipe(ud.Cases, (func(_r0 []NameTypePair) []string {
+	return frt.Pipe(frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []string {
 		return slice.Map((func(_r0 NameTypePair) string { return csToConformMethod(ud.Name, method, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) }))
 }
@@ -176,7 +176,7 @@ func udfToGo(ud UnionDef) string {
 	buf.Write(b, "\n")
 	frt.PipeUnit(udCSConformMethods(ud), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n")
-	frt.PipeUnit(frt.Pipe(frt.Pipe(ud.Cases, (func(_r0 []NameTypePair) []string {
+	frt.PipeUnit(frt.Pipe(frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []string {
 		return slice.Map((func(_r0 NameTypePair) string { return caseToGo(ud, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	return buf.String(b)

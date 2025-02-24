@@ -514,7 +514,7 @@ func parseMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], targe
 			cp := lookupCase(fu, cname)
 			scDefVar(ps5.scope, vname, Var{Name: vname, Ftype: cp.Ftype})
 		}))
-		ps6, block := frt.Destr(pBlock(ps5))
+		ps6, block := frt.Destr(frt.Pipe(pBlock(ps5), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return CnvL(psPopScope, _r0) })))
 		mp := MatchPattern{CaseId: cname, VarName: vname}
 		return frt.Pipe(MatchRule{Pattern: mp, Body: block}, (func(_r0 MatchRule) frt.Tuple2[ParseState, MatchRule] { return withPs(ps6, _r0) }))
 	}
@@ -729,9 +729,9 @@ func parseStmtList(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet fun
 }
 
 func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, Block] {
-	ps2, sls := frt.Destr(frt.Pipe(frt.Pipe(psPushOffside(ps), (func(_r0 ParseState) frt.Tuple2[ParseState, []Stmt] { return parseStmtList(pExpr, pLet, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Stmt]) frt.Tuple2[ParseState, []Stmt] {
+	ps2, sls := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psPushOffside(ps), (func(_r0 ParseState) frt.Tuple2[ParseState, []Stmt] { return parseStmtList(pExpr, pLet, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Stmt]) frt.Tuple2[ParseState, []Stmt] {
 		return CnvL(psPopOffside, _r0)
-	})))
+	})), (func(_r0 frt.Tuple2[ParseState, []Stmt]) frt.Tuple2[ParseState, []Stmt] { return CnvL(psPopScope, _r0) })))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
 	switch _v5 := (last).(type) {
@@ -842,7 +842,14 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 	defVar := Var{Name: fname, Ftype: defFt}
 	scDefVar(ps4.scope, fname, defVar)
 	ps5, block := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_EQ, ps4), psSkipEOL), (func(_r0 ParseState) frt.Tuple2[ParseState, Block] { return parseBlock(pLet, _r0) })), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return CnvL(psPopScope, _r0) })))
-	rtype := frt.Pipe(blockToExpr(block), ExprToType)
+	rtype := (func() FType {
+		switch (rtypeDef).(type) {
+		case FType_FTypeVar:
+			return frt.Pipe(blockToExpr(block), ExprToType)
+		default:
+			return rtypeDef
+		}
+	})()
 	targets := frt.IfElse(frt.OpEqual(slice.Length(params), 0), (func() []FType {
 		return ([]FType{New_FType_FUnit, rtype})
 	}), (func() []FType {
@@ -966,7 +973,7 @@ func parseCaseDefs(ps ParseState) frt.Tuple2[ParseState, []NameTypePair] {
 
 func parseUnionDef(tname string, ps ParseState) frt.Tuple2[ParseState, UnionDef] {
 	ps2, css := frt.Destr(parseCaseDefs(ps))
-	ud := UnionDef{Name: tname, Cases: css}
+	ud := NewUnionDef(tname, css)
 	psRegUdToTDCtx(ud, ps2)
 	return frt.NewTuple2(ps2, ud)
 }
@@ -1099,6 +1106,9 @@ func parsePackageInfo(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
 }
 
 func parseRootOneStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, RootStmt] {
+	frt.IfOnly((SCLen(ps.scope) > 1), (func() {
+		frt.Panic("Scope is not property poped.")
+	}))
 	switch (psCurrentTT(ps)).(type) {
 	case TokenType_PACKAGE:
 		return parsePackage(ps)

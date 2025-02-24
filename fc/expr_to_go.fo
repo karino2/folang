@@ -149,10 +149,11 @@ let mrIsDefault (mr:MatchRule) =
 let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   let ttype = ExprToType me.Target
   let uttype = GoEval<UnionType> "ttype.(FType_FUnion).Value" // for non UnionType, NYI.
+  let uname = utName uttype
   let hasCaseVar = meHasCaseVar me
   let hasDefault = slice.Forany mrIsDefault me.Rules
   let tmpVarName = if hasCaseVar then uniqueTmpVarName () else ""
-  let mrtocase = mrToCase btogRet uttype.Name tmpVarName
+  let mrtocase = mrToCase btogRet uname tmpVarName
   let b = buf.New ()
   buf.Write b "switch "
   if hasCaseVar then

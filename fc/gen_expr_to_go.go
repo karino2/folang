@@ -129,6 +129,7 @@ func mrIsDefault(mr MatchRule) bool {
 func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) string {
 	ttype := ExprToType(me.Target)
 	uttype := ttype.(FType_FUnion).Value
+	uname := utName(uttype)
 	hasCaseVar := meHasCaseVar(me)
 	hasDefault := slice.Forany(mrIsDefault, me.Rules)
 	tmpVarName := frt.IfElse(hasCaseVar, (func() string {
@@ -136,7 +137,7 @@ func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchEx
 	}), (func() string {
 		return ""
 	}))
-	mrtocase := (func(_r0 MatchRule) string { return mrToCase(btogRet, uttype.Name, tmpVarName, _r0) })
+	mrtocase := (func(_r0 MatchRule) string { return mrToCase(btogRet, uname, tmpVarName, _r0) })
 	b := buf.New()
 	buf.Write(b, "switch ")
 	frt.IfOnly(hasCaseVar, (func() {

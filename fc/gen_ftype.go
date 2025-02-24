@@ -129,8 +129,29 @@ type RecordType struct {
 	Fields []NameTypePair
 }
 type UnionType struct {
-	Name  string
-	Cases []NameTypePair
+	Name     string
+	CasesPtr NTPsPtr
+}
+
+func newUTWithPtr(name string, cptr NTPsPtr) UnionType {
+	return UnionType{Name: name, CasesPtr: cptr}
+}
+
+func newUT(name string, cases []NameTypePair) UnionType {
+	ptr := NewNTPsPtr(cases)
+	return newUTWithPtr(name, ptr)
+}
+
+func utName(ut UnionType) string {
+	return ut.Name
+}
+
+func utCases(ut UnionType) []NameTypePair {
+	return NTPsPtrGet(ut.CasesPtr)
+}
+
+func utUpdateCases(ut UnionType, cases []NameTypePair) {
+	NTPsUpdate(ut.CasesPtr, cases)
 }
 
 func fargs(ft FuncType) []FType {
@@ -204,12 +225,12 @@ func newFFunc(ftypes []FType) FType {
 	return frt.Pipe(FuncType{Targets: ftypes}, New_FType_FFunc)
 }
 
-func funionToGo(fu UnionType) string {
-	return fu.Name
+func fUnionToGo(fu UnionType) string {
+	return utName(fu)
 }
 
 func lookupCase(fu UnionType, caseName string) NameTypePair {
-	return lookupPairByName(caseName, fu.Cases)
+	return frt.Pipe(utCases(fu), (func(_r0 []NameTypePair) NameTypePair { return lookupPairByName(caseName, _r0) }))
 }
 
 func unionCSName(unionName string, caseName string) string {
@@ -268,7 +289,7 @@ func FTypeToGo(ft FType) string {
 		return recordTypeToGo(fr)
 	case FType_FUnion:
 		fu := _v2.Value
-		return funionToGo(fu)
+		return fUnionToGo(fu)
 	case FType_FParamd:
 		pt := _v2.Value
 		return fpToGo(FTypeToGo, pt)

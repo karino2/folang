@@ -44,7 +44,7 @@ func newBlock(expr Expr) Block {
 func TestMatchExprToGo(t *testing.T) {
 	resetUniqueTmpCounter()
 	defer resetUniqueTmpCounter()
-	unionType := UnionType{"IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}}}
+	unionType := newUT("IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}})
 	target := New_Expr_EVarRef(New_VarRef_VRVar(Var{"udata", New_FType_FUnion(unionType)}))
 	matchExpr := MatchExpr{
 		target,
@@ -95,7 +95,7 @@ func TestRecordDefToGo(t *testing.T) {
 }
 
 func TestUnionDefToGo(t *testing.T) {
-	ud := UnionDef{"IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}}}
+	ud := NewUnionDef("IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}})
 	got := udfToGo(ud)
 	want := `type IntOrString interface {
   IntOrString_Union()

@@ -876,8 +876,11 @@ let parseLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   let defVar = {Var.Name=fname; Ftype=defFt}
   scDefVar ps4.scope fname defVar
   let (ps5, block) = psConsume EQ ps4 |> psSkipEOL |> parseBlock pLet |> CnvL psPopScope
-  // build lfd func var here for a while.
-  let rtype = blockToExpr block |> ExprToType
+  let rtype = match rtypeDef with
+              | FTypeVar _ ->
+                // If rtypeDef is not specified, use block type
+                blockToExpr block |> ExprToType
+              | _ -> rtypeDef // else use specified def.
   let targets = if (slice.Length params) = 0 then
                   [FUnit; rtype]
                 else
@@ -1005,7 +1008,7 @@ let parseCaseDefs (ps:ParseState) : ParseState*[]NameTypePair =
 */
 let parseUnionDef (tname:string) (ps:ParseState) =
   let (ps2, css) = parseCaseDefs ps
-  let ud = {UnionDef.Name=tname; Cases=css}
+  let ud = NewUnionDef tname css
   psRegUdToTDCtx ud ps2
   (ps2, ud)
 

@@ -39,8 +39,7 @@ let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let fexpr = transE bl.FinalExpr
   {Block.Stmts=nss; FinalExpr=fexpr}
 
-// let transExpr transT transV transS transB (expr:Expr) : Expr =
-let transExpr (transT: FType->FType) (transV:Var->Var) (transS: Stmt->Stmt) (transB: Block->Block) (expr:Expr) : Expr =
+let transExpr transT transV transS transB (expr:Expr) : Expr =
   let transE = transExpr transT transV transS transB
   match expr with
   | EVarRef rv ->
@@ -103,8 +102,19 @@ collectTVar related.
 collect TypeVar from AST.
 */
 
-let collectTVarFType (ft:FType) : []string =
-  let recurse = collectTVarFType
+type SSet = {Dict: dict.Dict<string, bool>}
+let NewSSet () =
+  {SSet.Dict=dict.New<string, bool> ()}
+
+let SSetHasKey (st:SSet) key =
+  let (_, ok) = dict.TryFind st.Dict key
+  ok
+
+let SSetPut (st:SSet) key =
+  dict.Add st.Dict key true
+
+let collectTVarFTypeWithSet (visited:SSet) (ft:FType) : []string =
+  let recurse = collectTVarFTypeWithSet visited
   match ft with
   | FTypeVar tv -> [tv.Name]
   | FSlice ts ->
@@ -117,10 +127,24 @@ let collectTVarFType (ft:FType) : []string =
     rt.Fields
     |> slice.Map _.Ftype
     |> slice.Collect recurse
+  | FUnion ut ->
+    let uname = utName ut
+    if SSetHasKey visited uname then
+      slice.New<string> ()
+    else
+      SSetPut visited uname
+      utCases ut
+      |> slice.Map _.Ftype
+      |> slice.Collect recurse
   | FFunc fnt ->
     slice.Collect recurse fnt.Targets
   | _ ->
     GoEval<[]string> "[]string{}"
+
+let collectTVarFType (ft:FType) : []string =
+  let visited = NewSSet ()
+  collectTVarFTypeWithSet visited ft
+
 
 let collectTVarStmt (collE:Expr->[]string) (stmt:Stmt) =
   match stmt with
@@ -194,8 +218,8 @@ let collectTVarBlockFacade (b:Block) =
   transTV of FType.
   FFieldAccess might be resolved.
 */
-let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
-  let recurse = transTVFType transTV
+let transTVFTypeWithSet (visited:SSet) (transTV: TypeVar->FType) (ftp:FType) : FType =
+  let recurse = transTVFTypeWithSet visited transTV
   match ftp with
   | FTypeVar tv -> transTV tv
   | FSlice ts ->
@@ -222,7 +246,24 @@ let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
     let nfields = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
     {RecordType.Name=rt.Name; Fields=nfields}
     |> FRecord
+  | FUnion ut ->
+    let uname = utName ut      
+    if SSetHasKey visited uname then
+      ftp
+    else
+      SSetPut visited uname
+      let cases = utCases ut
+      let ntps = slice.Map _.Ftype cases |> slice.Map recurse
+      let names = slice.Map _.Name cases
+      let ncases = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
+      // side effect.
+      utUpdateCases ut ncases
+      FUnion ut
   | _ -> ftp
+
+let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
+  let visited = NewSSet ()
+  transTVFTypeWithSet visited transTV ftp
 
 let transTVVar (transTV: TypeVar->FType) (v:Var) =
   let ntp = transTVFType transTV v.Ftype
@@ -249,12 +290,18 @@ let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) : DefStmt =
   match df with
   | DRecordDef rd ->
     let nfields = slice.Map (transTVNTPair transTV) rd.Fields
+    let noTvFound = slice.Map _.Ftype nfields |> slice.Collect collectTVarFType |> slice.IsEmpty
+    if not noTvFound then
+      frt.Panic "Unresolve type"
     {RecordDef.Name=rd.Name; Fields=nfields}
     |> DRecordDef
   | DUnionDef ud ->
-    let ncases = slice.Map (transTVNTPair transTV) ud.Cases
-    {UnionDef.Name=ud.Name; Cases=ncases}
-    |> DUnionDef
+    let ncases = udCases ud |> slice.Map (transTVNTPair transTV)
+    let noTvFound = slice.Map _.Ftype ncases |> slice.Collect collectTVarFType |> slice.IsEmpty
+    if not noTvFound then
+      frt.Panic "Unresolve type2"
+    udUpdate ud ncases
+    df
 
 
 let transTVExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
@@ -709,7 +756,7 @@ UnionDef related utility.
 */
 
 let udToUt (ud:UnionDef) =
-  GoEval<UnionType> "UnionType(ud)"
+  {UnionType.Name=ud.Name; CasesPtr=ud.CasesPtr}
 
 let udToFUt (ud:UnionDef) =
   udToUt ud |> FUnion
@@ -731,7 +778,7 @@ let csRegisterCtor (sc:Scope) (ud: UnionDef) (cas: NameTypePair) =
   scDefVar sc cas.Name v
 
 let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
-  ud.Cases |> slice.Iter (csRegisterCtor sc ud)
+  udCases ud |> slice.Iter (csRegisterCtor sc ud)
 
 
 /*

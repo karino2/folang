@@ -10,6 +10,15 @@ import strings
 */
 type TypeVar = {Name: string}
 
+/*
+  To break mutual recursive type def cycle,
+  we treat UnionType as ptr type and update by side effect and propagate change to all referenced data.
+*/
+package_info _ =
+  type UTDataPtr
+  type NTPsPtr
+
+
 type FType =
 | FInt
 | FString
@@ -31,7 +40,29 @@ and FieldAccessType = {RecType: FType; FieldName: string}
 and TupleType = {ElemTypes: []FType}
 and NameTypePair = {Name: string; Ftype: FType}
 and RecordType = {Name: string; Fields: []NameTypePair}
-and UnionType = {Name: string; Cases: []NameTypePair}
+and UnionType = {Name: string; CasesPtr: NTPsPtr}
+
+package_info _ =
+  let NewNTPsPtr: []NameTypePair -> NTPsPtr
+  let NTPsPtrGet: NTPsPtr->[]NameTypePair
+  let NTPsUpdate: NTPsPtr->[]NameTypePair->()
+
+let newUTWithPtr name cptr =
+  {UnionType.Name=name; CasesPtr=cptr}
+
+let newUT name cases =
+  let ptr = NewNTPsPtr cases
+  newUTWithPtr name ptr
+
+
+let utName (ut:UnionType) =
+  ut.Name
+
+let utCases (ut:UnionType) =
+  NTPsPtrGet ut.CasesPtr
+
+let utUpdateCases (ut:UnionType) cases =
+  NTPsUpdate ut.CasesPtr cases
 
 let fargs (ft:FuncType) =
   let l = slice.Length ft.Targets
@@ -86,11 +117,11 @@ let frMatch (frec: RecordType) (fieldNames: []string)=
 let newFFunc (ftypes:[]FType) =
    {FuncType.Targets=ftypes} |> FFunc
 
-let funionToGo (fu: UnionType) =
-  fu.Name
+let fUnionToGo (fu: UnionType) =
+  utName fu
 
 let lookupCase (fu: UnionType) (caseName: string) =
-  lookupPairByName caseName fu.Cases
+  utCases fu |> lookupPairByName caseName
 
 // IntOrString_I
 let unionCSName (unionName: string) (caseName: string) =
@@ -133,7 +164,7 @@ let FTypeToGo (ft:FType) : string =
   | FUnit -> "" // When use as return type in Go, "" is suitable.
   | FFunc ft -> funcTypeToGo ft FTypeToGo
   | FRecord fr -> recordTypeToGo fr
-  | FUnion fu -> funionToGo fu
+  | FUnion fu -> fUnionToGo fu
   | FParamd pt -> fpToGo FTypeToGo pt
   | FSlice fs -> fSliceToGo fs FTypeToGo
   | FTuple ft -> fTupleToGo FTypeToGo ft

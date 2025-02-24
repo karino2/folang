@@ -307,7 +307,7 @@ let collectLfdRels (lfd:LetFuncDef) =
 */
 let newEquivSet0 () =
   let dic = dict.New<string, bool> ()
-  {Dict=dic}
+  {EquivSet.Dict=dic}
 
 let NewEquivSet (tv:TypeVar) =
   let es = newEquivSet0 ()
