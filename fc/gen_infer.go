@@ -397,162 +397,26 @@ func updateResolver(res Resolver, rels []UniRel) Resolver {
 	}))
 }
 
-func transExprNE(cnv func(Expr) Expr, p NEPair) NEPair {
-	return NEPair{Name: p.Name, Expr: cnv(p.Expr)}
+func transTypeLfd(transTV func(TypeVar) FType, lfd LetFuncDef) LetFuncDef {
+	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
+	nfvar := transV(lfd.Fvar)
+	nparams := slice.Map(transV, lfd.Params)
+	nbody := transTVBlock(transTV, lfd.Body)
+	return LetFuncDef{Fvar: nfvar, Params: nparams, Body: nbody}
 }
 
-func transStmt(transV func(Var) Var, transE func(Expr) Expr, stmt Stmt) Stmt {
+func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
 	switch _v14 := (stmt).(type) {
 	case Stmt_SLetVarDef:
 		llvd := _v14.Value
 		switch _v15 := (llvd).(type) {
 		case LLetVarDef_LLOneVarDef:
 			lvd := _v15.Value
-			nvar := transV(lvd.Lvar)
-			nrhs := transE(lvd.Rhs)
-			return frt.Pipe(frt.Pipe(LetVarDef{Lvar: nvar, Rhs: nrhs}, New_LLetVarDef_LLOneVarDef), New_Stmt_SLetVarDef)
-		case LLetVarDef_LLDestVarDef:
-			ldvd := _v15.Value
-			nvars := slice.Map(transV, ldvd.Lvars)
-			nrhs := transE(ldvd.Rhs)
-			return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: nvars, Rhs: nrhs}, New_LLetVarDef_LLDestVarDef), New_Stmt_SLetVarDef)
-		default:
-			panic("Union pattern fail. Never reached here.")
-		}
-	case Stmt_SExprStmt:
-		e := _v14.Value
-		return frt.Pipe(transE(e), New_Stmt_SExprStmt)
-	default:
-		panic("Union pattern fail. Never reached here.")
-	}
-}
-
-func transExprMatchRule(pExpr func(Expr) Expr, mr MatchRule) MatchRule {
-	nbody := frt.Pipe(frt.Pipe(blockToExpr(mr.Body), pExpr), exprToBlock)
-	return MatchRule{Pattern: mr.Pattern, Body: nbody}
-}
-
-func transBlock(transE func(Expr) Expr, transS func(Stmt) Stmt, bl Block) Block {
-	nss := frt.Pipe(bl.Stmts, (func(_r0 []Stmt) []Stmt { return slice.Map(transS, _r0) }))
-	fexpr := transE(bl.FinalExpr)
-	return Block{Stmts: nss, FinalExpr: fexpr}
-}
-
-func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt) Stmt, transB func(Block) Block, expr Expr) Expr {
-	transE := (func(_r0 Expr) Expr { return transExpr(transT, transV, transS, transB, _r0) })
-	switch _v16 := (expr).(type) {
-	case Expr_EVarRef:
-		rv := _v16.Value
-		switch _v17 := (rv).(type) {
-		case VarRef_VRVar:
-			v := _v17.Value
-			return frt.Pipe(frt.Pipe(transV(v), New_VarRef_VRVar), New_Expr_EVarRef)
-		case VarRef_VRSVar:
-			sv := _v17.Value
-			nv := transV(sv.Var)
-			return frt.Pipe(frt.Pipe(SpecVar{Var: nv, SpecList: sv.SpecList}, New_VarRef_VRSVar), New_Expr_EVarRef)
-		default:
-			panic("Union pattern fail. Never reached here.")
-		}
-	case Expr_ESlice:
-		es := _v16.Value
-		return frt.Pipe(slice.Map(transE, es), New_Expr_ESlice)
-	case Expr_EBinOpCall:
-		bop := _v16.Value
-		nlhs := transE(bop.Lhs)
-		nrhs := transE(bop.Rhs)
-		nret := transT(bop.Rtype)
-		return frt.Pipe(BinOpCall{Op: bop.Op, Rtype: nret, Lhs: nlhs, Rhs: nrhs}, New_Expr_EBinOpCall)
-	case Expr_ETupleExpr:
-		es := _v16.Value
-		return frt.Pipe(slice.Map(transE, es), New_Expr_ETupleExpr)
-	case Expr_ELambda:
-		le := _v16.Value
-		nparams := slice.Map(transV, le.Params)
-		nbody := transB(le.Body)
-		return frt.Pipe(LambdaExpr{Params: nparams, Body: nbody}, New_Expr_ELambda)
-	case Expr_ERecordGen:
-		rg := _v16.Value
-		newNV := slice.Map((func(_r0 NEPair) NEPair { return transExprNE(transE, _r0) }), rg.FieldsNV)
-		return frt.Pipe(RecordGen{FieldsNV: newNV, RecordType: rg.RecordType}, New_Expr_ERecordGen)
-	case Expr_ELazyBlock:
-		lb := _v16.Value
-		nbl := transB(lb.Block)
-		return frt.Pipe(LazyBlock{Block: nbl}, New_Expr_ELazyBlock)
-	case Expr_EReturnableExpr:
-		re := _v16.Value
-		switch _v18 := (re).(type) {
-		case ReturnableExpr_RBlock:
-			bl := _v18.Value
-			return frt.Pipe(transBlock(transE, transS, bl), blockToExpr)
-		case ReturnableExpr_RMatchExpr:
-			me := _v18.Value
-			ntarget := transE(me.Target)
-			nrules := slice.Map((func(_r0 MatchRule) MatchRule { return transExprMatchRule(transE, _r0) }), me.Rules)
-			return frt.Pipe(frt.Pipe(MatchExpr{Target: ntarget, Rules: nrules}, New_ReturnableExpr_RMatchExpr), New_Expr_EReturnableExpr)
-		default:
-			panic("Union pattern fail. Never reached here.")
-		}
-	case Expr_EFunCall:
-		fc := _v16.Value
-		ntarget := transVarVR(transV, fc.TargetFunc)
-		nargs := slice.Map(transE, fc.Args)
-		return frt.Pipe(FunCall{TargetFunc: ntarget, Args: nargs}, New_Expr_EFunCall)
-	case Expr_EBoolLiteral:
-		return expr
-	case Expr_EGoEvalExpr:
-		return expr
-	case Expr_EStringLiteral:
-		return expr
-	case Expr_EIntImm:
-		return expr
-	case Expr_EUnit:
-		return expr
-	case Expr_EFieldAccess:
-		fa := _v16.Value
-		ntarget := transE(fa.TargetExpr)
-		return frt.Pipe(FieldAccess{TargetExpr: ntarget, FieldName: fa.FieldName}, New_Expr_EFieldAccess)
-	default:
-		panic("Union pattern fail. Never reached here.")
-	}
-}
-
-func transTVExpr(transTV func(TypeVar) FType, expr Expr) Expr {
-	transE := (func(_r0 Expr) Expr { return transTVExpr(transTV, _r0) })
-	transT := (func(_r0 FType) FType { return transTVFType(transTV, _r0) })
-	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
-	transS := (func(_r0 Stmt) Stmt { return transStmt(transV, transE, _r0) })
-	transB := (func(_r0 Block) Block { return transBlock(transE, transS, _r0) })
-	return transExpr(transT, transV, transS, transB, expr)
-}
-
-func transTypeBlockFacade(transTV func(TypeVar) FType, block Block) Block {
-	transE := (func(_r0 Expr) Expr { return transTVExpr(transTV, _r0) })
-	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
-	transS := (func(_r0 Stmt) Stmt { return transStmt(transV, transE, _r0) })
-	return transBlock(transE, transS, block)
-}
-
-func transTypeLfd(transTV func(TypeVar) FType, lfd LetFuncDef) LetFuncDef {
-	transV := (func(_r0 Var) Var { return transTVVar(transTV, _r0) })
-	nfvar := transV(lfd.Fvar)
-	nparams := slice.Map(transV, lfd.Params)
-	nbody := transTypeBlockFacade(transTV, lfd.Body)
-	return LetFuncDef{Fvar: nfvar, Params: nparams, Body: nbody}
-}
-
-func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
-	switch _v19 := (stmt).(type) {
-	case Stmt_SLetVarDef:
-		llvd := _v19.Value
-		switch _v20 := (llvd).(type) {
-		case LLetVarDef_LLOneVarDef:
-			lvd := _v20.Value
 			nvar := collectTVarFType(lvd.Lvar.Ftype)
 			nrhs := collE(lvd.Rhs)
 			return slice.Append(nvar, nrhs)
 		case LLetVarDef_LLDestVarDef:
-			ldvd := _v20.Value
+			ldvd := _v15.Value
 			nvars := frt.Pipe(slice.Map(func(_v1 Var) FType {
 				return _v1.Ftype
 			}, ldvd.Lvars), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
@@ -562,7 +426,7 @@ func collectTVarStmt(collE func(Expr) []string, stmt Stmt) []string {
 			panic("Union pattern fail. Never reached here.")
 		}
 	case Stmt_SExprStmt:
-		e := _v19.Value
+		e := _v14.Value
 		return collE(e)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -579,43 +443,43 @@ func collectTVarExpr(expr Expr) []string {
 	recurse := collectTVarExpr
 	collS := (func(_r0 Stmt) []string { return collectTVarStmt(recurse, _r0) })
 	collB := (func(_r0 Block) []string { return collectTVarBlock(recurse, collS, _r0) })
-	switch _v21 := (expr).(type) {
+	switch _v16 := (expr).(type) {
 	case Expr_EVarRef:
-		vr := _v21.Value
+		vr := _v16.Value
 		return frt.Pipe(varRefVarType(vr), collectTVarFType)
 	case Expr_ESlice:
-		es := _v21.Value
+		es := _v16.Value
 		return slice.Collect(recurse, es)
 	case Expr_EBinOpCall:
-		bop := _v21.Value
+		bop := _v16.Value
 		lres := recurse(bop.Lhs)
 		rres := recurse(bop.Rhs)
 		return slice.Append(lres, rres)
 	case Expr_ETupleExpr:
-		es := _v21.Value
+		es := _v16.Value
 		return slice.Collect(recurse, es)
 	case Expr_ELambda:
-		le := _v21.Value
+		le := _v16.Value
 		pas := frt.Pipe(slice.Map(func(_v1 Var) FType {
 			return _v1.Ftype
 		}, le.Params), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) }))
 		return frt.Pipe(collB(le.Body), (func(_r0 []string) []string { return slice.Append(pas, _r0) }))
 	case Expr_ERecordGen:
-		rg := _v21.Value
+		rg := _v16.Value
 		return frt.Pipe(slice.Map(func(_v2 NEPair) Expr {
 			return _v2.Expr
 		}, rg.FieldsNV), (func(_r0 []Expr) []string { return slice.Collect(recurse, _r0) }))
 	case Expr_ELazyBlock:
-		lb := _v21.Value
+		lb := _v16.Value
 		return collB(lb.Block)
 	case Expr_EReturnableExpr:
-		re := _v21.Value
-		switch _v22 := (re).(type) {
+		re := _v16.Value
+		switch _v17 := (re).(type) {
 		case ReturnableExpr_RBlock:
-			bl := _v22.Value
+			bl := _v17.Value
 			return collB(bl)
 		case ReturnableExpr_RMatchExpr:
-			me := _v22.Value
+			me := _v17.Value
 			return frt.Pipe(frt.Pipe(slice.Map(func(_v3 MatchRule) Block {
 				return _v3.Body
 			}, me.Rules), (func(_r0 []Block) []string { return slice.Collect(collB, _r0) })), (func(_r0 []string) []string { return slice.Append(recurse(me.Target), _r0) }))
@@ -623,11 +487,11 @@ func collectTVarExpr(expr Expr) []string {
 			panic("Union pattern fail. Never reached here.")
 		}
 	case Expr_EFunCall:
-		fc := _v21.Value
+		fc := _v16.Value
 		colt := frt.Pipe(varRefVarType(fc.TargetFunc), collectTVarFType)
 		return frt.Pipe(slice.Collect(recurse, fc.Args), (func(_r0 []string) []string { return slice.Append(colt, _r0) }))
 	case Expr_EFieldAccess:
-		fa := _v21.Value
+		fa := _v16.Value
 		return recurse(fa.TargetExpr)
 	default:
 		return []string{}
@@ -644,9 +508,9 @@ func resolveOneTypeVar(rsv Resolver, tv TypeVar) FType {
 	recurse := (func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) })
 	ei := rsLookupEI(rsv, tv.Name)
 	rcand := ei.resType
-	switch _v23 := (rcand).(type) {
+	switch _v18 := (rcand).(type) {
 	case FType_FTypeVar:
-		tv2 := _v23.Value
+		tv2 := _v18.Value
 		return frt.IfElse(frt.OpEqual(tv2.Name, tv.Name), (func() FType {
 			return rcand
 		}), (func() FType {

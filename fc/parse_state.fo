@@ -5,12 +5,107 @@ import slice
 import dict
 
 /*
-  GenFunc related
+transform related.
 */
 
+/*
+  General Transform
+*/
+
+let transExprNE (cnv:Expr->Expr) (p:NEPair) =
+   {NEPair.Name=p.Name; Expr=cnv p.Expr}
+
+let transStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
+  match stmt with
+  | SLetVarDef llvd ->
+    match llvd with
+    | LLOneVarDef lvd ->
+      let nvar = transV lvd.Lvar
+      let nrhs = transE lvd.Rhs
+      {Lvar=nvar; Rhs=nrhs} |> LLOneVarDef |> SLetVarDef
+    | LLDestVarDef ldvd ->
+      let nvars = slice.Map transV ldvd.Lvars
+      let nrhs = transE ldvd.Rhs
+      {Lvars=nvars;Rhs=nrhs} |> LLDestVarDef |> SLetVarDef
+  | SExprStmt e -> 
+    transE e |> SExprStmt
+
+let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
+  let nbody = blockToExpr mr.Body |> pExpr |> exprToBlock
+  {Pattern=mr.Pattern; Body=nbody}
+
+let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
+  let nss = bl.Stmts |> slice.Map transS
+  let fexpr = transE bl.FinalExpr
+  {Block.Stmts=nss; FinalExpr=fexpr}
+
+// let transExpr transT transV transS transB (expr:Expr) : Expr =
+let transExpr (transT: FType->FType) (transV:Var->Var) (transS: Stmt->Stmt) (transB: Block->Block) (expr:Expr) : Expr =
+  let transE = transExpr transT transV transS transB
+  match expr with
+  | EVarRef rv ->
+    match rv with
+    | VRVar v ->
+       transV v |> VRVar |> EVarRef
+    | VRSVar sv ->
+       let nv = transV sv.Var
+       {SpecVar.Var=nv; SpecList=sv.SpecList}
+       |> VRSVar |> EVarRef
+  | ESlice es -> slice.Map transE es |> ESlice
+  | EBinOpCall bop ->
+     let nlhs = transE bop.Lhs
+     let nrhs = transE bop.Rhs
+     let nret = transT bop.Rtype
+     {Op=bop.Op; Rtype=nret; Lhs=nlhs; Rhs=nrhs}
+     |> EBinOpCall
+  | ETupleExpr es -> slice.Map transE es |> ETupleExpr
+  | ELambda le ->
+    let nparams = slice.Map transV le.Params
+    let nbody = transB le.Body
+    {LambdaExpr.Params=nparams; Body=nbody}
+    |> ELambda
+  | ERecordGen rg ->
+    let newNV = slice.Map (transExprNE transE) rg.FieldsNV
+    {FieldsNV=newNV; RecordType=rg.RecordType}
+    |> ERecordGen
+  | ELazyBlock lb ->
+    let nbl = transB lb.Block
+    {LazyBlock.Block=nbl}
+    |> ELazyBlock
+  | EReturnableExpr re -> 
+    match re with
+    | RBlock bl ->
+      transBlock transE transS bl
+      |> blockToExpr
+    | RMatchExpr me ->
+      let ntarget = transE me.Target
+      let nrules = slice.Map (transExprMatchRule transE) me.Rules
+      {Target=ntarget; Rules=nrules}
+      |> RMatchExpr
+      |> EReturnableExpr
+  | EFunCall fc ->
+    let ntarget =  transVarVR transV fc.TargetFunc
+    let nargs = slice.Map transE fc.Args
+    {TargetFunc=ntarget;Args=nargs}
+    |> EFunCall
+  | EBoolLiteral _ -> expr
+  | EGoEvalExpr _ -> expr
+  | EStringLiteral _ -> expr
+  | EIntImm _ -> expr
+  | EUnit -> expr
+  | EFieldAccess fa ->
+    let ntarget = transE fa.TargetExpr
+    {TargetExpr=ntarget; FieldName=fa.FieldName}
+    |> EFieldAccess
 
 /*
-  TransformT FTypeVar and recomposite.
+  transTV related.
+  TV is TypeVar and transform basicc is:
+    TypeVar->FType
+*/
+
+/*
+  transTV of FType.
   FFieldAccess might be resolved.
 */
 let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
@@ -41,6 +136,21 @@ let transTVVar (transTV: TypeVar->FType) (v:Var) =
   let ntp = transTVFType transTV v.Ftype
   {Var.Name=v.Name; Ftype=ntp}
 
+let transTVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
+  let nt = transTVFType transV ntp.Ftype
+  {NameTypePair.Name=ntp.Name; Ftype=nt}
+
+let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) =
+  match df with
+  | DRecordDef rd ->
+    let nfields = slice.Map (transTVNTPair transTV) rd.Fields
+    {RecordDef.Name=rd.Name; Fields=nfields}
+    |> DRecordDef
+  | DUnionDef ud ->
+    let ncases = slice.Map (transTVNTPair transTV) ud.Cases
+    {UnionDef.Name=ud.Name; Cases=ncases}
+    |> DUnionDef
+
 let collectTVarFType (ft:FType) : []string =
   let recurse = collectTVarFType
   match ft with
@@ -55,7 +165,24 @@ let collectTVarFType (ft:FType) : []string =
     slice.Collect recurse fnt.Targets
   | _ ->
     GoEval<[]string> "[]string{}"
-  
+
+let transTVExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
+  let transE = transTVExpr transTV
+  let transT = transTVFType transTV
+  let transV = transTVVar transTV
+  let transS = (transStmt transV transE)
+  let transB = transBlock transE transS
+  transExpr transT transV transS transB expr
+
+let transTVBlock (transTV:TypeVar->FType) (block:Block) =
+  let transE = transTVExpr transTV
+  let transV = transTVVar transTV
+  let transS = (transStmt transV transE)
+  transBlock transE transS block
+
+/*
+  GenFunc related
+*/
 
 
 let tpReplaceOne (tdic:dict.Dict<string, FType>) (tv:TypeVar) =
@@ -701,20 +828,6 @@ let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
 /*
   MultipleDefs resolve forward declaration, etc.
 */
-let transTVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
-  let nt = transTVFType transV ntp.Ftype
-  {NameTypePair.Name=ntp.Name; Ftype=nt}
-
-let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) =
-  match df with
-  | DRecordDef rd ->
-    let nfields = slice.Map (transTVNTPair transTV) rd.Fields
-    {RecordDef.Name=rd.Name; Fields=nfields}
-    |> DRecordDef
-  | DUnionDef ud ->
-    let ncases = slice.Map (transTVNTPair transTV) ud.Cases
-    {UnionDef.Name=ud.Name; Cases=ncases}
-    |> DUnionDef
 
 let transTVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
   let (rname, ok) = dict.TryFind tdctx.allocedDict tv.Name
