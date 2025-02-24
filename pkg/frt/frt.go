@@ -23,6 +23,10 @@ func Sprintf1[T any](fmtstr string, arg T) string {
 	return fmt.Sprintf(fmtstr, arg)
 }
 
+func Sprintf2[T any, U any](fmtstr string, arg0 T, arg1 U) string {
+	return fmt.Sprintf(fmtstr, arg0, arg1)
+}
+
 func Printf1[T any](fmtstr string, arg T) {
 	fmt.Printf(fmtstr, arg)
 }
@@ -95,6 +99,11 @@ func Panic(msg string) {
 
 func Panicf1[T any](fmt string, arg T) {
 	msg := Sprintf1(fmt, arg)
+	panic(msg)
+}
+
+func Panicf2[T any, U any](fmt string, arg0 T, arg1 U) {
+	msg := Sprintf2(fmt, arg0, arg1)
 	panic(msg)
 }
 

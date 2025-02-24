@@ -1,12 +1,14 @@
 package_info frt =
   let Println: string->()
   let Sprintf1<T>: string->T->string
+  let Sprintf2<T, U>: string->T->U->string
   let Printf1<T>: string->T->()
   let Fst<T, U> : T*U->T
   let Snd<T, U> : T*U->U
   let Assert : bool->string->()
   let Panic : string->()
   let Panicf1<T>: string->T->()
+  let Panicf2<T, U>: string->T->U->()
   let Empty<T>: ()->T
 
 

@@ -190,13 +190,14 @@ func frStructName(frec RecordType) string {
 	return frec.Name
 }
 
-func namePairMatch(targetName string, pair NameTypePair) bool {
-	return frt.OpEqual(targetName, pair.Name)
-}
-
 func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
 	res := frt.Pipe(pairs, (func(_r0 []NameTypePair) []NameTypePair {
-		return slice.Filter((func(_r0 NameTypePair) bool { return namePairMatch(targetName, _r0) }), _r0)
+		return slice.Filter(func(x NameTypePair) bool {
+			return frt.OpEqual(x.Name, targetName)
+		}, _r0)
+	}))
+	frt.IfOnly(slice.IsEmpty(res), (func() {
+		frt.Panicf1("Can't find record field of: %s", targetName)
 	}))
 	return slice.Head(res)
 }

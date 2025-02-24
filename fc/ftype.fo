@@ -90,12 +90,10 @@ let recordTypeToGo (frec: RecordType) =
 let frStructName (frec: RecordType) =
   frec.Name
 
-let namePairMatch (targetName :string) (pair: NameTypePair) =
-  targetName = pair.Name
-
 let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
-  // let res = pairs |> slice.Filter (fun x-> x.Name == fieldName)
-  let res = pairs |> slice.Filter (namePairMatch targetName)
+  let res = pairs |> slice.Filter (fun x-> x.Name = targetName)
+  if slice.IsEmpty res then
+    frt.Panicf1 "Can't find record field of: %s" targetName
   slice.Head res
 
 let frGetField (frec: RecordType) (fieldName: string) =
