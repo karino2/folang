@@ -46,6 +46,7 @@ package_info _ =
   let NewNTPsPtr: []NameTypePair -> NTPsPtr
   let NTPsPtrGet: NTPsPtr->[]NameTypePair
   let NTPsUpdate: NTPsPtr->[]NameTypePair->()
+  let PanicNow: string->()
 
 let newUTWithPtr name cptr =
   {UnionType.Name=name; CasesPtr=cptr}
@@ -93,7 +94,8 @@ let frStructName (frec: RecordType) =
 let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
   let res = pairs |> slice.Filter (fun x-> x.Name = targetName)
   if slice.IsEmpty res then
-    frt.Panicf1 "Can't find record field of: %s" targetName
+    frt.Sprintf1 "Can't find record field of: %s" targetName
+    |> PanicNow
   slice.Head res
 
 let frGetField (frec: RecordType) (fieldName: string) =

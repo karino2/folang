@@ -271,7 +271,7 @@ let transTVVar (transTV: TypeVar->FType) (v:Var) =
 
 let transTRecurse (transT: FType->FType) (count:int) (ft:FType) : FType =
   if count > 1000 then
-    frt.Panic "Too deep recurse fwddecl, maybe cyclic, give up"
+    PanicNow "Too deep recurse fwddecl, maybe cyclic, give up"
   let nt = transT ft
   let tvNotFound = collectTVarFType nt |> slice.IsEmpty
   if tvNotFound then
@@ -292,14 +292,14 @@ let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) : DefStmt =
     let nfields = slice.Map (transTVNTPair transTV) rd.Fields
     let noTvFound = slice.Map _.Ftype nfields |> slice.Collect collectTVarFType |> slice.IsEmpty
     if not noTvFound then
-      frt.Panic "Unresolve type"
+      PanicNow "Unresolve type"
     {RecordDef.Name=rd.Name; Fields=nfields}
     |> DRecordDef
   | DUnionDef ud ->
     let ncases = udCases ud |> slice.Map (transTVNTPair transTV)
     let noTvFound = slice.Map _.Ftype ncases |> slice.Collect collectTVarFType |> slice.IsEmpty
     if not noTvFound then
-      frt.Panic "Unresolve type2"
+      PanicNow "Unresolve type2"
     udUpdate ud ncases
     df
 
@@ -346,7 +346,7 @@ let tpname2tvtp (tvgen: ()->TypeVar) (slist:[]FType) (i:int) (tpname:string) =
 
 let GenFunc (ff:FuncFactory) (stlist:[]FType) (tvgen: ()->TypeVar) =
   if (slice.Len stlist) > (slice.Len ff.Tparams) then
-    frt.Panic "Too many type specified."
+    PanicNow "Too many type specified."
   let tdic = slice.Mapi (tpname2tvtp tvgen stlist) ff.Tparams |> dict.ToDict
   let ntargets = slice.Map (tpreplace tdic) ff.Targets
   {FuncType.Targets=ntargets}
@@ -375,7 +375,7 @@ let newTvf (name:string) =
 */
 let GenType (tfd:TypeFactoryData) (targs:[]FType) =
   if (slice.Len tfd.Tparams) <> (slice.Len targs) then
-    frt.Panic "wrong type param num for instantiate."
+    PanicNow "wrong type param num for instantiate."
   {Name=tfd.Name; Targs=targs}
   |> FParamd
 
@@ -426,7 +426,7 @@ let scRegisterVarFac s name fac =
   dict.Add sdic.VarFacMap name fac
 
 let emptyVarFac (tlist:[]FType) (tgen: ()->TypeVar) =
-  frt.Panic "should never called"
+  PanicNow "should never called"
   frt.Empty<VarRef> ()
 
 let scLookupVarFac s name : ([]FType->(()->TypeVar)->VarRef)*bool =
@@ -595,6 +595,12 @@ let initParse (src: string) =
   let tdctx = {tva=tva2; insideTD=false; defined=defdict; allocedDict= adict}
   newParse tkz scope offside tvctx tdctx
 
+let psPanic (ps:ParseState) msg =
+  tkzPanic ps.tkz msg
+
+let psForErrMsg (ps:ParseState) =
+  SetLastTkz ps.tkz
+
 let psSetNewSrc (src: string) (ps:ParseState) =
   let tkz = newTkz src
   psWithTkz ps tkz
@@ -620,7 +626,7 @@ let psCurCol (ps:ParseState) =
 let psPushOffside (ps:ParseState) =
   let curCol = psCurCol ps
   if (psCurOffside ps) >= curCol then
-    frt.Panic "Overrun offside rule"
+    psPanic ps "Overrun offside rule"
   slice.PushLast curCol ps.offsideCol
   |> psWithOffside ps
 
@@ -683,11 +689,10 @@ let psSkipEOL (ps:ParseState) =
   else
     ps
 
-
 let psExpect (ttype:TokenType) (ps:ParseState) =
   let cur = psCurrent ps
   if cur.ttype <> ttype then
-    frt.Panic("non expected token")
+    psPanic ps "non expected token"
   ()
 
 let psConsume (ttype:TokenType) (ps:ParseState) =
@@ -974,7 +979,8 @@ let transTVByTDCtx (tdctx:TypeDefCtx) (tv:TypeVar) =
     if ok2 then
       nt
     else
-      frt.Panicf1 "Unresolved foward decl type: %s" rname
+      frt.Sprintf1 "Unresolved foward decl type: %s" rname
+      |> PanicNow
       nt
   else
     FTypeVar tv

@@ -197,7 +197,7 @@ func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
 		}, _r0)
 	}))
 	frt.IfOnly(slice.IsEmpty(res), (func() {
-		frt.Panicf1("Can't find record field of: %s", targetName)
+		frt.PipeUnit(frt.Sprintf1("Can't find record field of: %s", targetName), PanicNow)
 	}))
 	return slice.Head(res)
 }

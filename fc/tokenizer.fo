@@ -59,12 +59,17 @@ type Token = {ttype: TokenType; begin: int; len: int; stringVal: string; intVal:
 
 type Tokenizer = {buf: string; current: Token; col: int}
 
+type FilePosInfo = {LineNum: int; ColNum: int}
+
 package_info _ =
   let newToken: TokenType->int->int->Token
   let newTokenizer: string->Tokenizer
   let nextToken: string->Token->Token
   let nextNLToken: string->Token->Token
   let isNeighborLT: string->Token->bool
+  let PosToFilePosInfo: string->int->FilePosInfo
+  let SetLastTkz: Tokenizer->()
+  let GetLastTkz: ()->Tokenizer
 
 let newTkz (buf:string) =
   let itk = newToken ILLEGAL 0 0
@@ -96,3 +101,11 @@ let tkzNextNOL (tkz:Tokenizer) : Tokenizer =
 
 let tkzIsNeighborLT (tkz:Tokenizer) =
   isNeighborLT tkz.buf tkz.current
+
+let tkzToFPosInfo (tkz:Tokenizer) =
+  PosToFilePosInfo tkz.buf tkz.current.begin
+
+let tkzPanic (tkz:Tokenizer) (msg:string) =
+  let finfo = tkzToFPosInfo tkz
+  let poss = frt.Sprintf2 "%d:%d: " finfo.LineNum finfo.ColNum
+  frt.Panicf2 "%s %s" poss msg

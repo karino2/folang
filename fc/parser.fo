@@ -95,7 +95,7 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
         frt.Panicf1 "type not found: %s." fullName
         (ps4, FUnit)
   | _ ->
-    frt.Panic("Unknown type")
+    psPanic ps "Unknown type"
     (ps, FUnit)
 
 
@@ -116,7 +116,7 @@ let parseTermType (pType:ParseState->ParseState*FType) (pElem:ParseState->ParseS
     let (ps3, ft2) = psConsume ASTER ps2
                       |> pElem
     if (psCurrentTT ps3) = ASTER then
-      frt.Panic "More than three elem tuple, NYI"
+      psPanic ps3 "More than three elem tuple, NYI"
     {ElemTypes=[ft;ft2]}
     |> FTuple
     |> withPs ps3
@@ -239,7 +239,7 @@ let parseGoEval (ps:ParseState) =
     let ge = {GoStmt=s; TypeArg=FUnit}
     (ps3, EGoEvalExpr ge)
   | _ ->
-    frt.Panic "Wrong arg for GoEval"
+    psPanic ps2 "Wrong arg for GoEval"
     (ps2, EUnit)
 
 
@@ -294,7 +294,7 @@ let retRecordGen (ok:bool) (rtype: RecordType) (neps: []NEPair) (ps:ParseState) 
     {FieldsNV=neps; RecordType=rtype}
     |> ERecordGen |> withPs ps
   else
-    frt.Panic "can't find record type."
+    psPanic ps "can't find record type."
     (ps, EUnit)
 
 
@@ -324,7 +324,7 @@ let refVar (vname:string) (stlist:[]FType) (ps:ParseState) =
     psTypeVarGen ps |> vfac stlist |> EVarRef
   else
     frt.Sprintf1 "Unknown var ref: %s" vname
-    |> frt.Panic
+    |> psPanic ps
     EUnit
 
 /*
@@ -453,7 +453,7 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
         let (ps3, e2) = psConsume COMMA ps2
                         |> parseE
         if (psCurrentTT ps3) = COMMA then
-          frt.Panic "only pair is supported for tuple expr."
+          psPanic ps3 "only pair is supported for tuple expr."
         [e1; e2]
         |> ETupleExpr
         |> withPs (psConsume RPAREN ps3)
@@ -468,7 +468,7 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     else
       parseVarRef ps
   | _ ->
-    frt.Panic "Unown atom."
+    psPanic ps "Unown atom."
     (ps, EUnit)
 
 let psCurIsBinOp (ps:ParseState) =
@@ -690,7 +690,7 @@ let parseTerm (pExpr: ParseState->ParseState*Expr) (pBlock: ParseState->ParseSta
         let fc = {TargetFunc=nvr; Args=tail}
         (ps2, EFunCall fc)
       | _ ->
-        frt.Panic "Funcall head is not var"
+        psPanic ps2 "Funcall head is not var"
         (ps2, head)
 
 let lookupBinOpNF (tk:TokenType) =
@@ -749,13 +749,13 @@ let isEndOfBlock (ps:ParseState) =
   // for (fun x -> x+2), RPAREN must be end of block.
   isOffside || (psCurIs EOF ps) || (psCurIs RPAREN ps)
 
+let psStmtOneForList pExpr pLet ps =
+  psForErrMsg ps
+  parseStmt pExpr pLet ps |> CnvL psSkipEOL
+
 let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : ParseState*[]Stmt =
-  let (ps2, one) = parseStmt pExpr pLet ps |> CnvL psSkipEOL
-  if isEndOfBlock ps2 then
-    (ps2, [one])
-  else
-    parseStmtList pExpr pLet ps2
-    |> CnvR (slice.PushHead one)
+  let pOne = psStmtOneForList pExpr pLet
+  ParseList2 pOne isEndOfBlock (fun p->p) ps
 
 /*
   BLOCK = EXPR | (STMT_LIKE EOL)* EXPR
@@ -772,7 +772,7 @@ let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseSt
   | SExprStmt e ->
     (ps2, {Block.Stmts=stmts; FinalExpr=e})
   | _ ->
-    frt.Panic "block of last is not expr"
+    psPanic ps2 "block of last is not expr"
     // dummy
     frt.Empty<Block> ()
     |> withPs ps2
@@ -853,7 +853,7 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     |> LLDestVarDef
     |> withPs ps4
   | _ ->
-    frt.Panic "Destructuring let, but rhs is not tuple. NYI."
+    psPanic ps2 "Destructuring let, but rhs is not tuple. NYI."
     let dummy = GoEval<[]Var> "[]Var{}"
     (ps2, LLDestVarDef {LetDestVarDef.Lvars=dummy; Rhs=EUnit})
 
@@ -896,11 +896,12 @@ let rfdToFuncFactory (rfd:RootFuncDef) =
                 | FFunc ft ->
                   ft.Targets
                 | _ ->
-                  frt.Panic "root func def let with non func var, bug"
+                  PanicNow  "root func def let with non func var, bug"
                   GoEval<[]FType> "[]FType{}"
   {Tparams=rfd.Tparams; Targets=targets}
 
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
+  psForErrMsg ps
   let (ps2, lfd) = parseLetFuncDef pLet ps
   let rfd = InferLfd ps.tvc lfd
   rfdToFuncFactory rfd |> scRegFunFac ps2.scope rfd.Lfd.Fvar.Name
@@ -934,7 +935,7 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
     let psNN = psNext psN
     match psCurrentTT psNN with
     | EQ ->
-      frt.Panic "Root let var def, NYI"
+      psPanic ps "Root let var def, NYI"
       (ps, (RSImport "dummy"))
     | _ ->
       parseRootLetFuncDef pLet ps
@@ -1029,7 +1030,7 @@ let parseTypeDefBody (ps:ParseState) =
   | BAR ->
     parseUnionDef tname ps2  |> CnvR DUnionDef
   | _ ->
-    frt.Panic "NYI"
+    psPanic ps2 "NYI"
     (ps2, (emptyDefStmt ()))
 
 /*
@@ -1121,7 +1122,7 @@ let parseExtDef (pi:PackageInfo) (ps:ParseState) =
   | LET -> parseExtFuncDef pi ps
   | TYPE -> parseExtTypeDef pi ps
   | _ ->
-    frt.Panic "Unknown pkginfo def"
+    psPanic ps "Unknown pkginfo def"
     ps
 
 let parseExtDefs (pi:PackageInfo) (ps:ParseState) : ParseState =
@@ -1161,8 +1162,9 @@ package_info _ =
   let SCLen: Scope->int
 
 let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+  psForErrMsg ps
   if (SCLen ps.scope) > 1 then
-    frt.Panic "Scope is not property poped."
+    psPanic ps "Scope is not property poped."
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps
   | IMPORT -> parseImport ps
@@ -1170,7 +1172,7 @@ let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   | TYPE -> parseTypeDef ps
   | PACKAGE_INFO -> parsePackageInfo ps
   | _ ->
-    frt.Panic "Unknown stmt"
+    psPanic ps "Unknown stmt"
     parsePackage ps // never reached this line.
 
 let parseRootOneStmtSk (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =

@@ -87,7 +87,7 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
         emptyRels ()
         |> withTp rhs // slice would be better.
       | _ ->
-        frt.Panic "right is slice, left is neither slice nor field access."
+        PanicNow "right is slice, left is neither slice nor field access."
         emptyRels ()
         |> withTp lhs
     | FFieldAccess fa2 ->
@@ -187,7 +187,7 @@ let collectStmtRel (ec:Expr->[]UniRel) (stmt:Stmt) : []UniRel =
           unifyType rhtype lft
           |> slice.Append inside
         | _ ->
-          frt.Panic "Destructuring of right is not tuple, NYI."
+          PanicNow "Destructuring of right is not tuple, NYI."
           inside
 
 /*
@@ -206,7 +206,7 @@ let collectFunCall (fc: FunCall) =
     |> slice.Map unifyTupArg
     |> slice.Concat
   | _ ->
-    frt.Panic "funcall with non func first arg, possibly TypeVar, NYI."
+    PanicNow "funcall with non func first arg, possibly TypeVar, NYI."
     emptyRels ()
 
 let collectSlice (es: []Expr) =
@@ -288,7 +288,7 @@ let lfdRetType (lfd:LetFuncDef) =
   match lfd.Fvar.Ftype with
   | FFunc ft -> freturn ft
   | _ ->
-    frt.Panic "LetFuncDef's fvar is not FFunc type."
+    PanicNow "LetFuncDef's fvar is not FFunc type."
     FUnit
 
 let collectLfdRels (lfd:LetFuncDef) =

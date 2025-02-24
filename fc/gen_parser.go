@@ -100,7 +100,7 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 			}))
 		}))
 	default:
-		frt.Panic("Unknown type")
+		psPanic(ps, "Unknown type")
 		return frt.NewTuple2(ps, New_FType_FUnit)
 	}
 }
@@ -111,7 +111,7 @@ func parseTermType(pType func(ParseState) frt.Tuple2[ParseState, FType], pElem f
 	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_ASTER), (func() frt.Tuple2[ParseState, FType] {
 		ps3, ft2 := frt.Destr(frt.Pipe(psConsume(New_TokenType_ASTER, ps2), pElem))
 		frt.IfOnly(frt.OpEqual(psCurrentTT(ps3), New_TokenType_ASTER), (func() {
-			frt.Panic("More than three elem tuple, NYI")
+			psPanic(ps3, "More than three elem tuple, NYI")
 		}))
 		return frt.Pipe(frt.Pipe(TupleType{ElemTypes: ([]FType{ft, ft2})}, New_FType_FTuple), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return withPs(ps3, _r0) }))
 	}), (func() frt.Tuple2[ParseState, FType] {
@@ -242,7 +242,7 @@ func parseGoEval(ps ParseState) frt.Tuple2[ParseState, Expr] {
 		ge := GoEvalExpr{GoStmt: s, TypeArg: New_FType_FUnit}
 		return frt.NewTuple2(ps3, New_Expr_EGoEvalExpr(ge))
 	default:
-		frt.Panic("Wrong arg for GoEval")
+		psPanic(ps2, "Wrong arg for GoEval")
 		return frt.NewTuple2(ps2, New_Expr_EUnit)
 	}
 }
@@ -295,7 +295,7 @@ func retRecordGen(ok bool, rtype RecordType, neps []NEPair, ps ParseState) frt.T
 	return frt.IfElse(ok, (func() frt.Tuple2[ParseState, Expr] {
 		return frt.Pipe(frt.Pipe(RecordGen{FieldsNV: neps, RecordType: rtype}, New_Expr_ERecordGen), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(ps, _r0) }))
 	}), (func() frt.Tuple2[ParseState, Expr] {
-		frt.Panic("can't find record type.")
+		psPanic(ps, "can't find record type.")
 		return frt.NewTuple2(ps, New_Expr_EUnit)
 	}))
 }
@@ -322,7 +322,7 @@ func refVar(vname string, stlist []FType, ps ParseState) Expr {
 	return frt.IfElse(ok, (func() Expr {
 		return frt.Pipe(frt.Pipe(psTypeVarGen(ps), (func(_r0 func() TypeVar) VarRef { return vfac(stlist, _r0) })), New_Expr_EVarRef)
 	}), (func() Expr {
-		frt.PipeUnit(frt.Sprintf1("Unknown var ref: %s", vname), frt.Panic)
+		frt.PipeUnit(frt.Sprintf1("Unknown var ref: %s", vname), (func(_r0 string) { psPanic(ps, _r0) }))
 		return New_Expr_EUnit
 	}))
 }
@@ -418,7 +418,7 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 			return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_COMMA), (func() frt.Tuple2[ParseState, Expr] {
 				ps3, e2 := frt.Destr(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), parseE))
 				frt.IfOnly(frt.OpEqual(psCurrentTT(ps3), New_TokenType_COMMA), (func() {
-					frt.Panic("only pair is supported for tuple expr.")
+					psPanic(ps3, "only pair is supported for tuple expr.")
 				}))
 				return frt.Pipe(frt.Pipe(([]Expr{e1, e2}), New_Expr_ETupleExpr), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(psConsume(New_TokenType_RPAREN, ps3), _r0) }))
 			}), (func() frt.Tuple2[ParseState, Expr] {
@@ -436,7 +436,7 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 			return parseVarRef(ps)
 		}))
 	default:
-		frt.Panic("Unown atom.")
+		psPanic(ps, "Unown atom.")
 		return frt.NewTuple2(ps, New_Expr_EUnit)
 	}
 }
@@ -655,7 +655,7 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 				fc := FunCall{TargetFunc: nvr, Args: tail}
 				return frt.NewTuple2(ps2, New_Expr_EFunCall(fc))
 			default:
-				frt.Panic("Funcall head is not var")
+				psPanic(ps2, "Funcall head is not var")
 				return frt.NewTuple2(ps2, head)
 			}
 		}))
@@ -717,15 +717,16 @@ func isEndOfBlock(ps ParseState) bool {
 	return ((isOffside || psCurIs(New_TokenType_EOF, ps)) || psCurIs(New_TokenType_RPAREN, ps))
 }
 
+func psStmtOneForList(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, Stmt] {
+	psForErrMsg(ps)
+	return frt.Pipe(parseStmt(pExpr, pLet, ps), (func(_r0 frt.Tuple2[ParseState, Stmt]) frt.Tuple2[ParseState, Stmt] { return CnvL(psSkipEOL, _r0) }))
+}
+
 func parseStmtList(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, []Stmt] {
-	ps2, one := frt.Destr(frt.Pipe(parseStmt(pExpr, pLet, ps), (func(_r0 frt.Tuple2[ParseState, Stmt]) frt.Tuple2[ParseState, Stmt] { return CnvL(psSkipEOL, _r0) })))
-	return frt.IfElse(isEndOfBlock(ps2), (func() frt.Tuple2[ParseState, []Stmt] {
-		return frt.NewTuple2(ps2, ([]Stmt{one}))
-	}), (func() frt.Tuple2[ParseState, []Stmt] {
-		return frt.Pipe(parseStmtList(pExpr, pLet, ps2), (func(_r0 frt.Tuple2[ParseState, []Stmt]) frt.Tuple2[ParseState, []Stmt] {
-			return CnvR((func(_r0 []Stmt) []Stmt { return slice.PushHead(one, _r0) }), _r0)
-		}))
-	}))
+	pOne := (func(_r0 ParseState) frt.Tuple2[ParseState, Stmt] { return psStmtOneForList(pExpr, pLet, _r0) })
+	return ParseList2(pOne, isEndOfBlock, func(p ParseState) ParseState {
+		return p
+	}, ps)
 }
 
 func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, Block] {
@@ -739,7 +740,7 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 		e := _v5.Value
 		return frt.NewTuple2(ps2, Block{Stmts: stmts, FinalExpr: e})
 	default:
-		frt.Panic("block of last is not expr")
+		psPanic(ps2, "block of last is not expr")
 		return frt.Pipe(frt.Empty[Block](), (func(_r0 Block) frt.Tuple2[ParseState, Block] { return withPs(ps2, _r0) }))
 	}
 }
@@ -817,7 +818,7 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 		vs := ([]Var{v1, v2})
 		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vs, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return withPs(ps4, _r0) }))
 	default:
-		frt.Panic("Destructuring let, but rhs is not tuple. NYI.")
+		psPanic(ps2, "Destructuring let, but rhs is not tuple. NYI.")
 		dummy := []Var{}
 		return frt.NewTuple2(ps2, New_LLetVarDef_LLDestVarDef(LetDestVarDef{Lvars: dummy, Rhs: New_Expr_EUnit}))
 	}
@@ -867,7 +868,7 @@ func rfdToFuncFactory(rfd RootFuncDef) FuncFactory {
 			ft := _v7.Value
 			return ft.Targets
 		default:
-			frt.Panic("root func def let with non func var, bug")
+			PanicNow("root func def let with non func var, bug")
 			return []FType{}
 		}
 	})()
@@ -875,6 +876,7 @@ func rfdToFuncFactory(rfd RootFuncDef) FuncFactory {
 }
 
 func parseRootLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps ParseState) frt.Tuple2[ParseState, RootFuncDef] {
+	psForErrMsg(ps)
 	ps2, lfd := frt.Destr(parseLetFuncDef(pLet, ps))
 	rfd := InferLfd(ps.tvc, lfd)
 	frt.PipeUnit(rfdToFuncFactory(rfd), (func(_r0 FuncFactory) { scRegFunFac(ps2.scope, rfd.Lfd.Fvar.Name, _r0) }))
@@ -903,7 +905,7 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 		psNN := psNext(psN)
 		switch (psCurrentTT(psNN)).(type) {
 		case TokenType_EQ:
-			frt.Panic("Root let var def, NYI")
+			psPanic(ps, "Root let var def, NYI")
 			return frt.NewTuple2(ps, New_RootStmt_RSImport("dummy"))
 		default:
 			return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, RootFuncDef]) frt.Tuple2[ParseState, RootStmt] {
@@ -996,7 +998,7 @@ func parseTypeDefBody(ps ParseState) frt.Tuple2[ParseState, DefStmt] {
 			return CnvR(New_DefStmt_DUnionDef, _r0)
 		}))
 	default:
-		frt.Panic("NYI")
+		psPanic(ps2, "NYI")
 		return frt.NewTuple2(ps2, emptyDefStmt())
 	}
 }
@@ -1077,7 +1079,7 @@ func parseExtDef(pi PackageInfo, ps ParseState) ParseState {
 	case TokenType_TYPE:
 		return parseExtTypeDef(pi, ps)
 	default:
-		frt.Panic("Unknown pkginfo def")
+		psPanic(ps, "Unknown pkginfo def")
 		return ps
 	}
 }
@@ -1106,8 +1108,9 @@ func parsePackageInfo(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
 }
 
 func parseRootOneStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, RootStmt] {
+	psForErrMsg(ps)
 	frt.IfOnly((SCLen(ps.scope) > 1), (func() {
-		frt.Panic("Scope is not property poped.")
+		psPanic(ps, "Scope is not property poped.")
 	}))
 	switch (psCurrentTT(ps)).(type) {
 	case TokenType_PACKAGE:
@@ -1121,7 +1124,7 @@ func parseRootOneStmt(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pa
 	case TokenType_PACKAGE_INFO:
 		return parsePackageInfo(ps)
 	default:
-		frt.Panic("Unknown stmt")
+		psPanic(ps, "Unknown stmt")
 		return parsePackage(ps)
 	}
 }

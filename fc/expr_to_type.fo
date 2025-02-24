@@ -35,10 +35,10 @@ let exprToBlock (bexpr:Expr) =
     match re with
     | RBlock b -> b
     | _ ->
-      frt.Panic "Not block, some ReturnableExpr."
+      PanicNow "Not block, some ReturnableExpr."
       frt.Empty<Block> ()
   | _ ->
-    frt.Panic "Not block."
+    PanicNow "Not block."
     frt.Empty<Block> ()
 
 let meToType (toT: Expr->FType) (me:MatchExpr) =

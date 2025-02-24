@@ -495,6 +495,42 @@ func lookupBinOp(tk TokenType) frt.Tuple2[BinOpInfo, bool] {
 }
 
 /*
+Error message related.
+*/
+func PosToFilePosInfo(buf string, posAt int) FilePosInfo {
+	line := 1
+	col := 1
+	cur := 0
+
+	for cur < posAt && cur < len(buf) {
+		c := buf[cur]
+		cur++
+		if c == '\n' {
+			line += 1
+			col = 1
+		} else {
+			col += 1
+		}
+	}
+	return FilePosInfo{LineNum: line, ColNum: col}
+}
+
+// for error message, store last tokenizer in global variable.
+var lastTkz Tokenizer
+
+func SetLastTkz(tk Tokenizer) {
+	lastTkz = tk
+}
+
+func GetLastTkz() Tokenizer {
+	return lastTkz
+}
+
+func PanicNow(msg string) {
+	tkzPanic(lastTkz, msg)
+}
+
+/*
 	  To avoid deep stack trace, loop in go layer instead of recursive call.
 
 		one: ps->ps*T

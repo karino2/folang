@@ -327,6 +327,11 @@ type Tokenizer struct {
 	col     int
 }
 
+type FilePosInfo struct {
+	LineNum int
+	ColNum  int
+}
+
 func newTkz(buf string) Tokenizer {
 	itk := newToken(New_TokenType_ILLEGAL, 0, 0)
 	ftk := nextToken(buf, itk)
@@ -360,4 +365,14 @@ func tkzNextNOL(tkz Tokenizer) Tokenizer {
 
 func tkzIsNeighborLT(tkz Tokenizer) bool {
 	return isNeighborLT(tkz.buf, tkz.current)
+}
+
+func tkzToFPosInfo(tkz Tokenizer) FilePosInfo {
+	return PosToFilePosInfo(tkz.buf, tkz.current.begin)
+}
+
+func tkzPanic(tkz Tokenizer, msg string) {
+	finfo := tkzToFPosInfo(tkz)
+	poss := frt.Sprintf2("%d:%d: ", finfo.LineNum, finfo.ColNum)
+	frt.Panicf2("%s %s", poss, msg)
 }

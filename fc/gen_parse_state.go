@@ -368,7 +368,7 @@ func transTVVar(transTV func(TypeVar) FType, v Var) Var {
 
 func transTRecurse(transT func(FType) FType, count int, ft FType) FType {
 	frt.IfOnly((count > 1000), (func() {
-		frt.Panic("Too deep recurse fwddecl, maybe cyclic, give up")
+		PanicNow("Too deep recurse fwddecl, maybe cyclic, give up")
 	}))
 	nt := transT(ft)
 	tvNotFound := frt.Pipe(collectTVarFType(nt), slice.IsEmpty)
@@ -394,7 +394,7 @@ func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
 			return _v1.Ftype
 		}, nfields), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) })), slice.IsEmpty)
 		frt.IfOnly(frt.OpNot(noTvFound), (func() {
-			frt.Panic("Unresolve type")
+			PanicNow("Unresolve type")
 		}))
 		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
@@ -406,7 +406,7 @@ func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
 			return _v2.Ftype
 		}, ncases), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) })), slice.IsEmpty)
 		frt.IfOnly(frt.OpNot(noTvFound), (func() {
-			frt.Panic("Unresolve type2")
+			PanicNow("Unresolve type2")
 		}))
 		udUpdate(ud, ncases)
 		return df
@@ -460,7 +460,7 @@ func tpname2tvtp(tvgen func() TypeVar, slist []FType, i int, tpname string) frt.
 
 func GenFunc(ff FuncFactory, stlist []FType, tvgen func() TypeVar) FuncType {
 	frt.IfOnly((slice.Len(stlist) > slice.Len(ff.Tparams)), (func() {
-		frt.Panic("Too many type specified.")
+		PanicNow("Too many type specified.")
 	}))
 	tdic := frt.Pipe(slice.Mapi((func(_r0 int, _r1 string) frt.Tuple2[string, FType] { return tpname2tvtp(tvgen, stlist, _r0, _r1) }), ff.Tparams), dict.ToDict)
 	ntargets := slice.Map((func(_r0 FType) FType { return tpreplace(tdic, _r0) }), ff.Targets)
@@ -490,7 +490,7 @@ func newTvf(name string) FType {
 
 func GenType(tfd TypeFactoryData, targs []FType) FType {
 	frt.IfOnly(frt.OpNotEqual(slice.Len(tfd.Tparams), slice.Len(targs)), (func() {
-		frt.Panic("wrong type param num for instantiate.")
+		PanicNow("wrong type param num for instantiate.")
 	}))
 	return frt.Pipe(ParamdType{Name: tfd.Name, Targs: targs}, New_FType_FParamd)
 }
@@ -533,7 +533,7 @@ func scRegisterVarFac(s Scope, name string, fac func([]FType, func() TypeVar) Va
 }
 
 func emptyVarFac(tlist []FType, tgen func() TypeVar) VarRef {
-	frt.Panic("should never called")
+	PanicNow("should never called")
 	return frt.Empty[VarRef]()
 }
 
@@ -726,6 +726,14 @@ func initParse(src string) ParseState {
 	return newParse(tkz, scope, offside, tvctx, tdctx)
 }
 
+func psPanic(ps ParseState, msg string) {
+	tkzPanic(ps.tkz, msg)
+}
+
+func psForErrMsg(ps ParseState) {
+	SetLastTkz(ps.tkz)
+}
+
 func psSetNewSrc(src string, ps ParseState) ParseState {
 	tkz := newTkz(src)
 	return psWithTkz(ps, tkz)
@@ -758,7 +766,7 @@ func psCurCol(ps ParseState) int {
 func psPushOffside(ps ParseState) ParseState {
 	curCol := psCurCol(ps)
 	frt.IfOnly((psCurOffside(ps) >= curCol), (func() {
-		frt.Panic("Overrun offside rule")
+		psPanic(ps, "Overrun offside rule")
 	}))
 	return frt.Pipe(slice.PushLast(curCol, ps.offsideCol), (func(_r0 []int) ParseState { return psWithOffside(ps, _r0) }))
 }
@@ -835,7 +843,7 @@ func psSkipEOL(ps ParseState) ParseState {
 func psExpect(ttype TokenType, ps ParseState) {
 	cur := psCurrent(ps)
 	frt.IfOnly(frt.OpNotEqual(cur.ttype, ttype), (func() {
-		frt.Panic("non expected token")
+		psPanic(ps, "non expected token")
 	}))
 
 }
@@ -1130,7 +1138,7 @@ func transTVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
 		return frt.IfElse(ok2, (func() FType {
 			return nt
 		}), (func() FType {
-			frt.Panicf1("Unresolved foward decl type: %s", rname)
+			frt.PipeUnit(frt.Sprintf1("Unresolved foward decl type: %s", rname), PanicNow)
 			return nt
 		}))
 	}), (func() FType {

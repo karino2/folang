@@ -46,11 +46,11 @@ func exprToBlock(bexpr Expr) Block {
 			b := _v3.Value
 			return b
 		default:
-			frt.Panic("Not block, some ReturnableExpr.")
+			PanicNow("Not block, some ReturnableExpr.")
 			return frt.Empty[Block]()
 		}
 	default:
-		frt.Panic("Not block.")
+		PanicNow("Not block.")
 		return frt.Empty[Block]()
 	}
 }

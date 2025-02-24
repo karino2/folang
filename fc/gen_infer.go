@@ -71,7 +71,7 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 			case FType_FFieldAccess:
 				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(rhs, _r0) }))
 			default:
-				frt.Panic("right is slice, left is neither slice nor field access.")
+				PanicNow("right is slice, left is neither slice nor field access.")
 				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
 			}
 		case FType_FFieldAccess:
@@ -169,7 +169,7 @@ func collectStmtRel(ec func(Expr) []UniRel, stmt Stmt) []UniRel {
 				lft := varsToTupleType(ldvd.Lvars)
 				return frt.Pipe(unifyType(rhtype, lft), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 			default:
-				frt.Panic("Destructuring of right is not tuple, NYI.")
+				PanicNow("Destructuring of right is not tuple, NYI.")
 				return inside
 			}
 		default:
@@ -189,7 +189,7 @@ func collectFunCall(fc FunCall) []UniRel {
 		tpArgTps := frt.Pipe(fargs(fft), (func(_r0 []FType) []FType { return slice.Take(slice.Length(argTps), _r0) }))
 		return frt.Pipe(frt.Pipe(slice.Zip(argTps, tpArgTps), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel { return slice.Map(unifyTupArg, _r0) })), slice.Concat)
 	default:
-		frt.Panic("funcall with non func first arg, possibly TypeVar, NYI.")
+		PanicNow("funcall with non func first arg, possibly TypeVar, NYI.")
 		return emptyRels()
 	}
 }
@@ -293,7 +293,7 @@ func lfdRetType(lfd LetFuncDef) FType {
 		ft := _v12.Value
 		return freturn(ft)
 	default:
-		frt.Panic("LetFuncDef's fvar is not FFunc type.")
+		PanicNow("LetFuncDef's fvar is not FFunc type.")
 		return New_FType_FUnit
 	}
 }
