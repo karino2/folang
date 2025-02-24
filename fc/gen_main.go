@@ -18,6 +18,7 @@ func transpileOne(parser ParseState, file string) ParseState {
 	frt.Printf1("transpile: %s\n", file)
 	src, ok := frt.Destr(sys.ReadFile(file))
 	return frt.IfElse(ok, (func() ParseState {
+		defer OnParseError(file)
 		ps2, stmts := frt.Destr(frt.Pipe(psSetNewSrc(src, parser), ParseAll))
 		res := RootStmtsToGo(stmts)
 		frt.IfOnly(strings.HasSuffix(".fo", file), (func() {

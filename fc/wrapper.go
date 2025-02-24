@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/karino2/folang/pkg/dict"
 	"github.com/karino2/folang/pkg/frt"
@@ -563,4 +564,11 @@ func ParseAll(ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
 func parseAll(ps ParseState) (ParseState, []RootStmt) {
 	res := ParseAll(ps)
 	return frt.Destr(res)
+}
+
+func OnParseError(fname string) {
+	if r := recover(); r != nil {
+		fmt.Printf("Parse Error in file %s: %s\n", fname, r)
+		os.Exit(1)
+	}
 }

@@ -11,7 +11,7 @@ let printUsage () =
 
 package_info _ =
   let ParseAll: ParseState->ParseState*[]RootStmt
-
+ 
 package_info filepath =
   let Dir: string->string
   // this is wrong, but OK for 2 arg.
@@ -23,6 +23,7 @@ let transpileOne (parser: ParseState) (file:string) =
   frt.Printf1 "transpile: %s\n" file
   let (src, ok) = sys.ReadFile file
   if ok then
+    GoEval "defer OnParseError(file)"
     let (ps2, stmts) = psSetNewSrc src parser 
                        |> ParseAll
     let res = RootStmtsToGo stmts
