@@ -540,7 +540,7 @@ let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Pars
       let fu = GoEval<UnionType> "tt.(FType_FUnion).Value"
       let cp = lookupCase fu cname
       scDefVar ps5.scope vname {Var.Name=vname; Ftype=cp.Ftype}
-    let (ps6, block) = pBlock ps5
+    let (ps6, block) = pBlock ps5 |> CnvL psPopScope
     let mp = {CaseId=cname; VarName=vname}
     {Pattern=mp; Body=block}
     |> withPs ps6
@@ -765,7 +765,7 @@ let parseStmtList (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseS
   in that case, it's handy to pushScope before calling this function.
 */
 let parseBlockAfterPushScope (pExpr: ParseState->ParseState*Expr) (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
-  let (ps2, sls) = psPushOffside ps |> (parseStmtList pExpr pLet) |> CnvL psPopOffside
+  let (ps2, sls) = psPushOffside ps |> (parseStmtList pExpr pLet) |> CnvL psPopOffside |> CnvL psPopScope
   let last = slice.Last sls
   let stmts = slice.PopLast sls
   match last with
@@ -1154,7 +1154,12 @@ let parsePackageInfo (ps:ParseState) =
   parse Stmt related.
 */
 
+package_info _ =
+  let SCLen: Scope->int
+
 let parseRootOneStmt (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+  if (SCLen ps.scope) > 1 then
+    frt.Panic "Scope is not property poped."
   match psCurrentTT ps with
   | PACKAGE -> parsePackage ps
   | IMPORT -> parseImport ps

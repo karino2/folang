@@ -388,6 +388,16 @@ func SCSDict(sc Scope) ScopeDict {
 	return sc.SDict
 }
 
+func SCLen(sc Scope) int {
+	res := 1
+	cur := sc
+	for cur.Parent != nil {
+		cur = cur.Parent
+		res++
+	}
+	return res
+}
+
 /*
   TypeVarAllocator
 */

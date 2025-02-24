@@ -1186,15 +1186,11 @@ func TestParseAddhook(t *testing.T) {
 	src := `package main
 
 type A =
-| UB of B
-and B = {Fc: C}
-and C = {Fd: D}
-and D =
-| I of int
-| S of string
+| AB of B
+and B = {Ba: A}
 
-let hoge c =
-  {Fc=c}
+let hoge () =
+  123
 
 `
 
