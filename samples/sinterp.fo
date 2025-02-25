@@ -1,0 +1,8 @@
+package main
+
+import frt
+
+let main () =
+  let a = 123
+  let b = "str val"
+  $"a is :{a}, b is {b}" |> frt.Println

@@ -362,3 +362,20 @@ let main () =
 
 generated go: [gen_shorthand_prop.go](./gen_shorthand_prop.go)
 
+
+### String interpolation
+
+```
+package main
+
+import frt
+
+let main () =
+  let a = 123
+  let b = "str val"
+  $"a is :{a}, b is {b}" |> frt.Println
+
+```
+
+generated go: [gen_sinterp.go](./gen_sinterp.go)
+
