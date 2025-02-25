@@ -379,3 +379,26 @@ let main () =
 
 generated go: [gen_sinterp.go](./gen_sinterp.go)
 
+
+### Backtick raw string and interpolation
+
+```
+package main
+
+import frt
+
+let main () =
+  let rawstr = `This
+is raw
+string. "Yes!" \ backslash is not esape.
+`
+  let a = 123
+  let rawinterp = $`Raw String with
+string interpolation. a="{a}".
+There is no way to escape brace in this expression.`
+  rawstr+rawinterp |> frt.Println
+
+```
+
+generated go: [gen_rawstring.go](./gen_rawstring.go)
+
