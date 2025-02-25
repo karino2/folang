@@ -133,14 +133,14 @@ func (IntOrString_I) [method]
 */
 let csToConformMethod (uname:string) (method:string) (cas: NameTypePair) =
   let csname = unionCSName uname cas.Name
-  "func (" + csname + ") " + method
+  $"func ({csname}) {method}"
 
 /*
 func (IntOrString_I) IntOrString_Union(){}
 func (IntOrString_B) IntOrString_Union(){}
 */
 let udCSConformMethods (ud:UnionDef) =
-  let method = ud.Name + "_Union(){}\n"
+  let method =  $"{ud.Name}_Union()" + "{}\n"
   udCases ud |> slice.Map (csToConformMethod ud.Name method) |> strings.Concat ""
 
 /*
@@ -196,9 +196,7 @@ let csConstructVar (uname:string) (cas: NameTypePair) =
   let b = buf.New ()
   buf.Write b "var "
   csConstructorName uname cas |> buf.Write b
-  buf.Write b " "
-  buf.Write b uname
-  buf.Write b " = "
+  buf.Write b $" {uname} = "
   buf.Write b (unionCSName uname cas.Name)
   buf.Write b "{}\n"
   buf.String b

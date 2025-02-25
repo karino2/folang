@@ -103,11 +103,11 @@ func udUnionDef(ud UnionDef) string {
 
 func csToConformMethod(uname string, method string, cas NameTypePair) string {
 	csname := unionCSName(uname, cas.Name)
-	return ((("func (" + csname) + ") ") + method)
+	return frt.SInterP("func (%s) %s", csname, method)
 }
 
 func udCSConformMethods(ud UnionDef) string {
-	method := (ud.Name + "_Union(){}\n")
+	method := (frt.SInterP("%s_Union()", ud.Name) + "{}\n")
 	return frt.Pipe(frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []string {
 		return slice.Map((func(_r0 NameTypePair) string { return csToConformMethod(ud.Name, method, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) }))
@@ -149,9 +149,7 @@ func csConstructVar(uname string, cas NameTypePair) string {
 	b := buf.New()
 	buf.Write(b, "var ")
 	frt.PipeUnit(csConstructorName(uname, cas), (func(_r0 string) { buf.Write(b, _r0) }))
-	buf.Write(b, " ")
-	buf.Write(b, uname)
-	buf.Write(b, " = ")
+	buf.Write(b, frt.SInterP(" %s = ", uname))
 	buf.Write(b, unionCSName(uname, cas.Name))
 	buf.Write(b, "{}\n")
 	return buf.String(b)
