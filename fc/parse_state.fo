@@ -3,6 +3,7 @@ package main
 import frt
 import slice
 import dict
+import strings
 
 /*
 transform related.
@@ -39,6 +40,13 @@ let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let fexpr = transE bl.FinalExpr
   {Block.Stmts=nss; FinalExpr=fexpr}
 
+let transRecType transT (rt:RecordType) =
+  let ntps = slice.Map _.Ftype rt.Fields |> slice.Map transT
+  let names = slice.Map _.Name rt.Fields
+  let nfields = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
+  let ntargs = slice.Map transT rt.Targs
+  {RecordType.Name=rt.Name; Fields=nfields; Targs=ntargs}
+
 let transExpr transT transV transS transB (expr:Expr) : Expr =
   let transE = transExpr transT transV transS transB
   match expr with
@@ -65,7 +73,8 @@ let transExpr transT transV transS transB (expr:Expr) : Expr =
     |> ELambda
   | ERecordGen rg ->
     let newNV = slice.Map (transExprNE transE) rg.FieldsNV
-    {FieldsNV=newNV; RecordType=rg.RecordType}
+    let nrec = transRecType transT rg.RecordType
+    {FieldsNV=newNV; RecordType=nrec}
     |> ERecordGen
   | ELazyBlock lb ->
     let nbl = transB lb.Block
@@ -124,9 +133,11 @@ let collectTVarFTypeWithSet (visited:SSet) (ft:FType) : []string =
   | FFieldAccess fa ->
     recurse fa.RecType
   | FRecord rt ->
-    rt.Fields
-    |> slice.Map _.Ftype
-    |> slice.Collect recurse
+    let fres =  rt.Fields
+                |> slice.Map _.Ftype
+                |> slice.Collect recurse
+    let tres = rt.Targs |> slice.Collect recurse
+    slice.Append fres tres
   | FUnion ut ->
     let uname = utName ut
     if SSetHasKey visited uname then
@@ -139,7 +150,7 @@ let collectTVarFTypeWithSet (visited:SSet) (ft:FType) : []string =
   | FFunc fnt ->
     slice.Collect recurse fnt.Targets
   | _ ->
-    GoEval<[]string> "[]string{}"
+    slice.New<string> ()
 
 let collectTVarFType (ft:FType) : []string =
   let visited = NewSSet ()
@@ -241,10 +252,7 @@ let transTVFTypeWithSet (visited:SSet) (transTV: TypeVar->FType) (ftp:FType) : F
     {Name=pt.Name; Targs=nts}
     |> FParamd
   | FRecord rt ->
-    let ntps = slice.Map _.Ftype rt.Fields |> slice.Map recurse
-    let names = slice.Map _.Name rt.Fields
-    let nfields = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
-    {RecordType.Name=rt.Name; Fields=nfields}
+    transRecType recurse rt
     |> FRecord
   | FUnion ut ->
     let uname = utName ut      
@@ -269,12 +277,20 @@ let transTVVar (transTV: TypeVar->FType) (v:Var) =
   let ntp = transTVFType transTV v.Ftype
   {Var.Name=v.Name; Ftype=ntp}
 
+let isTDTVar tvname =
+  strings.HasPrefix "_P" tvname 
+
+let noTDTVarInFType ft =
+  collectTVarFType ft
+  |> slice.Filter isTDTVar
+  |> slice.IsEmpty
+
 let transTRecurse (transT: FType->FType) (count:int) (ft:FType) : FType =
   if count > 1000 then
     PanicNow "Too deep recurse fwddecl, maybe cyclic, give up"
   let nt = transT ft
-  let tvNotFound = collectTVarFType nt |> slice.IsEmpty
-  if tvNotFound then
+  let noTvFound = noTDTVarInFType nt
+  if noTvFound then
     nt
   else
     transTRecurse transT (count+1) nt
@@ -286,18 +302,19 @@ let transTVNTPair (transV: TypeVar->FType) (ntp:NameTypePair) =
   {NameTypePair.Name=ntp.Name; Ftype=nt}
 
 
+
 let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) : DefStmt =
   match df with
   | DRecordDef rd ->
     let nfields = slice.Map (transTVNTPair transTV) rd.Fields
-    let noTvFound = slice.Map _.Ftype nfields |> slice.Collect collectTVarFType |> slice.IsEmpty
+    let noTvFound = slice.Map _.Ftype nfields |> slice.Forall noTDTVarInFType
     if not noTvFound then
       PanicNow "Unresolve type"
-    {RecordDef.Name=rd.Name; Fields=nfields}
+    {RecordDef.Name=rd.Name; Tparams=rd.Tparams; Fields=nfields}
     |> DRecordDef
   | DUnionDef ud ->
     let ncases = udCases ud |> slice.Map (transTVNTPair transTV)
-    let noTvFound = slice.Map _.Ftype ncases |> slice.Collect collectTVarFType |> slice.IsEmpty
+    let noTvFound = slice.Map _.Ftype ncases |> slice.Forall noTDTVarInFType
     if not noTvFound then
       PanicNow "Unresolve type2"
     udUpdate ud ncases
@@ -373,11 +390,58 @@ let newTvf (name:string) =
 /*
   TypeFactory related.
 */
-let GenType (tfd:TypeFactoryData) (targs:[]FType) =
+let GenType (tfd:TypeFactoryData) (targs:[]FType)  =
   if (slice.Len tfd.Tparams) <> (slice.Len targs) then
     PanicNow "wrong type param num for instantiate."
   {Name=tfd.Name; Targs=targs}
   |> FParamd
+
+/*
+  GenRecord related
+*/
+type RecordFactory = {Name: string; Tparams:[]string; Fields: []NameTypePair}
+
+let GenRecordType (rf:RecordFactory) stlist =
+  if (slice.Len stlist) <> (slice.Len rf.Tparams) then
+    PanicNow "wrong type param num for instantiate."
+  let tdic = slice.Zip rf.Tparams stlist |> dict.ToDict
+  let nftypes = slice.Map _.Ftype rf.Fields
+                |> slice.Map (tpreplace tdic)
+  let fnames = slice.Map _.Name rf.Fields
+  let nfields = slice.Zip fnames nftypes
+                |> slice.Map tupToNTPair
+  {RecordType.Name=rf.Name; Fields=nfields; Targs=stlist}
+
+let GenRecordFType rf stlist =
+  GenRecordType rf stlist |> FRecord
+
+// Create RecordType by TypeVar for tparams.
+// This will resolve in RecordGen Unify.
+let GenRecordTypeByTgen (rf: RecordFactory) (tvgen: ()->TypeVar) =
+  let ftvs = slice.Map (fun x-> tvgen () |> FTypeVar) rf.Tparams
+  GenRecordType rf ftvs
+
+
+
+let recFacMatch (fieldNames: []string) (rf: RecordFactory) =
+  if (slice.Length fieldNames) <> (slice.Length rf.Fields) then
+    false
+  else
+    let sortedInput = fieldNames |> slice.Sort
+    let sortedFName = slice.Map _.Name rf.Fields
+                      |> slice.Sort
+    sortedInput = sortedFName
+
+/*
+  If no type param, return RecordType*true, else empty*false
+*/
+let tryRecFacToRecType (rf:RecordFactory) =
+  if slice.IsEmpty rf.Tparams then
+    ({RecordType.Name=rf.Name; Fields=rf.Fields}, true)
+  else
+    (frt.Empty<RecordType> (), false)
+
+
 
 /*
   Scope and Parser related
@@ -388,15 +452,15 @@ let GenType (tfd:TypeFactoryData) (targs:[]FType) =
 */
 type ScopeDict = {
   VarFacMap: dict.Dict<string, []FType->(()->TypeVar)->VarRef>;
-  RecordMap: dict.Dict<string, RecordType>;
+  RecFacMap: dict.Dict<string, RecordFactory>;
   TypeFacMap: dict.Dict<string, []FType->FType>;
 }
 
 let NewScopeDict () =
   let fvm = dict.New<string, []FType->(()->TypeVar)->VarRef> ()
-  let rm = dict.New<string, RecordType> ()
+  let rfm = dict.New<string, RecordFactory> ()
   let tfm = dict.New<string, []FType->FType> ()
-  {VarFacMap=fvm; RecordMap=rm; TypeFacMap=tfm}
+  {VarFacMap=fvm; RecFacMap=rfm; TypeFacMap=tfm}
 
 package_info _ =
   type Scope
@@ -449,42 +513,41 @@ let ftToTypeFac ft (tlist:[]FType) =
 let scRegisterType s name ftype =
   scRegisterTypeFac s name (ftToTypeFac ftype)
 
-let scRegisterRecType s recType =
-  let rname = recType.Name
+let scRegisterRecFac s name fac =
   let sdic = SCSDict s
-  dict.Add sdic.RecordMap rname recType
-  scRegisterType s rname (FRecord recType)
+  dict.Add sdic.RecFacMap name fac
+  dict.Add sdic.TypeFacMap name (GenRecordFType fac)
 
-let frMatchAdapter fieldNames rec =
-  frMatch rec fieldNames
-
-let scLookupRecordCur s fieldNames =
+let scLookupRecFacCur s fieldNames =
   let sdic = SCSDict s
-  dict.Values sdic.RecordMap
-  |> slice.TryFind (frMatchAdapter fieldNames)
+  dict.Values sdic.RecFacMap
+  |> slice.TryFind (recFacMatch fieldNames)
 
 let emptyRec () =
   frt.Empty<RecordType> ()
 
+let emptyRecFac () =
+  frt.Empty<RecordFactory> ()
 
-let scLookupRecord s fieldNames : RecordType*bool =
-  let (rec, ok) = scLookupRecordCur s fieldNames
+
+let scLookupRecFac s fieldNames : RecordFactory*bool =
+  let (rfac, ok) = scLookupRecFacCur s fieldNames
   if ok then
-    (rec, ok)  
+    (rfac, ok)  
   elif SCHasParent s then
-    scLookupRecord (SCParent s) fieldNames
+    scLookupRecFac (SCParent s) fieldNames
   else
-    (emptyRec (), false)
+    (emptyRecFac (), false)
 
-let scLookupRecordByName s name : RecordType*bool =
+let scLookupRecFacByName s name : RecordFactory*bool =
   let sd = SCSDict s
-  let (rec, ok) = dict.TryFind sd.RecordMap name
+  let (rfac, ok) = dict.TryFind sd.RecFacMap name
   if ok then
-    (rec, ok)
+    (rfac, ok)
   elif SCHasParent s then
-    scLookupRecordByName (SCParent s) name
+    scLookupRecFacByName (SCParent s) name
   else
-    (emptyRec (), false)
+    (emptyRecFac (), false)
 
 let scLookupTypeFac s name =
   let sd = SCSDict s
@@ -950,16 +1013,21 @@ let newUnaryNotCall (tvgen: ()->TypeVar) (cond: Expr) =
   Register type info to TypeDefCtx, etc.
 */
 
-let rdToRecType (rd:RecordDef) =
+let rdToRecFac (rd:RecordDef) =
   // golang complaint:
   // S1016 - Use a type conversion instead of manually copying struct fields 
   // {RecordType.Name=rd.Name; Fields=rd.Fields}
-  GoEval<RecordType> "RecordType(rd)"
+  GoEval<RecordFactory> "RecordFactory(rd)"
 
 let psRegRecDefToTDCtx (rd:RecordDef) (ps:ParseState) =
-  let recT = rdToRecType rd
-  scRegisterRecType ps.scope recT
-  dict.Add ps.tdctx.defined recT.Name (FRecord recT)
+  let rfac = rdToRecFac rd
+  scRegisterRecFac ps.scope rd.Name rfac
+  // If no type parameter, RecordType is set to defined.
+  // This is used for forward decl.
+  // If there is type parameter, it is impossible to use it beforehand.
+  let (rtype, ok) = tryRecFacToRecType rfac
+  if ok then
+    dict.Add ps.tdctx.defined rtype.Name (FRecord rtype)
 
 let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
   let sc = ps.scope
@@ -994,8 +1062,8 @@ let resolveFwrdDecl (ps:ParseState) (md:MultipleDefs) : MultipleDefs =
 let scRegDefStmtType (sc:Scope) (df: DefStmt) =
   match df with
   | DRecordDef rd ->
-    rdToRecType rd
-    |>  scRegisterRecType sc
+    rdToRecFac rd
+    |>  scRegisterRecFac sc rd.Name
   | DUnionDef ud ->
     udRegisterCsCtors sc ud
     let fut = udToFUt ud

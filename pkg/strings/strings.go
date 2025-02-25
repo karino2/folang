@@ -37,6 +37,10 @@ func TrimSuffix(suffix string, s string) string {
 	return sysstr.TrimSuffix(s, suffix)
 }
 
+func HasPrefix(prefix string, s string) bool {
+	return sysstr.HasPrefix(s, prefix)
+}
+
 func EncloseWith(beg string, end string, center string) string {
 	return beg + center + end
 }

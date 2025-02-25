@@ -29,6 +29,9 @@ func withTp(tp FType, rels []UniRel) frt.Tuple2[FType, []UniRel] {
 }
 
 func compositeTpList(cOne func(FType, FType) frt.Tuple2[FType, []UniRel], lhs []FType, rhs []FType) frt.Tuple2[[]FType, []UniRel] {
+	frt.IfOnly(frt.OpNotEqual(slice.Len(lhs), slice.Len(rhs)), (func() {
+		PanicNow("compositeTpList, type len is differ")
+	}))
 	tups := frt.Pipe(slice.Zip(lhs, rhs), (func(_r0 []frt.Tuple2[FType, FType]) []frt.Tuple2[FType, []UniRel] {
 		return slice.Map((func(_r0 frt.Tuple2[FType, FType]) frt.Tuple2[FType, []UniRel] { return tupApply(cOne, _r0) }), _r0)
 	}))
@@ -100,9 +103,15 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 			}
 		case FType_FFunc:
 			tf2 := _v3.Value
-			tf1 := lhs.(FType_FFunc).Value
-			tps, rels := frt.Destr(compositeTpList(compositeTp, tf1.Targets, tf2.Targets))
-			return frt.Pipe(newFFunc(tps), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
+			switch _v6 := (lhs).(type) {
+			case FType_FFunc:
+				tf1 := _v6.Value
+				tps, rels := frt.Destr(compositeTpList(compositeTp, tf1.Targets, tf2.Targets))
+				return frt.Pipe(newFFunc(tps), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
+			default:
+				PanicNow("Lhs is not FFunc, Rhs is FFunc.")
+				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
+			}
 		case FType_FParamd:
 			pt2 := _v3.Value
 			pt1 := lhs.(FType_FParamd).Value
@@ -146,24 +155,24 @@ func varsToTupleType(vars []Var) FType {
 }
 
 func collectStmtRel(ec func(Expr) []UniRel, stmt Stmt) []UniRel {
-	switch _v6 := (stmt).(type) {
+	switch _v7 := (stmt).(type) {
 	case Stmt_SExprStmt:
-		se := _v6.Value
+		se := _v7.Value
 		return ec(se)
 	case Stmt_SLetVarDef:
-		slvd := _v6.Value
-		switch _v7 := (slvd).(type) {
+		slvd := _v7.Value
+		switch _v8 := (slvd).(type) {
 		case LLetVarDef_LLOneVarDef:
-			lvd := _v7.Value
+			lvd := _v8.Value
 			inside := ec(lvd.Rhs)
 			return frt.Pipe(unifyType(lvd.Lvar.Ftype, ExprToType(lvd.Rhs)), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 		case LLetVarDef_LLDestVarDef:
-			ldvd := _v7.Value
+			ldvd := _v8.Value
 			inside := ec(ldvd.Rhs)
 			rhtype := ExprToType(ldvd.Rhs)
-			switch _v8 := (rhtype).(type) {
+			switch _v9 := (rhtype).(type) {
 			case FType_FTuple:
-				ft := _v8.Value
+				ft := _v9.Value
 				return frt.Pipe(frt.Pipe(frt.Pipe(slice.Zip(ldvd.Lvars, ft.ElemTypes), (func(_r0 []frt.Tuple2[Var, FType]) [][]UniRel { return slice.Map(unifyVETup, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 			case FType_FTypeVar:
 				lft := varsToTupleType(ldvd.Lvars)
@@ -182,9 +191,9 @@ func collectStmtRel(ec func(Expr) []UniRel, stmt Stmt) []UniRel {
 
 func collectFunCall(fc FunCall) []UniRel {
 	tftype := varRefVarType(fc.TargetFunc)
-	switch _v9 := (tftype).(type) {
+	switch _v10 := (tftype).(type) {
 	case FType_FFunc:
-		fft := _v9.Value
+		fft := _v10.Value
 		argTps := slice.Map(ExprToType, fc.Args)
 		tpArgTps := frt.Pipe(fargs(fft), (func(_r0 []FType) []FType { return slice.Take(slice.Length(argTps), _r0) }))
 		return frt.Pipe(frt.Pipe(slice.Zip(argTps, tpArgTps), (func(_r0 []frt.Tuple2[FType, FType]) [][]UniRel { return slice.Map(unifyTupArg, _r0) })), slice.Concat)
@@ -224,13 +233,13 @@ func collectExprRel(expr Expr) []UniRel {
 	colB := (func(_r0 Block) []UniRel {
 		return collectBlock(colE, (func(_r0 Stmt) []UniRel { return collectStmtRel(colE, _r0) }), _r0)
 	})
-	switch _v10 := (expr).(type) {
+	switch _v11 := (expr).(type) {
 	case Expr_EFunCall:
-		fc := _v10.Value
+		fc := _v11.Value
 		inside := frt.Pipe(slice.Map(colE, fc.Args), slice.Concat)
 		return frt.Pipe(collectFunCall(fc), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_EBinOpCall:
-		bop := _v10.Value
+		bop := _v11.Value
 		insideL := colE(bop.Lhs)
 		insideR := colE(bop.Rhs)
 		lft := ExprToType(bop.Lhs)
@@ -247,17 +256,17 @@ func collectExprRel(expr Expr) []UniRel {
 		all := ([][]UniRel{insideL, insideR, teq, retEq})
 		return slice.Concat(all)
 	case Expr_ETupleExpr:
-		tes := _v10.Value
+		tes := _v11.Value
 		return frt.Pipe(slice.Map(colE, tes), slice.Concat)
 	case Expr_ELambda:
-		le := _v10.Value
+		le := _v11.Value
 		return colB(le.Body)
 	case Expr_ESlice:
-		es := _v10.Value
+		es := _v11.Value
 		inside := frt.Pipe(slice.Map(colE, es), slice.Concat)
 		return frt.Pipe(collectSlice(es), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ERecordGen:
-		rg := _v10.Value
+		rg := _v11.Value
 		fieldValEs := slice.Map(func(_v1 NEPair) Expr {
 			return _v1.Expr
 		}, rg.FieldsNV)
@@ -266,16 +275,16 @@ func collectExprRel(expr Expr) []UniRel {
 			return slice.Map((func(_r0 frt.Tuple2[string, FType]) []UniRel { return recNTUnify(rg.RecordType, _r0) }), _r0)
 		})), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(inside, _r0) }))
 	case Expr_ELazyBlock:
-		lb := _v10.Value
+		lb := _v11.Value
 		return colB(lb.Block)
 	case Expr_EReturnableExpr:
-		re := _v10.Value
-		switch _v11 := (re).(type) {
+		re := _v11.Value
+		switch _v12 := (re).(type) {
 		case ReturnableExpr_RBlock:
-			bl := _v11.Value
+			bl := _v12.Value
 			return colB(bl)
 		case ReturnableExpr_RMatchExpr:
-			me := _v11.Value
+			me := _v12.Value
 			return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(func(_v2 MatchRule) Block {
 				return _v2.Body
 			}, me.Rules), (func(_r0 []Block) [][]UniRel { return slice.Map(colB, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(colE(me.Target), _r0) }))
@@ -288,9 +297,9 @@ func collectExprRel(expr Expr) []UniRel {
 }
 
 func lfdRetType(lfd LetFuncDef) FType {
-	switch _v12 := (lfd.Fvar.Ftype).(type) {
+	switch _v13 := (lfd.Fvar.Ftype).(type) {
 	case FType_FFunc:
-		ft := _v12.Value
+		ft := _v13.Value
 		return freturn(ft)
 	default:
 		PanicNow("LetFuncDef's fvar is not FFunc type.")
@@ -368,9 +377,9 @@ func rsRegisterNewEI(res Resolver, ei EquivInfo) {
 
 func updateResOne(res Resolver, rel UniRel) []UniRel {
 	ei1 := rsLookupEI(res, rel.SrcV)
-	switch _v13 := (rel.Dest).(type) {
+	switch _v14 := (rel.Dest).(type) {
 	case FType_FTypeVar:
-		tvd := _v13.Value
+		tvd := _v14.Value
 		ei2 := rsLookupEI(res, tvd.Name)
 		nei, rels := frt.Destr(eiUnion(ei1, ei2))
 		rsRegisterNewEI(res, nei)
@@ -409,9 +418,9 @@ func resolveOneTypeVar(rsv Resolver, tv TypeVar) FType {
 	recurse := (func(_r0 TypeVar) FType { return resolveOneTypeVar(rsv, _r0) })
 	ei := rsLookupEI(rsv, tv.Name)
 	rcand := ei.resType
-	switch _v14 := (rcand).(type) {
+	switch _v15 := (rcand).(type) {
 	case FType_FTypeVar:
-		tv2 := _v14.Value
+		tv2 := _v15.Value
 		return frt.IfElse(frt.OpEqual(tv2.Name, tv.Name), (func() FType {
 			return rcand
 		}), (func() FType {

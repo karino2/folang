@@ -382,8 +382,9 @@ type PackageInfo struct {
 	TypeInfo dict.Dict[string, TypeFactoryData]
 }
 type RecordDef struct {
-	Name   string
-	Fields []NameTypePair
+	Name    string
+	Tparams []string
+	Fields  []NameTypePair
 }
 type UnionDef struct {
 	Name     string

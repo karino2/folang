@@ -32,6 +32,10 @@ func IsEmpty[T any](a []T) bool {
 	return len(a) == 0
 }
 
+func IsNotEmpty[T any](a []T) bool {
+	return len(a) != 0
+}
+
 func Last[T any](s []T) T {
 	return s[len(s)-1]
 }

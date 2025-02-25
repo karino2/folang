@@ -41,18 +41,21 @@ let lfdToGo (bToGoRet: Block->string) (lfd:LetFuncDef) =
 let pany (s:string) =
   frt.Sprintf1 "%s any" s
 
+let writeTParamsIfAny b tparams =
+  if not (slice.IsEmpty tparams) then
+    buf.Write b "["
+    tparams
+    |> slice.Map pany
+    |> strings.Concat ", "
+    |> buf.Write b
+    buf.Write b "]"
+
 let rfdToGo (bToGoRet: Block->string) (rfd:RootFuncDef) =
   let lfd = rfd.Lfd
   let b = buf.New ()
   buf.Write b "func "
   buf.Write b lfd.Fvar.Name
-  if not (slice.IsEmpty rfd.Tparams) then
-    buf.Write b "["
-    rfd.Tparams
-    |> slice.Map pany
-    |> strings.Concat ", "
-    |> buf.Write b
-    buf.Write b "]"
+  writeTParamsIfAny b rfd.Tparams
   buf.Write b "("
   lfdParamsToGo lfd |> buf.Write b
   buf.Write b ") "
@@ -86,6 +89,7 @@ let rdfToGo (rdf:RecordDef) =
   let b = buf.New ()
   buf.Write b "type "
   buf.Write b rdf.Name
+  writeTParamsIfAny b rdf.Tparams
   buf.Write b " struct {\n"
   rdf.Fields |> slice.Map rdffieldToGo |> strings.Concat "\n" |> buf.Write b
   buf.Write b "\n}" 

@@ -18,7 +18,7 @@ func rgFVToGo(toGo func(Expr) string, fvPair NEPair) string {
 func rgToGo(toGo func(Expr) string, rg RecordGen) string {
 	rtype := rg.RecordType
 	b := buf.New()
-	frt.PipeUnit(frStructName(rtype), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frStructName(FTypeToGo, rtype), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "{")
 	fvGo := frt.Pipe(frt.Pipe(rg.FieldsNV, (func(_r0 []NEPair) []string {
 		return slice.Map((func(_r0 NEPair) string { return rgFVToGo(toGo, _r0) }), _r0)
@@ -212,8 +212,7 @@ func varRefToGo(tGo func(FType) string, vr VarRef) string {
 		return v.Name
 	case VarRef_VRSVar:
 		sv := _v4.Value
-		tlis := frt.Pipe(frt.Pipe(sv.SpecList, (func(_r0 []FType) []string { return slice.Map(tGo, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
-		return (((sv.Var.Name + "[") + tlis) + "]")
+		return (sv.Var.Name + tArgsToGo(tGo, sv.SpecList))
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

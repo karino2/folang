@@ -127,6 +127,7 @@ type NameTypePair struct {
 type RecordType struct {
 	Name   string
 	Fields []NameTypePair
+	Targs  []FType
 }
 type UnionType struct {
 	Name     string
@@ -182,12 +183,20 @@ func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
 	return buf.String(bw)
 }
 
-func recordTypeToGo(frec RecordType) string {
-	return frec.Name
+func tArgsToGo[T0 any](tGo func(T0) string, targs []T0) string {
+	return frt.IfElse(slice.IsEmpty(targs), (func() string {
+		return ""
+	}), (func() string {
+		return frt.Pipe(frt.Pipe(frt.Pipe(targs, (func(_r0 []T0) []string { return slice.Map(tGo, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) string { return strings.EncloseWith("[", "]", _r0) }))
+	}))
 }
 
-func frStructName(frec RecordType) string {
-	return frec.Name
+func recordTypeToGo(tGo func(FType) string, frec RecordType) string {
+	return (frec.Name + tArgsToGo(tGo, frec.Targs))
+}
+
+func frStructName(tGo func(FType) string, frec RecordType) string {
+	return (frec.Name + tArgsToGo(tGo, frec.Targs))
 }
 
 func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
@@ -208,6 +217,10 @@ func frGetField(frec RecordType, fieldName string) NameTypePair {
 
 func newNTPair(name string, ft FType) NameTypePair {
 	return NameTypePair{Name: name, Ftype: ft}
+}
+
+func tupToNTPair(tup frt.Tuple2[string, FType]) NameTypePair {
+	return newNTPair(frt.Fst(tup), frt.Snd(tup))
 }
 
 func frMatch(frec RecordType, fieldNames []string) bool {
@@ -287,7 +300,7 @@ func FTypeToGo(ft FType) string {
 		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
 		fr := _v2.Value
-		return recordTypeToGo(fr)
+		return recordTypeToGo(FTypeToGo, fr)
 	case FType_FUnion:
 		fu := _v2.Value
 		return fUnionToGo(fu)

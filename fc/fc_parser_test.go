@@ -1170,6 +1170,17 @@ let hoge (rs:[]Rec) =
 `,
 			[]string{"func (_v1 Rec)string", "_v1.S"},
 		},
+		{
+			`package main
+
+type A<T> = {FA: T; FSA: []T}
+
+let hoge () =
+  {FA=123; FSA=[456]}
+
+`,
+			[]string{"type A[T any]", "hoge() A[int]", "return A[int]"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1185,12 +1196,10 @@ let hoge (rs:[]Rec) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type A =
-| AB of B
-and B = {Ba: A}
+type A<T> = {FA: T; FSA: []T}
 
 let hoge () =
-  123
+  {FA=123; FSA=[456]}
 
 `
 

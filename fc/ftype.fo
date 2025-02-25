@@ -39,7 +39,7 @@ and ParamdType = {Name: string; Targs: []FType}
 and FieldAccessType = {RecType: FType; FieldName: string}
 and TupleType = {ElemTypes: []FType}
 and NameTypePair = {Name: string; Ftype: FType}
-and RecordType = {Name: string; Fields: []NameTypePair}
+and RecordType = {Name: string; Fields: []NameTypePair; Targs: []FType}
 and UnionType = {Name: string; CasesPtr: NTPsPtr}
 
 package_info _ =
@@ -85,11 +85,20 @@ let funcTypeToGo (ft:FuncType) (toGo:FType->string) =
   buf.Write bw ret
   buf.String bw
 
-let recordTypeToGo (frec: RecordType) =
-  frec.Name
+let tArgsToGo tGo targs=
+  if slice.IsEmpty targs then
+    ""
+  else
+    targs
+    |> slice.Map tGo
+    |> strings.Concat ", "
+    |> strings.EncloseWith "[" "]"
 
-let frStructName (frec: RecordType) =
-  frec.Name
+let recordTypeToGo tGo (frec: RecordType) =
+  frec.Name + (tArgsToGo tGo frec.Targs)
+
+let frStructName tGo (frec: RecordType) =
+  frec.Name + (tArgsToGo tGo frec.Targs)
 
 let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
   let res = pairs |> slice.Filter (fun x-> x.Name = targetName)
@@ -103,6 +112,9 @@ let frGetField (frec: RecordType) (fieldName: string) =
 
 let newNTPair name ft =
   {NameTypePair.Name=name; Ftype=ft}
+
+let tupToNTPair tup =
+   newNTPair (frt.Fst tup) (frt.Snd tup)
 
 let frMatch (frec: RecordType) (fieldNames: []string)=
   if (slice.Length fieldNames) <> (slice.Length frec.Fields) then
@@ -163,7 +175,7 @@ let FTypeToGo (ft:FType) : string =
   | FString -> "string"    
   | FUnit -> "" // When use as return type in Go, "" is suitable.
   | FFunc ft -> funcTypeToGo ft FTypeToGo
-  | FRecord fr -> recordTypeToGo fr
+  | FRecord fr -> recordTypeToGo FTypeToGo fr
   | FUnion fu -> fUnionToGo fu
   | FParamd pt -> fpToGo FTypeToGo pt
   | FSlice fs -> fSliceToGo fs FTypeToGo

@@ -17,10 +17,11 @@ let rgFVToGo  (toGo: Expr->string) (fvPair: NEPair) =
   let fvGo = toGo fv
   fn + ": " + fvGo
 
+
 let rgToGo (toGo: Expr->string) (rg:RecordGen) =
   let rtype = rg.RecordType
   let b = buf.New ()
-  frStructName rtype |> buf.Write b
+  frStructName FTypeToGo rtype |> buf.Write b
   buf.Write b "{"
   let fvGo = rg.FieldsNV
              |> slice.Map (rgFVToGo toGo)
@@ -218,10 +219,7 @@ let varRefToGo (tGo:FType->string) (vr:VarRef) =
   match vr with
   | VRVar v -> v.Name
   | VRSVar sv ->
-    let tlis = sv.SpecList
-                |> slice.Map tGo
-                |> strings.Concat ", "
-    sv.Var.Name + "[" + tlis + "]"
+    sv.Var.Name + (tArgsToGo tGo sv.SpecList)
 
 let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   let funcType = fcToFuncType fc

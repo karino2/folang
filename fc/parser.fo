@@ -81,10 +81,10 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
       (ps3, FAny)
     else
       let (ps4, fullName) = parseFullName ps
-      let (rfac, ok) = scLookupTypeFac ps3.scope fullName
+      let (tfac, ok) = scLookupTypeFac ps3.scope fullName
       if ok then
         mightParseSpecifiedTypeList pType ps4
-        |> CnvR rfac
+        |> CnvR tfac
       elif psInsideTypeDef ps4 then
         // unknown type inside type def.
         // This might be defined in later 'and'
@@ -289,8 +289,9 @@ let parseFieldInitializers (parseE: ParseState->ParseState*Expr) (ps:ParseState)
     let recN3 = if recN <> "" then recN else recN2
     (ps3, {RecName=recN3; NePairs=neps2})
 
-let retRecordGen (ok:bool) (rtype: RecordType) (neps: []NEPair) (ps:ParseState) =
+let retRecordGen (ok:bool) (rfac: RecordFactory) (neps: []NEPair) (ps:ParseState) =
   if ok then
+    let rtype = psTypeVarGen ps |> GenRecordTypeByTgen rfac
     {FieldsNV=neps; RecordType=rtype}
     |> ERecordGen |> withPs ps
   else
@@ -312,11 +313,11 @@ let parseRecordGen (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   let neps = fiInfos.NePairs
   let recName = fiInfos.RecName
   if recName = "" then
-    let (rtype, ok) = slice.Map _.Name neps |> scLookupRecord ps2.scope
-    retRecordGen ok rtype neps ps2
+    let (rfac, ok) = slice.Map _.Name neps |> scLookupRecFac ps2.scope
+    retRecordGen ok rfac neps ps2
   else
-    let (rtype, ok) = scLookupRecordByName ps2.scope recName
-    retRecordGen ok rtype neps ps2
+    let (rfac, ok) = scLookupRecFacByName ps2.scope recName
+    retRecordGen ok rfac neps ps2
 
 let refVar (vname:string) (stlist:[]FType) (ps:ParseState) =
   let (vfac, ok) = scLookupVarFac ps.scope vname
@@ -903,7 +904,8 @@ let rfdToFuncFactory (rfd:RootFuncDef) =
 let parseRootLetFuncDef (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) =
   psForErrMsg ps
   let (ps2, lfd) = parseLetFuncDef pLet ps
-  let rfd = InferLfd ps.tvc lfd
+  psForErrMsg ps // for infer error, let def start point is better error msg than end.
+  let rfd = InferLfd ps2.tvc lfd
   rfdToFuncFactory rfd |> scRegFunFac ps2.scope rfd.Lfd.Fvar.Name
   (ps2, rfd)
 
@@ -966,13 +968,22 @@ let parseFieldDefs (ps:ParseState) : ParseState*[]NameTypePair =
       |> CnvR (slice.PushHead ntp)
 
 
+let regTypeVar (ps:ParseState) (tname:string) =
+  FTypeVar {TypeVar.Name=tname}
+  |> scRegisterType ps.scope tname
+
+let psRegTypeVars (ps:ParseState) (tnames:[]string) =
+  slice.Iter (regTypeVar ps) tnames
+
 /*
   RECORD_DEF = '{' FIELD_DEFS '}'
   FIELD_DEFS = FIELD_DEF  (';' FIELD_DEF)*
 */
-let parseRecordDef (tname:string) (ps:ParseState) =
-  let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE)
-  let rd = {RecordDef.Name=tname; Fields=ntps}
+let parseRecordDef (tname:string) (pnames:[]string) (ps0:ParseState) =
+  let ps = psPushScope ps0
+  psRegTypeVars ps pnames
+  let (ps2, ntps) = psConsume LBRACE ps |> parseFieldDefs |> CnvL (psConsume RBRACE) |> CnvL psPopScope
+  let rd = {RecordDef.Name=tname; Tparams=pnames; Fields=ntps}
   // register record typedef.
   psRegRecDefToTDCtx rd ps2
   (ps2, rd)
@@ -1018,20 +1029,46 @@ let emptyDefStmt () =
   |> DRecordDef
 
 /*
-  TYPE_DEF_BODY = ID '=' (RECORD_DEF | UNION_DEF)
+  ID_LIST = IDENTIFIER (',' IDENTIFIER)*
+*/
+let parseIdList (ps:ParseState) : ParseState*[]string =
+  let (ps2, tname) = psIdentNameNx ps
+  if (psCurrentTT ps2) = COMMA then
+    psConsume COMMA ps2
+    |> parseIdList
+    |> CnvR (slice.PushHead tname)
+  else
+    (ps2, [tname])
+
+/*
+  if '<' ID_LIST '>', return ID_LIST as []string
+  else return empty []string.
+*/
+let mightParseIdList (ps:ParseState) =
+  if psCurIs LT ps then
+    psConsume LT ps
+    |> parseIdList
+    |> CnvL (psConsume GT)
+  else
+    GoEval<[]string> "[]string{}"
+    |>withPs ps
+
+/*
+  TYPE_DEF_BODY = ID ('<' IDENTIFIER_LIST '>')? '=' (RECORD_DEF | UNION_DEF)
   RECORD_DEF = '{' FIELD_DEFS '}'
   UNION_DEF = '|'...
 */
 let parseTypeDefBody (ps:ParseState) = 
-  let (ps2, tname) = psIdentNameNxL ps |> CnvL (psConsume EQ) |> CnvL psSkipEOL
-  match psCurrentTT ps2 with
+  let (ps2, tname) = psIdentNameNxL ps
+  let (ps3, pnames) = mightParseIdList ps2 |> CnvL (psConsume EQ) |> CnvL psSkipEOL
+  match psCurrentTT ps3 with
   | LBRACE ->
-    parseRecordDef tname ps2 |> CnvR DRecordDef
+    parseRecordDef tname pnames ps3 |> CnvR DRecordDef
   | BAR ->
-    parseUnionDef tname ps2  |> CnvR DUnionDef
+    parseUnionDef tname ps3  |> CnvR DUnionDef
   | _ ->
-    psPanic ps2 "NYI"
-    (ps2, (emptyDefStmt ()))
+    psPanic ps3 "NYI"
+    (ps3, (emptyDefStmt ()))
 
 /*
   TYPE_DEF_BODY_LIST = TYPE_DEF_BODY ('and' TYPE_DEF_BODY)*
@@ -1060,33 +1097,6 @@ let parseTypeDef (ps:ParseState) =
 */
 
 /*
-  ID_LIST = IDENTIFIER (',' IDENTIFIER)*
-*/
-let parseIdList (ps:ParseState) : ParseState*[]string =
-  let (ps2, tname) = psIdentNameNx ps
-  if (psCurrentTT ps2) = COMMA then
-    psConsume COMMA ps2
-    |> parseIdList
-    |> CnvR (slice.PushHead tname)
-  else
-    (ps2, [tname])
-
-
-/*
-  if '<' ID_LIST '>', return ID_LIST as []string
-  else return empty []string.
-*/
-let mightParseIdList (ps:ParseState) =
-  if psCurIs LT ps then
-    psConsume LT ps
-    |> parseIdList
-    |> CnvL (psConsume GT)
-  else
-    GoEval<[]string> "[]string{}"
-    |>withPs ps
-    
-
-/*
   EXT_TYPE_DEF = 'type' IDENTIFIER ('<' IDENTIFIER_LIST '>')?
 */
 let parseExtTypeDef (pi:PackageInfo) (ps:ParseState) =
@@ -1096,13 +1106,6 @@ let parseExtTypeDef (pi:PackageInfo) (ps:ParseState) =
   scRegTFData ps3.scope tname tfd
   ps3
 
-
-let regTypeVar (ps:ParseState) (tname:string) =
-  FTypeVar {TypeVar.Name=tname}
-  |> scRegisterType ps.scope tname
-
-let psRegTypeVars (ps:ParseState) (tnames:[]string) =
-  slice.Iter (regTypeVar ps) tnames
 
 /*
   EXT_FUNC_DEF = 'let' IDENTIFIER (TYPE_PARAM)? ':' FUNC_TYPE

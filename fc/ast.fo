@@ -104,7 +104,7 @@ and LLetVarDef =
 | LLOneVarDef of LetVarDef
 | LLDestVarDef of LetDestVarDef
 and PackageInfo = {Name: string; FuncInfo: dict.Dict<string, FuncFactory>; TypeInfo: dict.Dict<string, TypeFactoryData>}
-and RecordDef = {Name: string; Fields: []NameTypePair}
+and RecordDef = {Name: string; Tparams:[]string; Fields: []NameTypePair}
 and UnionDef = {Name: string; CasesPtr: NTPsPtr}
 and DefStmt =
 | DRecordDef of RecordDef

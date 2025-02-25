@@ -48,7 +48,7 @@ func TestToGoSlice(t *testing.T) {
 }
 
 func TestRecordGetField(t *testing.T) {
-	rec := RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}
+	rec := RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}, []FType{}}
 	hpair := frGetField(rec, "hoge")
 	ipair := frGetField(rec, "ika")
 	if hpair.Name != "hoge" || hpair.Ftype != New_FType_FString {
@@ -61,7 +61,7 @@ func TestRecordGetField(t *testing.T) {
 }
 
 func TestRecordMatch(t *testing.T) {
-	rec := RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}
+	rec := RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}, []FType{}}
 	var tests = []struct {
 		input []string
 		want  bool

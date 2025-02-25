@@ -24,7 +24,7 @@ func TestExprToGo(t *testing.T) {
 			New_Expr_ERecordGen(
 				RecordGen{[]NEPair{{"hoge", New_Expr_EStringLiteral("sval")},
 					{"ika", New_Expr_EIntImm(123)}},
-					RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}}}),
+					RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}, []FType{}}}),
 			"MyRec{hoge: \"sval\", ika: 123}",
 		},
 	}
@@ -83,7 +83,7 @@ panic("Union pattern fail. Never reached here.")
 }
 
 func TestRecordDefToGo(t *testing.T) {
-	rd := RecordDef{"hoge", []NameTypePair{{"X", New_FType_FString}, {"Y", New_FType_FString}}}
+	rd := RecordDef{"hoge", []string{}, []NameTypePair{{"X", New_FType_FString}, {"Y", New_FType_FString}}}
 	got := rdfToGo(rd)
 	want := `type hoge struct {
   X string

@@ -6,6 +6,8 @@ import "github.com/karino2/folang/pkg/slice"
 
 import "github.com/karino2/folang/pkg/dict"
 
+import "github.com/karino2/folang/pkg/strings"
+
 func transExprNE(cnv func(Expr) Expr, p NEPair) NEPair {
 	return NEPair{Name: p.Name, Expr: cnv(p.Expr)}
 }
@@ -47,6 +49,22 @@ func transBlock(transE func(Expr) Expr, transS func(Stmt) Stmt, bl Block) Block 
 	return Block{Stmts: nss, FinalExpr: fexpr}
 }
 
+func transRecType(transT func(FType) FType, rt RecordType) RecordType {
+	ntps := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+		return _v1.Ftype
+	}, rt.Fields), (func(_r0 []FType) []FType { return slice.Map(transT, _r0) }))
+	names := slice.Map(func(_v2 NameTypePair) string {
+		return _v2.Name
+	}, rt.Fields)
+	nfields := frt.Pipe(slice.Zip(names, ntps), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair {
+		return slice.Map(func(tp frt.Tuple2[string, FType]) NameTypePair {
+			return newNTPair(frt.Fst(tp), frt.Snd(tp))
+		}, _r0)
+	}))
+	ntargs := slice.Map(transT, rt.Targs)
+	return RecordType{Name: rt.Name, Fields: nfields, Targs: ntargs}
+}
+
 func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt) Stmt, transB func(Block) Block, expr Expr) Expr {
 	transE := (func(_r0 Expr) Expr { return transExpr(transT, transV, transS, transB, _r0) })
 	switch _v3 := (expr).(type) {
@@ -83,7 +101,8 @@ func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt)
 	case Expr_ERecordGen:
 		rg := _v3.Value
 		newNV := slice.Map((func(_r0 NEPair) NEPair { return transExprNE(transE, _r0) }), rg.FieldsNV)
-		return frt.Pipe(RecordGen{FieldsNV: newNV, RecordType: rg.RecordType}, New_Expr_ERecordGen)
+		nrec := transRecType(transT, rg.RecordType)
+		return frt.Pipe(RecordGen{FieldsNV: newNV, RecordType: nrec}, New_Expr_ERecordGen)
 	case Expr_ELazyBlock:
 		lb := _v3.Value
 		nbl := transB(lb.Block)
@@ -160,11 +179,13 @@ func collectTVarFTypeWithSet(visited SSet, ft FType) []string {
 		return recurse(fa.RecType)
 	case FType_FRecord:
 		rt := _v6.Value
-		return frt.Pipe(frt.Pipe(rt.Fields, (func(_r0 []NameTypePair) []FType {
+		fres := frt.Pipe(frt.Pipe(rt.Fields, (func(_r0 []NameTypePair) []FType {
 			return slice.Map(func(_v1 NameTypePair) FType {
 				return _v1.Ftype
 			}, _r0)
 		})), (func(_r0 []FType) []string { return slice.Collect(recurse, _r0) }))
+		tres := frt.Pipe(rt.Targs, (func(_r0 []FType) []string { return slice.Collect(recurse, _r0) }))
+		return slice.Append(fres, tres)
 	case FType_FUnion:
 		ut := _v6.Value
 		uname := utName(ut)
@@ -182,7 +203,7 @@ func collectTVarFTypeWithSet(visited SSet, ft FType) []string {
 		fnt := _v6.Value
 		return slice.Collect(recurse, fnt.Targets)
 	default:
-		return []string{}
+		return slice.New[string]()
 	}
 }
 
@@ -317,18 +338,7 @@ func transTVFTypeWithSet(visited SSet, transTV func(TypeVar) FType, ftp FType) F
 		return frt.Pipe(ParamdType{Name: pt.Name, Targs: nts}, New_FType_FParamd)
 	case FType_FRecord:
 		rt := _v11.Value
-		ntps := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
-			return _v1.Ftype
-		}, rt.Fields), (func(_r0 []FType) []FType { return slice.Map(recurse, _r0) }))
-		names := slice.Map(func(_v2 NameTypePair) string {
-			return _v2.Name
-		}, rt.Fields)
-		nfields := frt.Pipe(slice.Zip(names, ntps), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair {
-			return slice.Map(func(tp frt.Tuple2[string, FType]) NameTypePair {
-				return newNTPair(frt.Fst(tp), frt.Snd(tp))
-			}, _r0)
-		}))
-		return frt.Pipe(RecordType{Name: rt.Name, Fields: nfields}, New_FType_FRecord)
+		return frt.Pipe(transRecType(recurse, rt), New_FType_FRecord)
 	case FType_FUnion:
 		ut := _v11.Value
 		uname := utName(ut)
@@ -337,11 +347,11 @@ func transTVFTypeWithSet(visited SSet, transTV func(TypeVar) FType, ftp FType) F
 		}), (func() FType {
 			SSetPut(visited, uname)
 			cases := utCases(ut)
-			ntps := frt.Pipe(slice.Map(func(_v3 NameTypePair) FType {
-				return _v3.Ftype
+			ntps := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+				return _v1.Ftype
 			}, cases), (func(_r0 []FType) []FType { return slice.Map(recurse, _r0) }))
-			names := slice.Map(func(_v4 NameTypePair) string {
-				return _v4.Name
+			names := slice.Map(func(_v2 NameTypePair) string {
+				return _v2.Name
 			}, cases)
 			ncases := frt.Pipe(slice.Zip(names, ntps), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair {
 				return slice.Map(func(tp frt.Tuple2[string, FType]) NameTypePair {
@@ -366,13 +376,21 @@ func transTVVar(transTV func(TypeVar) FType, v Var) Var {
 	return Var{Name: v.Name, Ftype: ntp}
 }
 
+func isTDTVar(tvname string) bool {
+	return strings.HasPrefix("_P", tvname)
+}
+
+func noTDTVarInFType(ft FType) bool {
+	return frt.Pipe(frt.Pipe(collectTVarFType(ft), (func(_r0 []string) []string { return slice.Filter(isTDTVar, _r0) })), slice.IsEmpty)
+}
+
 func transTRecurse(transT func(FType) FType, count int, ft FType) FType {
 	frt.IfOnly((count > 1000), (func() {
 		PanicNow("Too deep recurse fwddecl, maybe cyclic, give up")
 	}))
 	nt := transT(ft)
-	tvNotFound := frt.Pipe(collectTVarFType(nt), slice.IsEmpty)
-	return frt.IfElse(tvNotFound, (func() FType {
+	noTvFound := noTDTVarInFType(nt)
+	return frt.IfElse(noTvFound, (func() FType {
 		return nt
 	}), (func() FType {
 		return transTRecurse(transT, (count + 1), nt)
@@ -390,21 +408,21 @@ func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
 	case DefStmt_DRecordDef:
 		rd := _v12.Value
 		nfields := slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), rd.Fields)
-		noTvFound := frt.Pipe(frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+		noTvFound := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
 			return _v1.Ftype
-		}, nfields), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) })), slice.IsEmpty)
+		}, nfields), (func(_r0 []FType) bool { return slice.Forall(noTDTVarInFType, _r0) }))
 		frt.IfOnly(frt.OpNot(noTvFound), (func() {
 			PanicNow("Unresolve type")
 		}))
-		return frt.Pipe(RecordDef{Name: rd.Name, Fields: nfields}, New_DefStmt_DRecordDef)
+		return frt.Pipe(RecordDef{Name: rd.Name, Tparams: rd.Tparams, Fields: nfields}, New_DefStmt_DRecordDef)
 	case DefStmt_DUnionDef:
 		ud := _v12.Value
 		ncases := frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []NameTypePair {
 			return slice.Map((func(_r0 NameTypePair) NameTypePair { return transTVNTPair(transTV, _r0) }), _r0)
 		}))
-		noTvFound := frt.Pipe(frt.Pipe(slice.Map(func(_v2 NameTypePair) FType {
+		noTvFound := frt.Pipe(slice.Map(func(_v2 NameTypePair) FType {
 			return _v2.Ftype
-		}, ncases), (func(_r0 []FType) []string { return slice.Collect(collectTVarFType, _r0) })), slice.IsEmpty)
+		}, ncases), (func(_r0 []FType) bool { return slice.Forall(noTDTVarInFType, _r0) }))
 		frt.IfOnly(frt.OpNot(noTvFound), (func() {
 			PanicNow("Unresolve type2")
 		}))
@@ -495,17 +513,71 @@ func GenType(tfd TypeFactoryData, targs []FType) FType {
 	return frt.Pipe(ParamdType{Name: tfd.Name, Targs: targs}, New_FType_FParamd)
 }
 
+type RecordFactory struct {
+	Name    string
+	Tparams []string
+	Fields  []NameTypePair
+}
+
+func GenRecordType(rf RecordFactory, stlist []FType) RecordType {
+	frt.IfOnly(frt.OpNotEqual(slice.Len(stlist), slice.Len(rf.Tparams)), (func() {
+		PanicNow("wrong type param num for instantiate.")
+	}))
+	tdic := frt.Pipe(slice.Zip(rf.Tparams, stlist), dict.ToDict)
+	nftypes := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+		return _v1.Ftype
+	}, rf.Fields), (func(_r0 []FType) []FType {
+		return slice.Map((func(_r0 FType) FType { return tpreplace(tdic, _r0) }), _r0)
+	}))
+	fnames := slice.Map(func(_v2 NameTypePair) string {
+		return _v2.Name
+	}, rf.Fields)
+	nfields := frt.Pipe(slice.Zip(fnames, nftypes), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair { return slice.Map(tupToNTPair, _r0) }))
+	return RecordType{Name: rf.Name, Fields: nfields, Targs: stlist}
+}
+
+func GenRecordFType(rf RecordFactory, stlist []FType) FType {
+	return frt.Pipe(GenRecordType(rf, stlist), New_FType_FRecord)
+}
+
+func GenRecordTypeByTgen(rf RecordFactory, tvgen func() TypeVar) RecordType {
+	ftvs := slice.Map(func(x string) FType {
+		return frt.Pipe(tvgen(), New_FType_FTypeVar)
+	}, rf.Tparams)
+	return GenRecordType(rf, ftvs)
+}
+
+func recFacMatch(fieldNames []string, rf RecordFactory) bool {
+	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(rf.Fields)), (func() bool {
+		return false
+	}), (func() bool {
+		sortedInput := frt.Pipe(fieldNames, slice.Sort)
+		sortedFName := frt.Pipe(slice.Map(func(_v1 NameTypePair) string {
+			return _v1.Name
+		}, rf.Fields), slice.Sort)
+		return frt.OpEqual(sortedInput, sortedFName)
+	}))
+}
+
+func tryRecFacToRecType(rf RecordFactory) frt.Tuple2[RecordType, bool] {
+	return frt.IfElse(slice.IsEmpty(rf.Tparams), (func() frt.Tuple2[RecordType, bool] {
+		return frt.NewTuple2(RecordType{Name: rf.Name, Fields: rf.Fields}, true)
+	}), (func() frt.Tuple2[RecordType, bool] {
+		return frt.NewTuple2(frt.Empty[RecordType](), false)
+	}))
+}
+
 type ScopeDict struct {
 	VarFacMap  dict.Dict[string, func([]FType, func() TypeVar) VarRef]
-	RecordMap  dict.Dict[string, RecordType]
+	RecFacMap  dict.Dict[string, RecordFactory]
 	TypeFacMap dict.Dict[string, func([]FType) FType]
 }
 
 func NewScopeDict() ScopeDict {
 	fvm := dict.New[string, func([]FType, func() TypeVar) VarRef]()
-	rm := dict.New[string, RecordType]()
+	rfm := dict.New[string, RecordFactory]()
 	tfm := dict.New[string, func([]FType) FType]()
-	return ScopeDict{VarFacMap: fvm, RecordMap: rm, TypeFacMap: tfm}
+	return ScopeDict{VarFacMap: fvm, RecFacMap: rfm, TypeFacMap: tfm}
 }
 
 func NewScope0() Scope {
@@ -564,21 +636,16 @@ func scRegisterType(s Scope, name string, ftype FType) {
 	scRegisterTypeFac(s, name, (func(_r0 []FType) FType { return ftToTypeFac(ftype, _r0) }))
 }
 
-func scRegisterRecType(s Scope, recType RecordType) {
-	rname := recType.Name
+func scRegisterRecFac(s Scope, name string, fac RecordFactory) {
 	sdic := SCSDict(s)
-	dict.Add(sdic.RecordMap, rname, recType)
-	scRegisterType(s, rname, New_FType_FRecord(recType))
+	dict.Add(sdic.RecFacMap, name, fac)
+	dict.Add(sdic.TypeFacMap, name, (func(_r0 []FType) FType { return GenRecordFType(fac, _r0) }))
 }
 
-func frMatchAdapter(fieldNames []string, rec RecordType) bool {
-	return frMatch(rec, fieldNames)
-}
-
-func scLookupRecordCur(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
+func scLookupRecFacCur(s Scope, fieldNames []string) frt.Tuple2[RecordFactory, bool] {
 	sdic := SCSDict(s)
-	return frt.Pipe(dict.Values(sdic.RecordMap), (func(_r0 []RecordType) frt.Tuple2[RecordType, bool] {
-		return slice.TryFind((func(_r0 RecordType) bool { return frMatchAdapter(fieldNames, _r0) }), _r0)
+	return frt.Pipe(dict.Values(sdic.RecFacMap), (func(_r0 []RecordFactory) frt.Tuple2[RecordFactory, bool] {
+		return slice.TryFind((func(_r0 RecordFactory) bool { return recFacMatch(fieldNames, _r0) }), _r0)
 	}))
 }
 
@@ -586,29 +653,33 @@ func emptyRec() RecordType {
 	return frt.Empty[RecordType]()
 }
 
-func scLookupRecord(s Scope, fieldNames []string) frt.Tuple2[RecordType, bool] {
-	rec, ok := frt.Destr(scLookupRecordCur(s, fieldNames))
-	return frt.IfElse(ok, (func() frt.Tuple2[RecordType, bool] {
-		return frt.NewTuple2(rec, ok)
-	}), (func() frt.Tuple2[RecordType, bool] {
-		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[RecordType, bool] {
-			return scLookupRecord(SCParent(s), fieldNames)
-		}), (func() frt.Tuple2[RecordType, bool] {
-			return frt.NewTuple2(emptyRec(), false)
+func emptyRecFac() RecordFactory {
+	return frt.Empty[RecordFactory]()
+}
+
+func scLookupRecFac(s Scope, fieldNames []string) frt.Tuple2[RecordFactory, bool] {
+	rfac, ok := frt.Destr(scLookupRecFacCur(s, fieldNames))
+	return frt.IfElse(ok, (func() frt.Tuple2[RecordFactory, bool] {
+		return frt.NewTuple2(rfac, ok)
+	}), (func() frt.Tuple2[RecordFactory, bool] {
+		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[RecordFactory, bool] {
+			return scLookupRecFac(SCParent(s), fieldNames)
+		}), (func() frt.Tuple2[RecordFactory, bool] {
+			return frt.NewTuple2(emptyRecFac(), false)
 		}))
 	}))
 }
 
-func scLookupRecordByName(s Scope, name string) frt.Tuple2[RecordType, bool] {
+func scLookupRecFacByName(s Scope, name string) frt.Tuple2[RecordFactory, bool] {
 	sd := SCSDict(s)
-	rec, ok := frt.Destr(dict.TryFind(sd.RecordMap, name))
-	return frt.IfElse(ok, (func() frt.Tuple2[RecordType, bool] {
-		return frt.NewTuple2(rec, ok)
-	}), (func() frt.Tuple2[RecordType, bool] {
-		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[RecordType, bool] {
-			return scLookupRecordByName(SCParent(s), name)
-		}), (func() frt.Tuple2[RecordType, bool] {
-			return frt.NewTuple2(emptyRec(), false)
+	rfac, ok := frt.Destr(dict.TryFind(sd.RecFacMap, name))
+	return frt.IfElse(ok, (func() frt.Tuple2[RecordFactory, bool] {
+		return frt.NewTuple2(rfac, ok)
+	}), (func() frt.Tuple2[RecordFactory, bool] {
+		return frt.IfElse(SCHasParent(s), (func() frt.Tuple2[RecordFactory, bool] {
+			return scLookupRecFacByName(SCParent(s), name)
+		}), (func() frt.Tuple2[RecordFactory, bool] {
+			return frt.NewTuple2(emptyRecFac(), false)
 		}))
 	}))
 }
@@ -1113,14 +1184,17 @@ func newUnaryNotCall(tvgen func() TypeVar, cond Expr) Expr {
 	return genBuiltinFunCall(tvgen, "frt.OpNot", emptyS, tps, args)
 }
 
-func rdToRecType(rd RecordDef) RecordType {
-	return RecordType(rd)
+func rdToRecFac(rd RecordDef) RecordFactory {
+	return RecordFactory(rd)
 }
 
 func psRegRecDefToTDCtx(rd RecordDef, ps ParseState) {
-	recT := rdToRecType(rd)
-	scRegisterRecType(ps.scope, recT)
-	dict.Add(ps.tdctx.defined, recT.Name, New_FType_FRecord(recT))
+	rfac := rdToRecFac(rd)
+	scRegisterRecFac(ps.scope, rd.Name, rfac)
+	rtype, ok := frt.Destr(tryRecFacToRecType(rfac))
+	frt.IfOnly(ok, (func() {
+		dict.Add(ps.tdctx.defined, rtype.Name, New_FType_FRecord(rtype))
+	}))
 }
 
 func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
@@ -1157,7 +1231,7 @@ func scRegDefStmtType(sc Scope, df DefStmt) {
 	switch _v14 := (df).(type) {
 	case DefStmt_DRecordDef:
 		rd := _v14.Value
-		frt.PipeUnit(rdToRecType(rd), (func(_r0 RecordType) { scRegisterRecType(sc, _r0) }))
+		frt.PipeUnit(rdToRecFac(rd), (func(_r0 RecordFactory) { scRegisterRecFac(sc, rd.Name, _r0) }))
 	case DefStmt_DUnionDef:
 		ud := _v14.Value
 		udRegisterCsCtors(sc, ud)

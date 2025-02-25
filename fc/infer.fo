@@ -28,6 +28,8 @@ let withTp (tp:FType) (rels:[]UniRel) =
 
 
 let compositeTpList (cOne: FType->FType->FType*[]UniRel) (lhs: []FType) (rhs: []FType) =
+  if (slice.Len lhs) <> (slice.Len rhs) then
+    PanicNow "compositeTpList, type len is differ"
   let tups = slice.Zip lhs rhs
               |> slice.Map (tupApply cOne)
   let tps = tups |> slice.Map frt.Fst 
@@ -120,10 +122,15 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
         // resolved, try resolved type again.
         compositeTp lhs fa22
     | FFunc tf2 ->
-      let tf1 = GoEval<FuncType> "lhs.(FType_FFunc).Value"
-      let (tps, rels) = compositeTpList compositeTp tf1.Targets tf2.Targets
-      newFFunc tps
-      |> withRels rels
+      match lhs with
+      | FFunc tf1 ->
+        let (tps, rels) = compositeTpList compositeTp tf1.Targets tf2.Targets
+        newFFunc tps
+        |> withRels rels
+      | _ ->
+        PanicNow "Lhs is not FFunc, Rhs is FFunc."
+        emptyRels ()
+        |> withTp lhs
     | FParamd pt2 ->
       let pt1 = GoEval<ParamdType> "lhs.(FType_FParamd).Value"
       let (tps, rels) = compositeTpList compositeTp pt1.Targs pt2.Targs

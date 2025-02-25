@@ -5,6 +5,7 @@ package_info strings =
   let AppendTail: string->string->string
   let AppendHead: string->string->string
   let HasSuffix: string->string->bool
+  let HasPrefix: string->string->bool
   let TrimSuffix: string->string->string
   let EncloseWith: string->string->string->string
   let Split: string->string->[]string

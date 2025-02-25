@@ -38,16 +38,20 @@ func pany(s string) string {
 	return frt.Sprintf1("%s any", s)
 }
 
+func writeTParamsIfAny(b buf.Buffer, tparams []string) {
+	frt.IfOnly(frt.OpNot(slice.IsEmpty(tparams)), (func() {
+		buf.Write(b, "[")
+		frt.PipeUnit(frt.Pipe(frt.Pipe(tparams, (func(_r0 []string) []string { return slice.Map(pany, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+		buf.Write(b, "]")
+	}))
+}
+
 func rfdToGo(bToGoRet func(Block) string, rfd RootFuncDef) string {
 	lfd := rfd.Lfd
 	b := buf.New()
 	buf.Write(b, "func ")
 	buf.Write(b, lfd.Fvar.Name)
-	frt.IfOnly(frt.OpNot(slice.IsEmpty(rfd.Tparams)), (func() {
-		buf.Write(b, "[")
-		frt.PipeUnit(frt.Pipe(frt.Pipe(rfd.Tparams, (func(_r0 []string) []string { return slice.Map(pany, _r0) })), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
-		buf.Write(b, "]")
-	}))
+	writeTParamsIfAny(b, rfd.Tparams)
 	buf.Write(b, "(")
 	frt.PipeUnit(lfdParamsToGo(lfd), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ") ")
@@ -82,6 +86,7 @@ func rdfToGo(rdf RecordDef) string {
 	b := buf.New()
 	buf.Write(b, "type ")
 	buf.Write(b, rdf.Name)
+	writeTParamsIfAny(b, rdf.Tparams)
 	buf.Write(b, " struct {\n")
 	frt.PipeUnit(frt.Pipe(frt.Pipe(rdf.Fields, (func(_r0 []NameTypePair) []string { return slice.Map(rdffieldToGo, _r0) })), (func(_r0 []string) string { return strings.Concat("\n", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n}")
