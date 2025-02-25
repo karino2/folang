@@ -399,6 +399,8 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 	switch (cur.ttype).(type) {
 	case TokenType_STRING:
 		return frt.Pipe(New_Expr_EStringLiteral(cur.stringVal), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
+	case TokenType_SINTERP:
+		return frt.Pipe(New_Expr_ESInterP(cur.stringVal), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
 	case TokenType_INT_IMM:
 		return frt.Pipe(New_Expr_EIntImm(cur.intVal), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return withPs(pn, _r0) }))
 	case TokenType_TRUE:

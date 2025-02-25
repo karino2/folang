@@ -104,6 +104,7 @@ type Expr interface {
 
 func (Expr_EGoEvalExpr) Expr_Union()     {}
 func (Expr_EStringLiteral) Expr_Union()  {}
+func (Expr_ESInterP) Expr_Union()        {}
 func (Expr_EIntImm) Expr_Union()         {}
 func (Expr_EUnit) Expr_Union()           {}
 func (Expr_EBoolLiteral) Expr_Union()    {}
@@ -129,6 +130,12 @@ type Expr_EStringLiteral struct {
 }
 
 func New_Expr_EStringLiteral(v string) Expr { return Expr_EStringLiteral{v} }
+
+type Expr_ESInterP struct {
+	Value string
+}
+
+func New_Expr_ESInterP(v string) Expr { return Expr_ESInterP{v} }
 
 type Expr_EIntImm struct {
 	Value int

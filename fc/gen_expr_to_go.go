@@ -330,6 +330,15 @@ func lambdaToGo(bToGoRet func(Block) string, le LambdaExpr) string {
 	return buf.String(b)
 }
 
+func sinterpToGo(s string) string {
+	fm, vs := frt.Destr(ParseSInterP(s))
+	b := buf.New()
+	frt.PipeUnit(frt.Sprintf1("frt.SInterP(\"%s\", ", fm), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(frt.Pipe(vs, (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, ")")
+	return buf.String(b)
+}
+
 func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
@@ -344,6 +353,9 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	case Expr_EStringLiteral:
 		s := _v5.Value
 		return frt.Sprintf1("\"%s\"", s)
+	case Expr_ESInterP:
+		sp := _v5.Value
+		return sinterpToGo(sp)
 	case Expr_EIntImm:
 		i := _v5.Value
 		return frt.Sprintf1("%d", i)

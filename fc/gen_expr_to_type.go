@@ -119,6 +119,8 @@ func ExprToType(expr Expr) FType {
 		return ge.TypeArg
 	case Expr_EStringLiteral:
 		return New_FType_FString
+	case Expr_ESInterP:
+		return New_FType_FString
 	case Expr_EIntImm:
 		return New_FType_FInt
 	case Expr_EUnit:

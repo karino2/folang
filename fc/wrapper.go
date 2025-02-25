@@ -240,6 +240,13 @@ func scanTokenAt(buf string, pos int) Token {
 		return scanIntImmToken(buf, pos)
 	case b == '"':
 		return scanStringLiteralToken(buf, pos)
+	case b == '$':
+		if isCharAt(buf, pos+1, '"') {
+			stk := scanStringLiteralToken(buf, pos+1)
+			stk.ttype = New_TokenType_SINTERP
+			return stk
+		}
+		panic(b) // NYI
 	case b == '=':
 		return newOneCharToken(New_TokenType_EQ, pos, b)
 	case b == '\n':
@@ -607,4 +614,49 @@ func OnParseError(fname string) {
 		fmt.Printf("Parse Error in file %s: %s\n", fname, r)
 		os.Exit(1)
 	}
+}
+
+/*
+  String interpolation.
+*/
+
+/*
+parsse string like "abc{hoge}def{ika}fuga" and return ("abc%sdef%sfuga", ["hoge", "ika"])
+*/
+func ParseSInterP(buf string) frt.Tuple2[string, []string] {
+	var res bytes.Buffer
+	var vars []string
+	i := 0
+	end := len(buf)
+	for i < end {
+		c := buf[i]
+		if c == '\\' {
+			i++
+			if i == end {
+				panic("escape just before end, wrong")
+			}
+			c2 := buf[i]
+			if c2 == 'n' {
+				res.WriteByte('\n')
+			} else {
+				res.WriteByte(c2)
+			}
+		} else if c == '{' {
+			i++
+			vbeg := i
+			for buf[i] != '}' {
+				i++
+				if i == end {
+					panic("Open brace but no close brace")
+				}
+			}
+			vend := i
+			vars = append(vars, buf[vbeg:vend])
+			res.WriteString("%s")
+		} else {
+			res.WriteByte(c)
+		}
+		i++
+	}
+	return frt.NewTuple2(res.String(), vars)
 }

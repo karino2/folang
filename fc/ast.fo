@@ -54,6 +54,7 @@ type TypeFactoryData = {Name: string; Tparams:[]string}
 type Expr =
 | EGoEvalExpr of GoEvalExpr
 | EStringLiteral of string
+| ESInterP of string // string interpolation.
 | EIntImm of int
 | EUnit
 | EBoolLiteral of bool

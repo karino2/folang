@@ -2,6 +2,7 @@ package frt
 
 import (
 	"fmt"
+	"reflect"
 
 	gcmp "github.com/google/go-cmp/cmp"
 )
@@ -110,4 +111,26 @@ func Panicf2[T any, U any](fmt string, arg0 T, arg1 U) {
 func Empty[T any]() T {
 	var res T
 	return res
+}
+
+func toS(arg any) string {
+	rval := reflect.ValueOf(arg)
+	switch rval.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return fmt.Sprintf("%d", rval.Int())
+	case reflect.Float32, reflect.Float64:
+		return fmt.Sprintf("%f", rval.Float())
+	case reflect.String:
+		return rval.String()
+	default:
+		return fmt.Sprintf("%v", arg)
+	}
+}
+
+func SInterP(fmt1 string, args ...any) string {
+	var sargs []any
+	for _, arg := range args {
+		sargs = append(sargs, toS(arg))
+	}
+	return fmt.Sprintf(fmt1, sargs...)
 }

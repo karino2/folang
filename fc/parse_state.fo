@@ -99,6 +99,7 @@ let transExpr transT transV transS transB (expr:Expr) : Expr =
   | EBoolLiteral _ -> expr
   | EGoEvalExpr _ -> expr
   | EStringLiteral _ -> expr
+  | ESInterP _ -> expr
   | EIntImm _ -> expr
   | EUnit -> expr
   | EFieldAccess fa ->

@@ -132,6 +132,8 @@ func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt)
 		return expr
 	case Expr_EStringLiteral:
 		return expr
+	case Expr_ESInterP:
+		return expr
 	case Expr_EIntImm:
 		return expr
 	case Expr_EUnit:

@@ -84,6 +84,7 @@ let ExprToType (expr:Expr) : FType =
   match expr with
   | EGoEvalExpr ge -> ge.TypeArg
   | EStringLiteral _ -> FString
+  | ESInterP _ -> FString
   | EIntImm _ -> FInt
   | EUnit -> FUnit
   | EBoolLiteral _ -> FBool

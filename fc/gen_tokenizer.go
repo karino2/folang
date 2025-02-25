@@ -30,6 +30,7 @@ func (TokenType_GE) TokenType_Union()           {}
 func (TokenType_BRACKET) TokenType_Union()      {}
 func (TokenType_PIPE) TokenType_Union()         {}
 func (TokenType_STRING) TokenType_Union()       {}
+func (TokenType_SINTERP) TokenType_Union()      {}
 func (TokenType_COLON) TokenType_Union()        {}
 func (TokenType_COMMA) TokenType_Union()        {}
 func (TokenType_SEMICOLON) TokenType_Union()    {}
@@ -177,6 +178,11 @@ type TokenType_STRING struct {
 }
 
 var New_TokenType_STRING TokenType = TokenType_STRING{}
+
+type TokenType_SINTERP struct {
+}
+
+var New_TokenType_SINTERP TokenType = TokenType_SINTERP{}
 
 type TokenType_COLON struct {
 }

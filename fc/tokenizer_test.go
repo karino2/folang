@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/karino2/folang/pkg/frt"
+)
 
 func TestTokenizerNormal(t *testing.T) {
 	src := `package main`
@@ -65,5 +69,16 @@ func TestTokenizernextNOL(t *testing.T) {
 	}
 	if tkz.col != 3 {
 		t.Errorf("want col 3, but got %d", tkz.col)
+	}
+}
+
+func TestInterP(t *testing.T) {
+	stext, vars := frt.Destr(ParseSInterP("abc{hoge}def{ika}fuga"))
+	want := "abc%sdef%sfuga"
+	if stext != want {
+		t.Errorf("want %s, got %s", want, stext)
+	}
+	if vars[0] != "hoge" || vars[1] != "ika" {
+		t.Errorf("var names differ: %v", vars)
 	}
 }

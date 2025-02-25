@@ -323,6 +323,16 @@ let lambdaToGo (bToGoRet: Block->string) (le:LambdaExpr) =
   buf.Write b "\n}"
   buf.String b
 
+package_info _ =
+  let ParseSInterP: string->string*[]string
+
+let sinterpToGo s =
+  let (fm, vs) = ParseSInterP s
+  let b = buf.New ()
+  frt.Sprintf1 "frt.SInterP(\"%s\", " fm  |> buf.Write b
+  vs |> strings.Concat ", " |> buf.Write b
+  buf.Write b ")"
+  buf.String b
 
   
 
@@ -334,6 +344,7 @@ let ExprToGo (sToGo: Stmt->string) (expr:Expr) : string =
   | EBoolLiteral b -> frt.Sprintf1 "%t" b
   | EGoEvalExpr ge -> reinterpretEscape ge.GoStmt
   | EStringLiteral s -> frt.Sprintf1 "\"%s\"" s
+  | ESInterP sp -> sinterpToGo sp
   | EIntImm i -> frt.Sprintf1 "%d" i
   | EUnit -> ""
   | EFieldAccess fa -> faToGo eToGo fa

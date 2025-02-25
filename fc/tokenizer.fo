@@ -27,6 +27,7 @@ type TokenType =
 |	BRACKET // <>
 |	PIPE
 |	STRING
+| SINTERP // $"XXX" or $`aaaa`
 |	COLON
 |	COMMA
 |	SEMICOLON

@@ -435,6 +435,8 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
   match cur.ttype with
   | STRING ->
     EStringLiteral cur.stringVal |> withPs pn
+  | SINTERP ->
+    ESInterP cur.stringVal |> withPs pn
   | INT_IMM ->
     EIntImm cur.intVal |> withPs pn
   | TRUE ->

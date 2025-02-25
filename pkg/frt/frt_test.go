@@ -82,3 +82,11 @@ func TestDestructuring(t *testing.T) {
 		t.Errorf("b is not 123 buf %d", b)
 	}
 }
+
+func TestToS(t *testing.T) {
+	got := SInterP("%s %s %s", 1, 2.3, "hogehoge")
+	want := "1 2.300000 hogehoge"
+	if got != want {
+		t.Errorf("want %s, got %s", want, got)
+	}
+}

@@ -1181,6 +1181,17 @@ let hoge () =
 `,
 			[]string{"type A[T any]", "hoge() A[int]", "return A[int]"},
 		},
+		{
+			`package main
+
+let hoge () =
+  let a = 123
+  let b = "abc"
+  $"This is a: {a}, b: {b}"
+
+`,
+			[]string{`return frt.SInterP("This is a: %s, b: %s", a, b)`, "hoge() string"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1196,10 +1207,10 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type A<T> = {FA: T; FSA: []T}
-
 let hoge () =
-  {FA=123; FSA=[456]}
+  let a = 123
+  let b = "abc"
+  $"This is a: {a}, b: {b}"
 
 `
 
