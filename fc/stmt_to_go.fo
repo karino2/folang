@@ -5,10 +5,10 @@ import slice
 import strings
 
 let imToGo (pn:string) =
-  frt.Sprintf1 "import \"%s\"" pn
+  $"import \"{pn}\""
 
 let pmToGo (pn:string) =
-  frt.Sprintf1 "package %s" pn
+  $"package {pn}"
 
 /*
 

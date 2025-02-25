@@ -9,11 +9,11 @@ import "github.com/karino2/folang/pkg/slice"
 import "github.com/karino2/folang/pkg/strings"
 
 func imToGo(pn string) string {
-	return frt.Sprintf1("import \"%s\"", pn)
+	return frt.SInterP("import \"%s\"", pn)
 }
 
 func pmToGo(pn string) string {
-	return frt.Sprintf1("package %s", pn)
+	return frt.SInterP("package %s", pn)
 }
 
 func lfdParamsToGo(lfd LetFuncDef) string {
