@@ -212,6 +212,35 @@ func scanStringLiteralToken(buf string, pos int) Token {
 	}
 }
 
+func scanRawStringLiteralToken(buf string, pos int) Token {
+	cur := newToken(New_TokenType_STRING, pos, 0)
+	i := 1
+	var bb bytes.Buffer
+	for {
+		// reach end without close. parse error. panic for a while.
+		if pos+i == len(buf) {
+			panic("unclosed raw string")
+		}
+
+		c := buf[pos+i]
+
+		if c == '`' {
+			cur.len = i + 1
+			cur.stringVal = bb.String()
+			return cur
+		} else if c == '\\' {
+			// write as \\
+			bb.WriteByte(c)
+			bb.WriteByte(c)
+		} else if c == '\n' {
+			bb.WriteString("\\n")
+		} else {
+			bb.WriteByte(c)
+		}
+		i++
+	}
+}
+
 func scanTokenAt(buf string, pos int) Token {
 	if pos == len(buf) {
 		return newToken(New_TokenType_EOF, pos, 0)
@@ -240,9 +269,15 @@ func scanTokenAt(buf string, pos int) Token {
 		return scanIntImmToken(buf, pos)
 	case b == '"':
 		return scanStringLiteralToken(buf, pos)
+	case b == '`':
+		return scanRawStringLiteralToken(buf, pos)
 	case b == '$':
 		if isCharAt(buf, pos+1, '"') {
 			stk := scanStringLiteralToken(buf, pos+1)
+			stk.ttype = New_TokenType_SINTERP
+			return stk
+		} else if isCharAt(buf, pos+1, '`') {
+			stk := scanRawStringLiteralToken(buf, pos+1)
 			stk.ttype = New_TokenType_SINTERP
 			return stk
 		}

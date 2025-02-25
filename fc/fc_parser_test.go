@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -77,6 +78,48 @@ func transpile(src string) string {
 	ps := initParse(src)
 	_, stmts := parseAll(ps)
 	return RootStmtsToGo(stmts)
+}
+
+func TestRawString(t *testing.T) {
+	rawstring := "`abc\ndef backslash \\`"
+
+	src := fmt.Sprintf(`package main
+
+let hoge () =
+  let a = %s
+  a+"ghi"
+
+`, rawstring)
+	// t.Error(src)
+
+	got := transpile(src)
+	// t.Error(got)
+
+	want := `"abc\ndef backslash \\"`
+	if !strings.Contains(got, want) {
+		t.Errorf("want to contain '%s', but got '%s'", want, got)
+	}
+}
+
+func TestRawStringInterP(t *testing.T) {
+	rawstring := "$`abc\ndef a=({a}) backslash \\`"
+
+	src := fmt.Sprintf(`package main
+
+let hoge () =
+  let a = 123
+	%s
+
+`, rawstring)
+	// t.Error(src)
+
+	got := transpile(src)
+	// t.Error(got)
+
+	want := `frt.SInterP("abc\ndef a=(%s) backslash \\", a)`
+	if !strings.Contains(got, want) {
+		t.Errorf("want to contain '%s', but got '%s'", want, got)
+	}
 }
 
 func TestTranspileContain(t *testing.T) {
@@ -1215,13 +1258,16 @@ let hoge () =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	src := `package main
+	rawstring := "`abc\ndef`"
+
+	src := fmt.Sprintf(`package main
 
 let hoge () =
-  let a = 123
-  $"This is a: {a}, \nnext line"
+  let a = %s
+  a+"ghi"
 
-`
+`, rawstring)
+	// t.Error(src)
 
 	got := transpile(src)
 	// t.Error(got)
