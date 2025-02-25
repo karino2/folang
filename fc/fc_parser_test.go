@@ -856,6 +856,16 @@ let hoge c =
 `,
 			"hoge(c C)",
 		},
+		{
+			`package main
+
+let hoge () =
+  let a = 123
+  $"This is a: {a}, \nnext line"
+
+`,
+			", \\nnext",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1209,8 +1219,7 @@ func TestParseAddhook(t *testing.T) {
 
 let hoge () =
   let a = 123
-  let b = "abc"
-  $"This is a: {a}, b: {b}"
+  $"This is a: {a}, \nnext line"
 
 `
 

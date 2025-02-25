@@ -15,7 +15,7 @@ let rgFVToGo  (toGo: Expr->string) (fvPair: NEPair) =
   let fn = fvPair.Name
   let fv = fvPair.Expr
   let fvGo = toGo fv
-  fn + ": " + fvGo
+  $"{fn}: {fvGo}"
 
 
 let rgToGo (toGo: Expr->string) (rg:RecordGen) =
@@ -207,13 +207,13 @@ FunCallToGo
 
 
 let ftiToParamName (i:int) (ft:FType) =
-  frt.Sprintf1 "_r%d" i
+  $"_r{i}"
 
 // ("_r0", FInt) -> "_r0 int"
 let ntpairToParam (tGo:FType->string) (ntp: string*FType) =
   let tpgo = frt.Snd ntp |> tGo 
   let name = frt.Fst ntp
-  name + " " + tpgo
+  $"{name} {tpgo}"
 
 let varRefToGo (tGo:FType->string) (vr:VarRef) =
   match vr with
@@ -228,7 +228,7 @@ let fcPartialApplyGo (tGo:FType->string) (eGo:Expr->string) (fc:FunCall) =
   let restTypes = slice.Skip argNum fargTypes
   let restParamNames = slice.Mapi ftiToParamName restTypes
   let b = buf.New ()
-  buf.Write b "(func (" // OK
+  buf.Write b "(func ("
   slice.Zip restParamNames restTypes |> slice.Map (ntpairToParam tGo)
   |> strings.Concat ", " |> buf.Write b
   buf.Write b ") "
@@ -304,11 +304,11 @@ let binOpToGo (eGo:Expr->string) (binOp:BinOpCall) =
 
 let faToGo (eGo:Expr->string) (fa:FieldAccess) =
   let target = eGo fa.TargetExpr
-  target + "." + fa.FieldName
+  $"{target}.{fa.FieldName}"
 
 let paramsToGo (pm: Var) =
    let ts = FTypeToGo pm.Ftype
-   pm.Name + " " + ts
+   $"{pm.Name} {ts}"
 
 let lambdaToGo (bToGoRet: Block->string) (le:LambdaExpr) =
   let b = buf.New ()

@@ -631,16 +631,15 @@ func ParseSInterP(buf string) frt.Tuple2[string, []string] {
 	for i < end {
 		c := buf[i]
 		if c == '\\' {
+			// write though escape seq to Golang string literal.
+			// This is necessary for brace escape.
+			res.WriteByte(c)
 			i++
 			if i == end {
 				panic("escape just before end, wrong")
 			}
 			c2 := buf[i]
-			if c2 == 'n' {
-				res.WriteByte('\n')
-			} else {
-				res.WriteByte(c2)
-			}
+			res.WriteByte(c2)
 		} else if c == '{' {
 			i++
 			vbeg := i

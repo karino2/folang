@@ -84,8 +84,7 @@ func rdffieldToGo(field NameTypePair) string {
 
 func rdfToGo(rdf RecordDef) string {
 	b := buf.New()
-	buf.Write(b, "type ")
-	buf.Write(b, rdf.Name)
+	buf.Write(b, frt.SInterP("type %s", rdf.Name))
 	writeTParamsIfAny(b, rdf.Tparams)
 	buf.Write(b, " struct {\n")
 	frt.PipeUnit(frt.Pipe(frt.Pipe(rdf.Fields, (func(_r0 []NameTypePair) []string { return slice.Map(rdffieldToGo, _r0) })), (func(_r0 []string) string { return strings.Concat("\n", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
@@ -95,12 +94,9 @@ func rdfToGo(rdf RecordDef) string {
 
 func udUnionDef(ud UnionDef) string {
 	b := buf.New()
-	buf.Write(b, "type ")
-	buf.Write(b, ud.Name)
-	buf.Write(b, " interface {\n")
-	buf.Write(b, "  ")
-	buf.Write(b, ud.Name)
-	buf.Write(b, "_Union()\n")
+	buf.Write(b, frt.SInterP("type %s interface ", ud.Name))
+	buf.Write(b, "{\n")
+	buf.Write(b, frt.SInterP("  %s_Union()\n", ud.Name))
 	buf.Write(b, "}\n")
 	return buf.String(b)
 }

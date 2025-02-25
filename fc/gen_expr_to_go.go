@@ -12,7 +12,7 @@ func rgFVToGo(toGo func(Expr) string, fvPair NEPair) string {
 	fn := fvPair.Name
 	fv := fvPair.Expr
 	fvGo := toGo(fv)
-	return ((fn + ": ") + fvGo)
+	return frt.SInterP("%s: %s", fn, fvGo)
 }
 
 func rgToGo(toGo func(Expr) string, rg RecordGen) string {
@@ -196,13 +196,13 @@ func reToGo(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr ReturnableEx
 }
 
 func ftiToParamName(i int, ft FType) string {
-	return frt.Sprintf1("_r%d", i)
+	return frt.SInterP("_r%s", i)
 }
 
 func ntpairToParam(tGo func(FType) string, ntp frt.Tuple2[string, FType]) string {
 	tpgo := frt.Pipe(frt.Snd(ntp), tGo)
 	name := frt.Fst(ntp)
-	return ((name + " ") + tpgo)
+	return frt.SInterP("%s %s", name, tpgo)
 }
 
 func varRefToGo(tGo func(FType) string, vr VarRef) string {
@@ -310,12 +310,12 @@ func binOpToGo(eGo func(Expr) string, binOp BinOpCall) string {
 
 func faToGo(eGo func(Expr) string, fa FieldAccess) string {
 	target := eGo(fa.TargetExpr)
-	return ((target + ".") + fa.FieldName)
+	return frt.SInterP("%s.%s", target, fa.FieldName)
 }
 
 func paramsToGo(pm Var) string {
 	ts := FTypeToGo(pm.Ftype)
-	return ((pm.Name + " ") + ts)
+	return frt.SInterP("%s %s", pm.Name, ts)
 }
 
 func lambdaToGo(bToGoRet func(Block) string, le LambdaExpr) string {

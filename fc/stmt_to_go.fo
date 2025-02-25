@@ -87,8 +87,7 @@ let rdffieldToGo (field: NameTypePair) =
 
 let rdfToGo (rdf:RecordDef) =
   let b = buf.New ()
-  buf.Write b "type "
-  buf.Write b rdf.Name
+  buf.Write b $"type {rdf.Name}"
   writeTParamsIfAny b rdf.Tparams
   buf.Write b " struct {\n"
   rdf.Fields |> slice.Map rdffieldToGo |> strings.Concat "\n" |> buf.Write b
@@ -123,12 +122,9 @@ We call IntOrString_I "case struct of I".
 */
 let udUnionDef (ud:UnionDef) =
   let b = buf.New ()
-  buf.Write b "type "
-  buf.Write b ud.Name
-  buf.Write b " interface {\n"
-  buf.Write b "  "
-  buf.Write b ud.Name
-  buf.Write b "_Union()\n"
+  buf.Write b $"type {ud.Name} interface "
+  buf.Write b "{\n"
+  buf.Write b $"  {ud.Name}_Union()\n"
   buf.Write b "}\n"
   buf.String b
 
