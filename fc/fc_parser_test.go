@@ -81,7 +81,7 @@ func transpile(src string) string {
 }
 
 func TestRawString(t *testing.T) {
-	rawstring := "`abc\ndef backslash \\`"
+	rawstring := "`abc\ndef \"dq\" backslash \\`"
 
 	src := fmt.Sprintf(`package main
 
@@ -95,7 +95,7 @@ let hoge () =
 	got := transpile(src)
 	// t.Error(got)
 
-	want := `"abc\ndef backslash \\"`
+	want := `"abc\ndef \"dq\" backslash \\"`
 	if !strings.Contains(got, want) {
 		t.Errorf("want to contain '%s', but got '%s'", want, got)
 	}

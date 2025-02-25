@@ -232,6 +232,8 @@ func scanRawStringLiteralToken(buf string, pos int) Token {
 			// write as \\
 			bb.WriteByte(c)
 			bb.WriteByte(c)
+		} else if c == '"' {
+			bb.WriteString("\\\"")
 		} else if c == '\n' {
 			bb.WriteString("\\n")
 		} else {
