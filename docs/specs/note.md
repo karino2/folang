@@ -25,7 +25,7 @@ let hoge () =
   $"a is :{a}, b is {b}"
 ```
 
-The result is "a is :123, b is \"abc\"".
+The result is `"a is :123, b is \"abc\""`.
 
 The brace is escaped with a backslash.
 This is different from F#.
@@ -36,7 +36,7 @@ let hoge () =
   $"a is :{a}, \{a\}"
 ```
 
-The result is "a is :123, {a}".
+The result is `"a is :123, {a}"`.
 
 ### rawstring
 
