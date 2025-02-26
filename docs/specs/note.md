@@ -8,6 +8,62 @@ I'd like to organize it once it's more solidified.
 
 The background to these decisions is in [discussion.md](discussion.md).
 
+## String interpolation and backtick raw string
+
+String interpolation is like F# and raw string is like Golang,
+so the combination is unique.
+The escaping method is also unique.
+
+### string interpolation
+
+String interpolation is a string that starts with a dollar, and symbols surrounded by curly braces are replaced with the contents as variables.
+
+```
+let hoge () =
+  let a = 123
+  let b = "abc"
+  $"a is :{a}, b is {b}"
+```
+
+The result is "a is :123, b is \"abc\"".
+
+The brace is escaped with a backslash.
+This is different from F#.
+
+```
+let hoge () =
+  let a = 123
+  $"a is :{a}, \{a\}"
+```
+
+The result is "a is :123, {a}".
+
+### rawstring
+
+rawstring is backticked to match golang.
+
+```
+let hoge () =
+  let s = `This is
+raw string, "Double quote" and backslash \ is not escaped.
+`
+  frt.Println s
+```
+
+### rawstring interpolation
+
+Rawstring can also be used for interpolation.
+However, there is no way to escape braces in it.
+
+```
+let hoge () =
+  let a = 123
+  let s = $`This is
+raw string, a is "{a}"
+`
+  frt.Println s
+```
+
 ## Slice and tuple type precedence
 
 The precedence of slices and tuples is a Folang-specific problem that occurs because slice syntax is Go.

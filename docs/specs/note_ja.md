@@ -8,6 +8,64 @@
 
 こうした決定に関する経緯は[discussion_ja.md](discussion_ja.md)に。
 
+## string interpolationとbacktickのraw string
+
+string interpolationはF# っぽくてraw stringはGolangっぽいので、
+組み合わせ的には独自仕様となる。
+またエスケープの仕方が独自。
+
+### string interpolation
+
+String interpolationはドル始まりの文字列で、中括弧で囲まれたシンボルが変数として中身に置き換わる。
+
+```
+let hoge () =
+  let a = 123
+  let b = "abc"
+  $"a is :{a}, b is {b}"
+```
+
+この結果は"a is :123, b is \"abc\""となる。
+
+ブレースのエスケープはバックスラッシュにした。
+ここはF#と違う。
+
+```
+let hoge () =
+  let a = 123
+  $"a is :{a}, \{a\}"
+```
+
+結果は"a is :123, {a}"となる。
+
+
+### rawstring
+
+rawstringはgolangに合わせてbacktickにしてある。
+
+```
+let hoge () =
+  let s = `This is
+raw string, "Double quote" and backslash \ is not escaped.
+`
+  frt.Println s
+```
+
+### rawstringのinterpolation
+
+rawstringでもinterpolationが出来る。
+ただし、この中でブレースをエスケープする方法は無い。
+
+```
+let hoge () =
+  let a = 123
+  let s = $`This is
+raw string, a is "{a}"
+`
+  frt.Println s
+```
+
+
 ## スライスとタプルの型の優先順位
 
 スライスとタプルの優先順位はスライスのsyntaxがGoなので起こるFolang特有の問題。
