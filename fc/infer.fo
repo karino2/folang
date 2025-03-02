@@ -134,7 +134,7 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
     | FParamd pt2 ->
       let pt1 = GoEval<ParamdType> "lhs.(FType_FParamd).Value"
       let (tps, rels) = compositeTpList compositeTp pt1.Targs pt2.Targs
-      {Name=pt1.Name; Targs=tps}
+      {ParamdType.Name=pt1.Name; Targs=tps}
       |> FParamd
       |> withRels rels
     | FTuple tt2 ->

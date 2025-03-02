@@ -8,6 +8,8 @@ import "github.com/karino2/folang/pkg/slice"
 
 import "github.com/karino2/folang/pkg/strings"
 
+import "github.com/karino2/folang/pkg/dict"
+
 type TypeVar struct {
 	Name string
 }
@@ -125,9 +127,8 @@ type NameTypePair struct {
 	Ftype FType
 }
 type RecordType struct {
-	Name   string
-	Fields []NameTypePair
-	Targs  []FType
+	Name  string
+	Targs []FType
 }
 type UnionType struct {
 	Name     string
@@ -183,6 +184,10 @@ func funcTypeToGo(ft FuncType, toGo func(FType) string) string {
 	return buf.String(bw)
 }
 
+func newFFunc(ftypes []FType) FType {
+	return frt.Pipe(FuncType{Targets: ftypes}, New_FType_FFunc)
+}
+
 func tArgsToGo[T0 any](tGo func(T0) string, targs []T0) string {
 	return frt.IfElse(slice.IsEmpty(targs), (func() string {
 		return ""
@@ -195,60 +200,8 @@ func recordTypeToGo(tGo func(FType) string, frec RecordType) string {
 	return (frec.Name + tArgsToGo(tGo, frec.Targs))
 }
 
-func frStructName(tGo func(FType) string, frec RecordType) string {
-	return (frec.Name + tArgsToGo(tGo, frec.Targs))
-}
-
-func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
-	res := frt.Pipe(pairs, (func(_r0 []NameTypePair) []NameTypePair {
-		return slice.Filter(func(x NameTypePair) bool {
-			return frt.OpEqual(x.Name, targetName)
-		}, _r0)
-	}))
-	frt.IfOnly(slice.IsEmpty(res), (func() {
-		frt.PipeUnit(frt.Sprintf1("Can't find record field of: %s", targetName), PanicNow)
-	}))
-	return slice.Head(res)
-}
-
-func frGetField(frec RecordType, fieldName string) NameTypePair {
-	return lookupPairByName(fieldName, frec.Fields)
-}
-
-func newNTPair(name string, ft FType) NameTypePair {
-	return NameTypePair{Name: name, Ftype: ft}
-}
-
-func tupToNTPair(tup frt.Tuple2[string, FType]) NameTypePair {
-	return newNTPair(frt.Fst(tup), frt.Snd(tup))
-}
-
-func frMatch(frec RecordType, fieldNames []string) bool {
-	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(frec.Fields)), (func() bool {
-		return false
-	}), (func() bool {
-		sortedInput := frt.Pipe(fieldNames, slice.Sort)
-		sortedFName := frt.Pipe(slice.Map(func(_v1 NameTypePair) string {
-			return _v1.Name
-		}, frec.Fields), slice.Sort)
-		return frt.OpEqual(sortedInput, sortedFName)
-	}))
-}
-
-func newFFunc(ftypes []FType) FType {
-	return frt.Pipe(FuncType{Targets: ftypes}, New_FType_FFunc)
-}
-
 func fUnionToGo(fu UnionType) string {
 	return utName(fu)
-}
-
-func lookupCase(fu UnionType, caseName string) NameTypePair {
-	return frt.Pipe(utCases(fu), (func(_r0 []NameTypePair) NameTypePair { return lookupPairByName(caseName, _r0) }))
-}
-
-func unionCSName(unionName string, caseName string) string {
-	return ((unionName + "_") + caseName)
 }
 
 func fSliceToGo(fs SliceType, toGo func(FType) string) string {
@@ -258,17 +211,6 @@ func fSliceToGo(fs SliceType, toGo func(FType) string) string {
 func fTupleToGo(toGo func(FType) string, ft TupleType) string {
 	args := frt.Pipe(slice.Map(toGo, ft.ElemTypes), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
 	return frt.Sprintf1("frt.Tuple2[%s]", args)
-}
-
-func faResolve(fat FieldAccessType) FType {
-	switch _v1 := (fat.RecType).(type) {
-	case FType_FRecord:
-		rt := _v1.Value
-		field := frGetField(rt, fat.FieldName)
-		return field.Ftype
-	default:
-		return frt.Pipe(fat, New_FType_FFieldAccess)
-	}
 }
 
 func encloseWith(beg string, end string, center string) string {
@@ -284,7 +226,7 @@ func fpToGo(tToGo func(FType) string, pt ParamdType) string {
 }
 
 func FTypeToGo(ft FType) string {
-	switch _v2 := (ft).(type) {
+	switch _v1 := (ft).(type) {
 	case FType_FInt:
 		return "int"
 	case FType_FBool:
@@ -296,29 +238,113 @@ func FTypeToGo(ft FType) string {
 	case FType_FUnit:
 		return ""
 	case FType_FFunc:
-		ft := _v2.Value
+		ft := _v1.Value
 		return funcTypeToGo(ft, FTypeToGo)
 	case FType_FRecord:
-		fr := _v2.Value
+		fr := _v1.Value
 		return recordTypeToGo(FTypeToGo, fr)
 	case FType_FUnion:
-		fu := _v2.Value
+		fu := _v1.Value
 		return fUnionToGo(fu)
 	case FType_FParamd:
-		pt := _v2.Value
+		pt := _v1.Value
 		return fpToGo(FTypeToGo, pt)
 	case FType_FSlice:
-		fs := _v2.Value
+		fs := _v1.Value
 		return fSliceToGo(fs, FTypeToGo)
 	case FType_FTuple:
-		ft := _v2.Value
+		ft := _v1.Value
 		return fTupleToGo(FTypeToGo, ft)
 	case FType_FFieldAccess:
 		return "FieldAccess_Unresoled"
 	case FType_FTypeVar:
-		fp := _v2.Value
+		fp := _v1.Value
 		return fp.Name
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
+}
+
+func frStructName(tGo func(FType) string, frec RecordType) string {
+	return (frec.Name + tArgsToGo(tGo, frec.Targs))
+}
+
+type RecordTypeInfo struct {
+	Fields []NameTypePair
+}
+
+var g_recInfoDic = dict.New[string, RecordTypeInfo]()
+
+func rtToKey(rt RecordType) string {
+	encts := frt.Pipe(slice.Map(FTypeToGo, rt.Targs), (func(_r0 []string) string { return strings.Concat("_", _r0) }))
+	return frt.SInterP("%s_%s", rt.Name, encts)
+}
+
+func lookupRecInfo(rt RecordType) RecordTypeInfo {
+	ri, ok := frt.Destr(dict.TryFind(g_recInfoDic, rtToKey(rt)))
+	frt.IfOnly(frt.OpNot(ok), (func() {
+		frt.PipeUnit(frt.Sprintf1("Can't find record info: %s.", rt.Name), PanicNow)
+	}))
+	return ri
+}
+
+func updateRecInfo(rt RecordType, rinfo RecordTypeInfo) {
+	dict.Add(g_recInfoDic, rtToKey(rt), rinfo)
+}
+
+func lookupPairByName(targetName string, pairs []NameTypePair) NameTypePair {
+	res := frt.Pipe(pairs, (func(_r0 []NameTypePair) []NameTypePair {
+		return slice.Filter(func(x NameTypePair) bool {
+			return frt.OpEqual(x.Name, targetName)
+		}, _r0)
+	}))
+	frt.IfOnly(slice.IsEmpty(res), (func() {
+		frt.PipeUnit(frt.Sprintf1("Can't find record field of: %s", targetName), PanicNow)
+	}))
+	return slice.Head(res)
+}
+
+func frGetField(frec RecordType, fieldName string) NameTypePair {
+	ri := lookupRecInfo(frec)
+	return lookupPairByName(fieldName, ri.Fields)
+}
+
+func newNTPair(name string, ft FType) NameTypePair {
+	return NameTypePair{Name: name, Ftype: ft}
+}
+
+func tupToNTPair(tup frt.Tuple2[string, FType]) NameTypePair {
+	return newNTPair(frt.Fst(tup), frt.Snd(tup))
+}
+
+func frMatch(rt RecordType, fieldNames []string) bool {
+	ri := lookupRecInfo(rt)
+	return frt.IfElse(frt.OpNotEqual(slice.Length(fieldNames), slice.Length(ri.Fields)), (func() bool {
+		return false
+	}), (func() bool {
+		sortedInput := frt.Pipe(fieldNames, slice.Sort)
+		sortedFName := frt.Pipe(slice.Map(func(_v1 NameTypePair) string {
+			return _v1.Name
+		}, ri.Fields), slice.Sort)
+		return frt.OpEqual(sortedInput, sortedFName)
+	}))
+}
+
+func faResolve(fat FieldAccessType) FType {
+	switch _v2 := (fat.RecType).(type) {
+	case FType_FRecord:
+		rt := _v2.Value
+		field := frGetField(rt, fat.FieldName)
+		return field.Ftype
+	default:
+		return frt.Pipe(fat, New_FType_FFieldAccess)
+	}
+}
+
+func lookupCase(fu UnionType, caseName string) NameTypePair {
+	return frt.Pipe(utCases(fu), (func(_r0 []NameTypePair) NameTypePair { return lookupPairByName(caseName, _r0) }))
+}
+
+func unionCSName(unionName string, caseName string) string {
+	return ((unionName + "_") + caseName)
 }

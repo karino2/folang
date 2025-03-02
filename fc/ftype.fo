@@ -4,6 +4,7 @@ import frt
 import buf
 import slice
 import strings
+import dict
 
 /*
   Type variable, used for type inference and type parameter.
@@ -39,8 +40,10 @@ and ParamdType = {Name: string; Targs: []FType}
 and FieldAccessType = {RecType: FType; FieldName: string}
 and TupleType = {ElemTypes: []FType}
 and NameTypePair = {Name: string; Ftype: FType}
-and RecordType = {Name: string; Fields: []NameTypePair; Targs: []FType}
+and RecordType = {Name: string; Targs: []FType}
 and UnionType = {Name: string; CasesPtr: NTPsPtr}
+
+/* UnionType related */
 
 package_info _ =
   let NewNTPsPtr: []NameTypePair -> NTPsPtr
@@ -65,6 +68,10 @@ let utCases (ut:UnionType) =
 let utUpdateCases (ut:UnionType) cases =
   NTPsUpdate ut.CasesPtr cases
 
+/*
+  FuncType related
+*/
+
 let fargs (ft:FuncType) =
   let l = slice.Length ft.Targets
   ft.Targets |> slice.Take (l-1)
@@ -85,6 +92,14 @@ let funcTypeToGo (ft:FuncType) (toGo:FType->string) =
   buf.Write bw ret
   buf.String bw
 
+
+let newFFunc (ftypes:[]FType) =
+   {FuncType.Targets=ftypes} |> FFunc
+
+/*
+  RecordType ToGo related.
+*/
+
 let tArgsToGo tGo targs=
   if slice.IsEmpty targs then
     ""
@@ -97,47 +112,9 @@ let tArgsToGo tGo targs=
 let recordTypeToGo tGo (frec: RecordType) =
   frec.Name + (tArgsToGo tGo frec.Targs)
 
-let frStructName tGo (frec: RecordType) =
-  frec.Name + (tArgsToGo tGo frec.Targs)
-
-let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
-  let res = pairs |> slice.Filter (fun x-> x.Name = targetName)
-  if slice.IsEmpty res then
-    frt.Sprintf1 "Can't find record field of: %s" targetName
-    |> PanicNow
-  slice.Head res
-
-let frGetField (frec: RecordType) (fieldName: string) =
-  lookupPairByName fieldName frec.Fields
-
-let newNTPair name ft =
-  {NameTypePair.Name=name; Ftype=ft}
-
-let tupToNTPair tup =
-   newNTPair (frt.Fst tup) (frt.Snd tup)
-
-let frMatch (frec: RecordType) (fieldNames: []string)=
-  if (slice.Length fieldNames) <> (slice.Length frec.Fields) then
-    false
-  else
-    // let sortedInput = slice.Sort fieldNames
-    let sortedInput = fieldNames |> slice.Sort
-    let sortedFName = slice.Map _.Name frec.Fields
-                      |> slice.Sort
-    sortedInput = sortedFName
-
-let newFFunc (ftypes:[]FType) =
-   {FuncType.Targets=ftypes} |> FFunc
-
 let fUnionToGo (fu: UnionType) =
   utName fu
 
-let lookupCase (fu: UnionType) (caseName: string) =
-  utCases fu |> lookupPairByName caseName
-
-// IntOrString_I
-let unionCSName (unionName: string) (caseName: string) =
-  unionName + "_" + caseName
 
 let fSliceToGo (fs: SliceType) (toGo:FType->string) =
   "[]" + (toGo fs.ElemType)
@@ -146,13 +123,6 @@ let fSliceToGo (fs: SliceType) (toGo:FType->string) =
 let fTupleToGo (toGo:FType->string) (ft:TupleType) =
   let args = slice.Map toGo ft.ElemTypes |> strings.Concat ", "
   frt.Sprintf1 "frt.Tuple2[%s]" args
-
-let faResolve (fat:FieldAccessType) =
-  match fat.RecType with
-  | FRecord rt ->
-    let field = frGetField rt fat.FieldName
-    field.Ftype
-  | _ -> fat |> FFieldAccess
 
 let encloseWith (beg:string) (end:string) (center:string) =
   beg+center+end
@@ -182,3 +152,75 @@ let FTypeToGo (ft:FType) : string =
   | FTuple ft -> fTupleToGo FTypeToGo ft
   | FFieldAccess _ -> "FieldAccess_Unresoled" // must be removed during type resolution.
   | FTypeVar fp -> fp.Name
+
+
+/* RecordType related utils*/
+
+let frStructName tGo (frec: RecordType) =
+  frec.Name + (tArgsToGo tGo frec.Targs)
+
+type RecordTypeInfo = {Fields: []NameTypePair}
+
+let g_recInfoDic = dict.New<string, RecordTypeInfo> ()
+
+/*
+  Unique key which encode targs info.
+*/
+let rtToKey (rt: RecordType) =
+   let encts = slice.Map FTypeToGo rt.Targs |> strings.Concat "_"
+   $"{rt.Name}_{encts}"
+
+
+let lookupRecInfo rt =
+  let (ri, ok) = dict.TryFind g_recInfoDic (rtToKey rt)
+  if not ok then
+    frt.Sprintf1 "Can't find record info: %s." rt.Name
+    |> PanicNow 
+  ri
+
+let updateRecInfo rt rinfo =
+   dict.Add g_recInfoDic (rtToKey rt) rinfo
+
+let lookupPairByName (targetName:string) (pairs: []NameTypePair) =
+  let res = pairs |> slice.Filter (fun x-> x.Name = targetName)
+  if slice.IsEmpty res then
+    frt.Sprintf1 "Can't find record field of: %s" targetName
+    |> PanicNow
+  slice.Head res
+
+let frGetField (frec: RecordType) (fieldName: string) =
+  let ri = lookupRecInfo frec
+  lookupPairByName fieldName ri.Fields
+
+let newNTPair name ft =
+  {NameTypePair.Name=name; Ftype=ft}
+
+let tupToNTPair tup =
+   newNTPair (frt.Fst tup) (frt.Snd tup)
+
+let frMatch (rt: RecordType) (fieldNames: []string)=
+  let ri = lookupRecInfo rt
+  if (slice.Length fieldNames) <> (slice.Length ri.Fields) then
+    false
+  else
+    // let sortedInput = slice.Sort fieldNames
+    let sortedInput = fieldNames |> slice.Sort
+    let sortedFName = slice.Map _.Name ri.Fields
+                      |> slice.Sort
+    sortedInput = sortedFName
+
+let faResolve (fat:FieldAccessType) =
+  match fat.RecType with
+  | FRecord rt ->
+    let field = frGetField rt fat.FieldName
+    field.Ftype
+  | _ -> fat |> FFieldAccess
+
+/* UnionType related utils */
+
+let lookupCase (fu: UnionType) (caseName: string) =
+  utCases fu |> lookupPairByName caseName
+
+// IntOrString_I
+let unionCSName (unionName: string) (caseName: string) =
+  unionName + "_" + caseName

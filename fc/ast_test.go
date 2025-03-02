@@ -11,32 +11,6 @@ func MyExprToGo(expr Expr) string {
 	return ExprToGo(func(s Stmt) string { return fmt.Sprintf("stmt: %v", s) }, expr)
 }
 
-func TestExprToGo(t *testing.T) {
-	var tests = []struct {
-		input Expr
-		want  string
-	}{
-		{
-			New_Expr_EStringLiteral("abc"),
-			`"abc"`,
-		},
-		{
-			New_Expr_ERecordGen(
-				RecordGen{[]NEPair{{"hoge", New_Expr_EStringLiteral("sval")},
-					{"ika", New_Expr_EIntImm(123)}},
-					RecordType{"MyRec", []NameTypePair{{"hoge", New_FType_FString}, {"ika", New_FType_FInt}}, []FType{}}}),
-			"MyRec{hoge: \"sval\", ika: 123}",
-		},
-	}
-
-	for _, test := range tests {
-		got := MyExprToGo(test.input)
-		if got != test.want {
-			t.Errorf("want %s, got %s.", test.want, got)
-		}
-	}
-}
-
 func newBlock(expr Expr) Block {
 	return Block{[]Stmt{}, expr}
 }

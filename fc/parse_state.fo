@@ -41,11 +41,15 @@ let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   {Block.Stmts=nss; FinalExpr=fexpr}
 
 let transRecType transT (rt:RecordType) =
-  let ntps = slice.Map _.Ftype rt.Fields |> slice.Map transT
-  let names = slice.Map _.Name rt.Fields
+  let ri = lookupRecInfo rt
+  let ntps = slice.Map _.Ftype ri.Fields |> slice.Map transT
+  let names = slice.Map _.Name ri.Fields
   let nfields = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
   let ntargs = slice.Map transT rt.Targs
-  {RecordType.Name=rt.Name; Fields=nfields; Targs=ntargs}
+  let nri = {RecordTypeInfo.Fields=nfields}
+  let nrt = {RecordType.Name=rt.Name; Targs=ntargs}
+  updateRecInfo nrt nri
+  nrt
 
 let transExpr transT transV transS transB (expr:Expr) : Expr =
   let transE = transExpr transT transV transS transB
@@ -134,7 +138,8 @@ let collectTVarFTypeWithSet (visited:SSet) (ft:FType) : []string =
   | FFieldAccess fa ->
     recurse fa.RecType
   | FRecord rt ->
-    let fres =  rt.Fields
+    let ri = lookupRecInfo rt
+    let fres =  ri.Fields
                 |> slice.Map _.Ftype
                 |> slice.Collect recurse
     let tres = rt.Targs |> slice.Collect recurse
@@ -250,7 +255,7 @@ let transTVFTypeWithSet (visited:SSet) (transTV: TypeVar->FType) (ftp:FType) : F
     |> newFFunc
   | FParamd pt ->
     let nts = slice.Map recurse pt.Targs
-    {Name=pt.Name; Targs=nts}
+    {ParamdType.Name=pt.Name; Targs=nts}
     |> FParamd
   | FRecord rt ->
     transRecType recurse rt
@@ -394,7 +399,7 @@ let newTvf (name:string) =
 let GenType (tfd:TypeFactoryData) (targs:[]FType)  =
   if (slice.Len tfd.Tparams) <> (slice.Len targs) then
     PanicNow "wrong type param num for instantiate."
-  {Name=tfd.Name; Targs=targs}
+  {ParamdType.Name=tfd.Name; Targs=targs}
   |> FParamd
 
 /*
@@ -411,7 +416,10 @@ let GenRecordType (rf:RecordFactory) stlist =
   let fnames = slice.Map _.Name rf.Fields
   let nfields = slice.Zip fnames nftypes
                 |> slice.Map tupToNTPair
-  {RecordType.Name=rf.Name; Fields=nfields; Targs=stlist}
+  let rt = {RecordType.Name=rf.Name; Targs=stlist}
+  let ri = {RecordTypeInfo.Fields=nfields}
+  updateRecInfo rt ri
+  rt
 
 let GenRecordFType rf stlist =
   GenRecordType rf stlist |> FRecord
@@ -438,7 +446,10 @@ let recFacMatch (fieldNames: []string) (rf: RecordFactory) =
 */
 let tryRecFacToRecType (rf:RecordFactory) =
   if slice.IsEmpty rf.Tparams then
-    ({RecordType.Name=rf.Name; Fields=rf.Fields}, true)
+    let rt = {RecordType.Name=rf.Name}
+    let ri = {RecordTypeInfo.Fields=rf.Fields}
+    updateRecInfo rt ri
+    (rt, true)
   else
     (frt.Empty<RecordType> (), false)
 

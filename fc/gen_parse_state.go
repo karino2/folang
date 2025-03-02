@@ -50,19 +50,23 @@ func transBlock(transE func(Expr) Expr, transS func(Stmt) Stmt, bl Block) Block 
 }
 
 func transRecType(transT func(FType) FType, rt RecordType) RecordType {
+	ri := lookupRecInfo(rt)
 	ntps := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
 		return _v1.Ftype
-	}, rt.Fields), (func(_r0 []FType) []FType { return slice.Map(transT, _r0) }))
+	}, ri.Fields), (func(_r0 []FType) []FType { return slice.Map(transT, _r0) }))
 	names := slice.Map(func(_v2 NameTypePair) string {
 		return _v2.Name
-	}, rt.Fields)
+	}, ri.Fields)
 	nfields := frt.Pipe(slice.Zip(names, ntps), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair {
 		return slice.Map(func(tp frt.Tuple2[string, FType]) NameTypePair {
 			return newNTPair(frt.Fst(tp), frt.Snd(tp))
 		}, _r0)
 	}))
 	ntargs := slice.Map(transT, rt.Targs)
-	return RecordType{Name: rt.Name, Fields: nfields, Targs: ntargs}
+	nri := RecordTypeInfo{Fields: nfields}
+	nrt := RecordType{Name: rt.Name, Targs: ntargs}
+	updateRecInfo(nrt, nri)
+	return nrt
 }
 
 func transExpr(transT func(FType) FType, transV func(Var) Var, transS func(Stmt) Stmt, transB func(Block) Block, expr Expr) Expr {
@@ -181,7 +185,8 @@ func collectTVarFTypeWithSet(visited SSet, ft FType) []string {
 		return recurse(fa.RecType)
 	case FType_FRecord:
 		rt := _v6.Value
-		fres := frt.Pipe(frt.Pipe(rt.Fields, (func(_r0 []NameTypePair) []FType {
+		ri := lookupRecInfo(rt)
+		fres := frt.Pipe(frt.Pipe(ri.Fields, (func(_r0 []NameTypePair) []FType {
 			return slice.Map(func(_v1 NameTypePair) FType {
 				return _v1.Ftype
 			}, _r0)
@@ -535,7 +540,10 @@ func GenRecordType(rf RecordFactory, stlist []FType) RecordType {
 		return _v2.Name
 	}, rf.Fields)
 	nfields := frt.Pipe(slice.Zip(fnames, nftypes), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair { return slice.Map(tupToNTPair, _r0) }))
-	return RecordType{Name: rf.Name, Fields: nfields, Targs: stlist}
+	rt := RecordType{Name: rf.Name, Targs: stlist}
+	ri := RecordTypeInfo{Fields: nfields}
+	updateRecInfo(rt, ri)
+	return rt
 }
 
 func GenRecordFType(rf RecordFactory, stlist []FType) FType {
@@ -563,7 +571,10 @@ func recFacMatch(fieldNames []string, rf RecordFactory) bool {
 
 func tryRecFacToRecType(rf RecordFactory) frt.Tuple2[RecordType, bool] {
 	return frt.IfElse(slice.IsEmpty(rf.Tparams), (func() frt.Tuple2[RecordType, bool] {
-		return frt.NewTuple2(RecordType{Name: rf.Name, Fields: rf.Fields}, true)
+		rt := RecordType{Name: rf.Name}
+		ri := RecordTypeInfo{Fields: rf.Fields}
+		updateRecInfo(rt, ri)
+		return frt.NewTuple2(rt, true)
 	}), (func() frt.Tuple2[RecordType, bool] {
 		return frt.NewTuple2(frt.Empty[RecordType](), false)
 	}))
