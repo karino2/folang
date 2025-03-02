@@ -11,15 +11,6 @@ import dict
 */
 type TypeVar = {Name: string}
 
-/*
-  To break mutual recursive type def cycle,
-  we treat UnionType as ptr type and update by side effect and propagate change to all referenced data.
-*/
-package_info _ =
-  type UTDataPtr
-  type NTPsPtr
-
-
 type FType =
 | FInt
 | FString
@@ -46,9 +37,6 @@ and UnionType = {Name: string}
 /* UnionType related */
 
 package_info _ =
-  let NewNTPsPtr: []NameTypePair -> NTPsPtr
-  let NTPsPtrGet: NTPsPtr->[]NameTypePair
-  let NTPsUpdate: NTPsPtr->[]NameTypePair->()
   let PanicNow: string->()
 
 let utName (ut:UnionType) =

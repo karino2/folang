@@ -433,8 +433,7 @@ func transTVDefStmt(transTV func(TypeVar) FType, df DefStmt) DefStmt {
 		frt.IfOnly(frt.OpNot(noTvFound), (func() {
 			PanicNow("Unresolve type2")
 		}))
-		udUpdate(ud, ncases)
-		return df
+		return frt.Pipe(udUpdate(ud, ncases), New_DefStmt_DUnionDef)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
@@ -1003,9 +1002,8 @@ func psIsNeighborLT(ps ParseState) bool {
 }
 
 func udToUt(ud UnionDef) UnionType {
-	cases := NTPsPtrGet(ud.CasesPtr)
 	ut := UnionType{Name: ud.Name}
-	ui := UnionTypeInfo{Cases: cases}
+	ui := UnionTypeInfo{Cases: ud.Cases}
 	updateUniInfo(ut, ui)
 	return ut
 }

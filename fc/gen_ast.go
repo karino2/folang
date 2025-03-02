@@ -397,8 +397,8 @@ type RecordDef struct {
 	Fields  []NameTypePair
 }
 type UnionDef struct {
-	Name     string
-	CasesPtr NTPsPtr
+	Name  string
+	Cases []NameTypePair
 }
 type DefStmt interface {
 	DefStmt_Union()
@@ -430,16 +430,15 @@ func NewPackageInfo(name string) PackageInfo {
 }
 
 func NewUnionDef(name string, cases []NameTypePair) UnionDef {
-	ptr := NewNTPsPtr(cases)
-	return UnionDef{Name: name, CasesPtr: ptr}
+	return UnionDef{Name: name, Cases: cases}
 }
 
-func udUpdate(ud UnionDef, cases []NameTypePair) {
-	NTPsUpdate(ud.CasesPtr, cases)
+func udUpdate(ud UnionDef, cases []NameTypePair) UnionDef {
+	return UnionDef{Name: ud.Name, Cases: cases}
 }
 
 func udCases(ud UnionDef) []NameTypePair {
-	return NTPsPtrGet(ud.CasesPtr)
+	return ud.Cases
 }
 
 func varToExpr(v Var) Expr {

@@ -324,7 +324,7 @@ let transTVDefStmt (transTV: TypeVar->FType) (df: DefStmt) : DefStmt =
     if not noTvFound then
       PanicNow "Unresolve type2"
     udUpdate ud ncases
-    df
+    |> DUnionDef
 
 
 let transTVExpr (transTV: TypeVar->FType) (expr:Expr) : Expr =
@@ -836,9 +836,8 @@ UnionDef related utility.
 */
 
 let udToUt (ud:UnionDef) =
-  let cases = NTPsPtrGet ud.CasesPtr
   let ut = {UnionType.Name=ud.Name}
-  let ui = {UnionTypeInfo.Cases=cases}
+  let ui = {UnionTypeInfo.Cases=ud.Cases}
   updateUniInfo ut ui
   ut
 
