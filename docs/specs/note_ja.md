@@ -8,6 +8,11 @@
 
 こうした決定に関する経緯は[discussion_ja.md](discussion_ja.md)に。
 
+## トップレベルのletによる変数定義
+
+関数内のletは`:=`に展開されるが、
+トップレベルだけは `var a =` 的なvarに展開される。
+
 ## string interpolationとbacktickのraw string
 
 string interpolationはF# っぽくてraw stringはGolangっぽいので、

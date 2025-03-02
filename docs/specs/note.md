@@ -8,6 +8,11 @@ I'd like to organize it once it's more solidified.
 
 The background to these decisions is in [discussion.md](discussion.md).
 
+## Defining variables with top-level let
+
+Let inside a function expands to `:=`,
+but only at the top level does it expand to a var like `var a =`.
+
 ## String interpolation and backtick raw string
 
 String interpolation is like F# and raw string is like Golang,
