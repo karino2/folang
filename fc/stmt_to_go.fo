@@ -242,6 +242,14 @@ let StmtToGo (stmt:Stmt) : string=
     | LLDestVarDef ldvd -> ldvdToGo eToGo ldvd
   | SExprStmt expr -> eToGo expr
 
+let rootVarDefToGo eToGo (rvd: RootVarDef) =
+  let vname = rvd.Vdef.Lvar.Name
+  let rhs = rvd.Vdef.Rhs
+  let b = buf.New ()
+  buf.Write b $"var {vname} = "
+  eToGo rhs |> buf.Write b
+  buf.String b
+
 let RootStmtToGo (rstmt:RootStmt) : string=
   let eToGo = ExprToGo StmtToGo
   let reToGoRet = reToGoReturn StmtToGo eToGo
@@ -251,6 +259,7 @@ let RootStmtToGo (rstmt:RootStmt) : string=
   | RSPackage pn -> pmToGo pn
   | RSPackageInfo -> ""
   | RSRootFuncDef rfd -> rfdToGo bToGoRet rfd
+  | RSRootVarDef rvd -> rootVarDefToGo eToGo rvd
   | RSDefStmt ds -> dsToGo ds
   | RSMultipleDefs md -> mdToGo md
 

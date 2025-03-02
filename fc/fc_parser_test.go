@@ -1245,6 +1245,17 @@ let hoge () =
 `,
 			[]string{`return frt.SInterP("This is a: %s, b: %s", a, b)`, "hoge() string"},
 		},
+		{
+			`package main
+
+let g_var = "abc"
+
+let hoge () =
+  g_var + "def"
+
+`,
+			[]string{`var g_var = "abc"`, "return (g_var"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1258,16 +1269,14 @@ let hoge () =
 	}
 }
 func TestParseAddhook(t *testing.T) {
-	rawstring := "`abc\ndef`"
+	src := `package main
 
-	src := fmt.Sprintf(`package main
+let g_var = "abc"
 
 let hoge () =
-  let a = %s
-  a+"ghi"
+  g_var + "def"
 
-`, rawstring)
-	// t.Error(src)
+`
 
 	got := transpile(src)
 	// t.Error(got)

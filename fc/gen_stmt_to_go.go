@@ -221,6 +221,15 @@ func StmtToGo(stmt Stmt) string {
 	}
 }
 
+func rootVarDefToGo(eToGo func(Expr) string, rvd RootVarDef) string {
+	vname := rvd.Vdef.Lvar.Name
+	rhs := rvd.Vdef.Rhs
+	b := buf.New()
+	buf.Write(b, frt.SInterP("var %s = ", vname))
+	frt.PipeUnit(eToGo(rhs), (func(_r0 string) { buf.Write(b, _r0) }))
+	return buf.String(b)
+}
+
 func RootStmtToGo(rstmt RootStmt) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(StmtToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(StmtToGo, eToGo, _r0) })
@@ -237,6 +246,9 @@ func RootStmtToGo(rstmt RootStmt) string {
 	case RootStmt_RSRootFuncDef:
 		rfd := _v4.Value
 		return rfdToGo(bToGoRet, rfd)
+	case RootStmt_RSRootVarDef:
+		rvd := _v4.Value
+		return rootVarDefToGo(eToGo, rvd)
 	case RootStmt_RSDefStmt:
 		ds := _v4.Value
 		return dsToGo(ds)

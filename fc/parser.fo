@@ -939,8 +939,14 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
     let psNN = psNext psN
     match psCurrentTT psNN with
     | EQ ->
-      psPanic ps "Root let var def, NYI"
-      (ps, (RSImport "dummy"))
+      let vname = psIdentName psN
+      let (psL1, rhs) = psConsume EQ psNN |> pExpr
+      let vtype = ExprToType rhs
+      let lv = {Var.Name=vname; Ftype=vtype}
+      let lvd = {Lvar=lv; Rhs=rhs}
+      scDefVar psL1.scope vname lv
+      let rootVd = {Vdef=lvd} |> RSRootVarDef
+      (psL1, rootVd)
     | _ ->
       parseRootLetFuncDef pLet ps
       |> CnvR RSRootFuncDef

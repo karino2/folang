@@ -909,8 +909,14 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 		psNN := psNext(psN)
 		switch (psCurrentTT(psNN)).(type) {
 		case TokenType_EQ:
-			psPanic(ps, "Root let var def, NYI")
-			return frt.NewTuple2(ps, New_RootStmt_RSImport("dummy"))
+			vname := psIdentName(psN)
+			psL1, rhs := frt.Destr(frt.Pipe(psConsume(New_TokenType_EQ, psNN), pExpr))
+			vtype := ExprToType(rhs)
+			lv := Var{Name: vname, Ftype: vtype}
+			lvd := LetVarDef{Lvar: lv, Rhs: rhs}
+			scDefVar(psL1.scope, vname, lv)
+			rootVd := frt.Pipe(RootVarDef{Vdef: lvd}, New_RootStmt_RSRootVarDef)
+			return frt.NewTuple2(psL1, rootVd)
 		default:
 			return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, RootFuncDef]) frt.Tuple2[ParseState, RootStmt] {
 				return CnvR(New_RootStmt_RSRootFuncDef, _r0)
