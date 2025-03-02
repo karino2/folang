@@ -270,9 +270,11 @@ let transTVFTypeWithSet (visited:SSet) (transTV: TypeVar->FType) (ftp:FType) : F
       let ntps = slice.Map _.Ftype cases |> slice.Map recurse
       let names = slice.Map _.Name cases
       let ncases = slice.Zip names ntps |> slice.Map (fun tp-> newNTPair (frt.Fst tp) (frt.Snd tp))
-      // side effect.
-      utUpdateCases ut ncases
-      FUnion ut
+      let ntargs = slice.Map recurse ut.Targs
+      let nut = {UnionType.Name=ut.Name; Targs=ntargs}
+      let nui = {UnionTypeInfo.Cases=ncases}
+      updateUniInfo nut nui
+      FUnion nut
   | _ -> ftp
 
 let transTVFType (transTV: TypeVar->FType) (ftp:FType) : FType =
@@ -430,8 +432,6 @@ let GenRecordTypeByTgen (rf: RecordFactory) (tvgen: ()->TypeVar) =
   let ftvs = slice.Map (fun x-> tvgen () |> FTypeVar) rf.Tparams
   GenRecordType rf ftvs
 
-
-
 let recFacMatch (fieldNames: []string) (rf: RecordFactory) =
   if (slice.Length fieldNames) <> (slice.Length rf.Fields) then
     false
@@ -452,6 +452,50 @@ let tryRecFacToRecType (rf:RecordFactory) =
     (rt, true)
   else
     (frt.Empty<RecordType> (), false)
+
+
+/*
+  UnionFactory related
+*/
+type UnionFactory = {Name: string; Tparams:[]string; Cases: []NameTypePair}
+
+let ufCases (uf:UnionFactory) =
+  uf.Cases
+
+let GenUnionType (uf:UnionFactory) stlist =
+  if (slice.Len stlist) <> (slice.Len uf.Tparams) then
+    PanicNow "wrong type param num for instantiate."
+  let tdic = slice.Zip uf.Tparams stlist |> dict.ToDict
+  let cases = ufCases uf
+  let nftypes = slice.Map _.Ftype cases
+                |> slice.Map (tpreplace tdic)
+  let cnames = slice.Map _.Name cases
+  let ncases = slice.Zip cnames nftypes
+                |> slice.Map tupToNTPair
+  let ui = {UnionTypeInfo.Cases=ncases}
+  let ut = {UnionType.Name=uf.Name; Targs=stlist}
+  updateUniInfo ut ui
+  ut
+
+let GenUnionFType ufac stlist =
+  GenUnionType ufac stlist |> FUnion
+
+/*
+  If no type param, return UnionType*true, else empty*false
+*/
+let tryUniFacToUniType (uf:UnionFactory) =
+  if slice.IsEmpty uf.Tparams then
+    let ut = {UnionType.Name=uf.Name}
+    let ui = {UnionTypeInfo.Cases=uf.Cases}
+    updateUniInfo ut ui
+    (ut, true)
+  else
+    (frt.Empty<UnionType> (), false)
+
+
+let udToUniFac (ud:UnionDef) =
+  // S1016 - Use a type conversion instead of manually copying struct fields 
+  GoEval<UnionFactory> "UnionFactory(ud)"
 
 
 
@@ -831,18 +875,16 @@ let psResetTmpCtx (ps:ParseState) =
 let psIsNeighborLT (ps:ParseState) =
    tkzIsNeighborLT ps.tkz
 
+let scRegFunFac (sc:Scope) (fname:string) (ff:FuncFactory) =
+  scRegisterVarFac sc fname (GenFuncVar fname ff)
+
 /*
 UnionDef related utility.
 */
 
-let udToUt (ud:UnionDef) =
-  let ut = {UnionType.Name=ud.Name}
-  let ui = {UnionTypeInfo.Cases=ud.Cases}
-  updateUniInfo ut ui
-  ut
-
-let udToFUt (ud:UnionDef) =
-  udToUt ud |> FUnion
+// used for csIsVar cases. No Tparams.
+let udToUtOnly (ud:UnionDef) =
+  {UnionType.Name=ud.Name}
 
 /*
 // New_IntOrString_I
@@ -850,15 +892,17 @@ let csConstructorName  (unionName: string) (cas: NameTypePair) =
 */
 let csRegisterCtor (sc:Scope) (ud: UnionDef) (cas: NameTypePair) =
   let ctorName = csConstructorName ud.Name cas
-  let ut = udToFUt ud
-  let v = match cas.Ftype with
-          | FUnit ->
-            {Var.Name=ctorName; Ftype=ut}
-          | _ ->
-            let tps = [cas.Ftype; ut]
-            let funcTp = FFunc {Targets=tps}
-            {Var.Name=ctorName; Ftype=funcTp}
-  scDefVar sc cas.Name v
+  if csIsVar ud.Tparams cas then
+    let ut = udToUtOnly ud |> FUnion
+    {Var.Name=ctorName; Ftype=ut}
+    |> scDefVar sc cas.Name
+  else
+    let targs = slice.Map newTvf ud.Tparams
+    let uf = udToUniFac ud
+    let ut = GenUnionType uf targs |> FUnion
+    let tps = [cas.Ftype; ut]
+    let ffac = {Tparams=ud.Tparams; Targets=tps}
+    scRegisterVarFac sc cas.Name (GenFuncVar ctorName ffac)
 
 let udRegisterCsCtors (sc:Scope) (ud:UnionDef) =
   udCases ud |> slice.Iter (csRegisterCtor sc ud)
@@ -880,8 +924,6 @@ let piRegEType (pi:PackageInfo) (tname:string) (tparams:[]string) =
   dict.Add pi.TypeInfo tname tfd
   tfd
 
-let scRegFunFac (sc:Scope) (fname:string) (ff:FuncFactory) =
-  scRegisterVarFac sc fname (GenFuncVar fname ff)
 
 
 let scRegTFData (sc:Scope) (tname:string) (tfd:TypeFactoryData) =
@@ -1046,10 +1088,15 @@ let psRegRecDefToTDCtx (rd:RecordDef) (ps:ParseState) =
 
 let psRegUdToTDCtx (ud:UnionDef) (ps:ParseState) =
   let sc = ps.scope
+  let ufac = udToUniFac ud
   udRegisterCsCtors sc ud
-  let fut = udToFUt ud
-  scRegisterType sc ud.Name fut
-  dict.Add ps.tdctx.defined ud.Name fut
+  scRegisterTypeFac sc ud.Name (GenUnionFType ufac)
+  // If no type parameter, UnionType is set to defined.
+  // This is used for forward decl.
+  // If there is type parameter, it is impossible to use it beforehand.
+  let (utype, ok) = tryUniFacToUniType ufac
+  if ok then
+    dict.Add ps.tdctx.defined utype.Name (FUnion utype)
 
 /*
   MultipleDefs resolve forward declaration, etc.
@@ -1081,8 +1128,8 @@ let scRegDefStmtType (sc:Scope) (df: DefStmt) =
     |>  scRegisterRecFac sc rd.Name
   | DUnionDef ud ->
     udRegisterCsCtors sc ud
-    let fut = udToFUt ud
-    scRegisterType sc ud.Name fut
+    let ufac = udToUniFac ud
+    scRegisterTypeFac sc ud.Name (GenUnionFType ufac)
 
 
 let psRegMdTypes (md:MultipleDefs) (ps:ParseState) =

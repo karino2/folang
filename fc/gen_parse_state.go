@@ -365,8 +365,11 @@ func transTVFTypeWithSet(visited SSet, transTV func(TypeVar) FType, ftp FType) F
 					return newNTPair(frt.Fst(tp), frt.Snd(tp))
 				}, _r0)
 			}))
-			utUpdateCases(ut, ncases)
-			return New_FType_FUnion(ut)
+			ntargs := slice.Map(recurse, ut.Targs)
+			nut := UnionType{Name: ut.Name, Targs: ntargs}
+			nui := UnionTypeInfo{Cases: ncases}
+			updateUniInfo(nut, nui)
+			return New_FType_FUnion(nut)
 		}))
 	default:
 		return ftp
@@ -577,6 +580,56 @@ func tryRecFacToRecType(rf RecordFactory) frt.Tuple2[RecordType, bool] {
 	}), (func() frt.Tuple2[RecordType, bool] {
 		return frt.NewTuple2(frt.Empty[RecordType](), false)
 	}))
+}
+
+type UnionFactory struct {
+	Name    string
+	Tparams []string
+	Cases   []NameTypePair
+}
+
+func ufCases(uf UnionFactory) []NameTypePair {
+	return uf.Cases
+}
+
+func GenUnionType(uf UnionFactory, stlist []FType) UnionType {
+	frt.IfOnly(frt.OpNotEqual(slice.Len(stlist), slice.Len(uf.Tparams)), (func() {
+		PanicNow("wrong type param num for instantiate.")
+	}))
+	tdic := frt.Pipe(slice.Zip(uf.Tparams, stlist), dict.ToDict)
+	cases := ufCases(uf)
+	nftypes := frt.Pipe(slice.Map(func(_v1 NameTypePair) FType {
+		return _v1.Ftype
+	}, cases), (func(_r0 []FType) []FType {
+		return slice.Map((func(_r0 FType) FType { return tpreplace(tdic, _r0) }), _r0)
+	}))
+	cnames := slice.Map(func(_v2 NameTypePair) string {
+		return _v2.Name
+	}, cases)
+	ncases := frt.Pipe(slice.Zip(cnames, nftypes), (func(_r0 []frt.Tuple2[string, FType]) []NameTypePair { return slice.Map(tupToNTPair, _r0) }))
+	ui := UnionTypeInfo{Cases: ncases}
+	ut := UnionType{Name: uf.Name, Targs: stlist}
+	updateUniInfo(ut, ui)
+	return ut
+}
+
+func GenUnionFType(ufac UnionFactory, stlist []FType) FType {
+	return frt.Pipe(GenUnionType(ufac, stlist), New_FType_FUnion)
+}
+
+func tryUniFacToUniType(uf UnionFactory) frt.Tuple2[UnionType, bool] {
+	return frt.IfElse(slice.IsEmpty(uf.Tparams), (func() frt.Tuple2[UnionType, bool] {
+		ut := UnionType{Name: uf.Name}
+		ui := UnionTypeInfo{Cases: uf.Cases}
+		updateUniInfo(ut, ui)
+		return frt.NewTuple2(ut, true)
+	}), (func() frt.Tuple2[UnionType, bool] {
+		return frt.NewTuple2(frt.Empty[UnionType](), false)
+	}))
+}
+
+func udToUniFac(ud UnionDef) UnionFactory {
+	return UnionFactory(ud)
 }
 
 type ScopeDict struct {
@@ -1001,31 +1054,27 @@ func psIsNeighborLT(ps ParseState) bool {
 	return tkzIsNeighborLT(ps.tkz)
 }
 
-func udToUt(ud UnionDef) UnionType {
-	ut := UnionType{Name: ud.Name}
-	ui := UnionTypeInfo{Cases: ud.Cases}
-	updateUniInfo(ut, ui)
-	return ut
+func scRegFunFac(sc Scope, fname string, ff FuncFactory) {
+	scRegisterVarFac(sc, fname, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return GenFuncVar(fname, ff, _r0, _r1) }))
 }
 
-func udToFUt(ud UnionDef) FType {
-	return frt.Pipe(udToUt(ud), New_FType_FUnion)
+func udToUtOnly(ud UnionDef) UnionType {
+	return UnionType{Name: ud.Name}
 }
 
 func csRegisterCtor(sc Scope, ud UnionDef, cas NameTypePair) {
 	ctorName := csConstructorName(ud.Name, cas)
-	ut := udToFUt(ud)
-	v := (func() Var {
-		switch (cas.Ftype).(type) {
-		case FType_FUnit:
-			return Var{Name: ctorName, Ftype: ut}
-		default:
-			tps := ([]FType{cas.Ftype, ut})
-			funcTp := New_FType_FFunc(FuncType{Targets: tps})
-			return Var{Name: ctorName, Ftype: funcTp}
-		}
-	})()
-	scDefVar(sc, cas.Name, v)
+	frt.IfElseUnit(csIsVar(ud.Tparams, cas), (func() {
+		ut := frt.Pipe(udToUtOnly(ud), New_FType_FUnion)
+		frt.PipeUnit(Var{Name: ctorName, Ftype: ut}, (func(_r0 Var) { scDefVar(sc, cas.Name, _r0) }))
+	}), (func() {
+		targs := slice.Map(newTvf, ud.Tparams)
+		uf := udToUniFac(ud)
+		ut := frt.Pipe(GenUnionType(uf, targs), New_FType_FUnion)
+		tps := ([]FType{cas.Ftype, ut})
+		ffac := FuncFactory{Tparams: ud.Tparams, Targets: tps}
+		scRegisterVarFac(sc, cas.Name, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return GenFuncVar(ctorName, ffac, _r0, _r1) }))
+	}))
 }
 
 func udRegisterCsCtors(sc Scope, ud UnionDef) {
@@ -1045,10 +1094,6 @@ func piRegEType(pi PackageInfo, tname string, tparams []string) TypeFactoryData 
 	tfd := TypeFactoryData{Name: fullName, Tparams: tparams}
 	dict.Add(pi.TypeInfo, tname, tfd)
 	return tfd
-}
-
-func scRegFunFac(sc Scope, fname string, ff FuncFactory) {
-	scRegisterVarFac(sc, fname, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return GenFuncVar(fname, ff, _r0, _r1) }))
 }
 
 func scRegTFData(sc Scope, tname string, tfd TypeFactoryData) {
@@ -1214,10 +1259,13 @@ func psRegRecDefToTDCtx(rd RecordDef, ps ParseState) {
 
 func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
 	sc := ps.scope
+	ufac := udToUniFac(ud)
 	udRegisterCsCtors(sc, ud)
-	fut := udToFUt(ud)
-	scRegisterType(sc, ud.Name, fut)
-	dict.Add(ps.tdctx.defined, ud.Name, fut)
+	scRegisterTypeFac(sc, ud.Name, (func(_r0 []FType) FType { return GenUnionFType(ufac, _r0) }))
+	utype, ok := frt.Destr(tryUniFacToUniType(ufac))
+	frt.IfOnly(ok, (func() {
+		dict.Add(ps.tdctx.defined, utype.Name, New_FType_FUnion(utype))
+	}))
 }
 
 func transTVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
@@ -1250,8 +1298,8 @@ func scRegDefStmtType(sc Scope, df DefStmt) {
 	case DefStmt_DUnionDef:
 		ud := _v14.Value
 		udRegisterCsCtors(sc, ud)
-		fut := udToFUt(ud)
-		scRegisterType(sc, ud.Name, fut)
+		ufac := udToUniFac(ud)
+		scRegisterTypeFac(sc, ud.Name, (func(_r0 []FType) FType { return GenUnionFType(ufac, _r0) }))
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

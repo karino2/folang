@@ -122,18 +122,39 @@ We call IntOrString_I "case struct of I".
 */
 let udUnionDef (ud:UnionDef) =
   let b = buf.New ()
-  buf.Write b $"type {ud.Name} interface "
-  buf.Write b "{\n"
+  buf.Write b $"type {ud.Name}"
+  writeTParamsIfAny b ud.Tparams
+  buf.Write b " interface {\n"
   buf.Write b $"  {ud.Name}_Union()\n"
   buf.Write b "}\n"
   buf.String b
 
+
+/*
+  If tparams is empty, return ""
+  If not, it will return somthing like:
+  "[T0, T1]"
+  no "any".
+*/
+let toStringTParamsIfAny tparams =
+  if slice.IsEmpty tparams then
+    ""
+  else
+    strings.Concat ", " tparams
+    |> strings.EncloseWith "[" "]"
+
+
 /*
 func (IntOrString_I) [method]
+
+If there is type parameter, it becomes:
+
+func (Result_Success[T]) [method]
 */
-let csToConformMethod (uname:string) (method:string) (cas: NameTypePair) =
+let csToConformMethod (uname:string) tparams (method:string) (cas: NameTypePair) =
   let csname = unionCSName uname cas.Name
-  $"func ({csname}) {method}"
+  let tparaStr = toStringTParamsIfAny tparams
+  $"func ({csname}{tparaStr}) {method}"
 
 /*
 func (IntOrString_I) IntOrString_Union(){}
@@ -141,17 +162,24 @@ func (IntOrString_B) IntOrString_Union(){}
 */
 let udCSConformMethods (ud:UnionDef) =
   let method =  $"{ud.Name}_Union()" + "{}\n"
-  udCases ud |> slice.Map (csToConformMethod ud.Name method) |> strings.Concat ""
+  udCases ud |> slice.Map (csToConformMethod ud.Name ud.Tparams method) |> strings.Concat ""
 
 /*
 	type IntOrString_I struct {
 	   Value int
 	}
+
+  If there ara Tparams, it becomes:
+
+  type Result_Success[T any] struct {
+    Value T
+  }
 */
 let udCSDef (ud:UnionDef) (cas: NameTypePair) =
   let b = buf.New ()
   buf.Write b "type "
   unionCSName ud.Name cas.Name |> buf.Write b
+  writeTParamsIfAny b ud.Tparams
   buf.Write b " struct {\n"
   if cas.Ftype <> FUnit then
     buf.Write b "  Value "
@@ -168,18 +196,32 @@ let csConstructorName  (unionName: string) (cas: NameTypePair) =
 CS Constructor, function case.
 
 func New_IntOrString_I(v int) IntOrString { return IntOrString_I{v} }
+
+If Tparams, it might becomes:
+
+func New_Result_Success[T any](v T) Result[T] { return Result_Success[T]{v} }
 */
-let csConstructFunc (uname:string) (cas: NameTypePair) =
+let csConstructFunc (uname:string) tparams (cas: NameTypePair) =
   let b = buf.New ()
   buf.Write b "func "
   csConstructorName uname cas |> buf.Write b
-  buf.Write b "(v "
-  FTypeToGo cas.Ftype |> buf.Write b
+  writeTParamsIfAny b tparams  
+  buf.Write b "("
+  if cas.Ftype <> FUnit then
+    buf.Write b "v "
+    FTypeToGo cas.Ftype |> buf.Write b
   buf.Write b ") "
   buf.Write b uname
+  // "[T0, T1]" if any, else ""
+  let targ = toStringTParamsIfAny tparams
+  buf.Write b targ
   buf.Write b " { return "
   buf.Write b (unionCSName uname cas.Name)
-  buf.Write b "{v} }\n"
+  buf.Write b targ
+  buf.Write b "{"
+  if cas.Ftype <> FUnit then
+    buf.Write b "v"
+  buf.Write b "} }\n"
   buf.String b
 
 
@@ -201,15 +243,18 @@ let csConstructVar (uname:string) (cas: NameTypePair) =
   buf.Write b "{}\n"
   buf.String b
 
-let csConstruct (uname:string) (cas: NameTypePair) =
-  if cas.Ftype = FUnit then
+let csIsVar tparams (cas: NameTypePair) =
+  cas.Ftype = FUnit && (slice.IsEmpty tparams)
+
+let csConstruct (uname:string) tparams (cas: NameTypePair) =
+  if (csIsVar tparams cas) then
     csConstructVar uname cas
   else
-    csConstructFunc uname cas
+    csConstructFunc uname tparams cas
 
 let caseToGo (ud:UnionDef) (cas: NameTypePair) =
   let sdf = udCSDef ud cas
-  let csdf = csConstruct ud.Name cas
+  let csdf = csConstruct ud.Name ud.Tparams cas
   sdf + "\n" + csdf + "\n"
 
 let udfToGo (ud:UnionDef) =

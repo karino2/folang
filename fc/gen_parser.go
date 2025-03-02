@@ -995,9 +995,13 @@ func parseCaseDefs(ps ParseState) frt.Tuple2[ParseState, []NameTypePair] {
 	}))
 }
 
-func parseUnionDef(tname string, ps ParseState) frt.Tuple2[ParseState, UnionDef] {
-	ps2, css := frt.Destr(parseCaseDefs(ps))
-	ud := NewUnionDef(tname, css)
+func parseUnionDef(tname string, pnames []string, ps0 ParseState) frt.Tuple2[ParseState, UnionDef] {
+	ps := psPushScope(ps0)
+	psRegTypeVars(ps, pnames)
+	ps2, css := frt.Destr(frt.Pipe(parseCaseDefs(ps), (func(_r0 frt.Tuple2[ParseState, []NameTypePair]) frt.Tuple2[ParseState, []NameTypePair] {
+		return CnvL(psPopScope, _r0)
+	})))
+	ud := NewUnionDef(tname, pnames, css)
 	psRegUdToTDCtx(ud, ps2)
 	return frt.NewTuple2(ps2, ud)
 }
@@ -1040,7 +1044,7 @@ func parseTypeDefBody(ps ParseState) frt.Tuple2[ParseState, DefStmt] {
 			return CnvR(New_DefStmt_DRecordDef, _r0)
 		}))
 	case TokenType_BAR:
-		return frt.Pipe(parseUnionDef(tname, ps3), (func(_r0 frt.Tuple2[ParseState, UnionDef]) frt.Tuple2[ParseState, DefStmt] {
+		return frt.Pipe(parseUnionDef(tname, pnames, ps3), (func(_r0 frt.Tuple2[ParseState, UnionDef]) frt.Tuple2[ParseState, DefStmt] {
 			return CnvR(New_DefStmt_DUnionDef, _r0)
 		}))
 	default:

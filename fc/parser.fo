@@ -1026,9 +1026,11 @@ let parseCaseDefs (ps:ParseState) : ParseState*[]NameTypePair =
   UNION_DEF = CASE_DEF (EOL CASE_DEF)* EOL
   CASE_DEF = '|' IDENIFIER OF TYPE
 */
-let parseUnionDef (tname:string) (ps:ParseState) =
-  let (ps2, css) = parseCaseDefs ps
-  let ud = NewUnionDef tname css
+let parseUnionDef tname pnames (ps0:ParseState) =
+  let ps = psPushScope ps0
+  psRegTypeVars ps pnames
+  let (ps2, css) = parseCaseDefs ps |> CnvL psPopScope
+  let ud = NewUnionDef tname pnames css
   psRegUdToTDCtx ud ps2
   (ps2, ud)
 
@@ -1073,7 +1075,7 @@ let parseTypeDefBody (ps:ParseState) =
   | LBRACE ->
     parseRecordDef tname pnames ps3 |> CnvR DRecordDef
   | BAR ->
-    parseUnionDef tname ps3  |> CnvR DUnionDef
+    parseUnionDef tname pnames ps3  |> CnvR DUnionDef
   | _ ->
     psPanic ps3 "NYI"
     (ps3, (emptyDefStmt ()))

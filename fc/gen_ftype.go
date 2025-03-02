@@ -131,11 +131,8 @@ type RecordType struct {
 	Targs []FType
 }
 type UnionType struct {
-	Name string
-}
-
-func utName(ut UnionType) string {
-	return ut.Name
+	Name  string
+	Targs []FType
 }
 
 func fargs(ft FuncType) []FType {
@@ -182,8 +179,12 @@ func recordTypeToGo(tGo func(FType) string, frec RecordType) string {
 	return (frec.Name + tArgsToGo(tGo, frec.Targs))
 }
 
-func fUnionToGo(fu UnionType) string {
-	return utName(fu)
+func utName(ut UnionType) string {
+	return ut.Name
+}
+
+func fUnionToGo(tGo func(FType) string, ut UnionType) string {
+	return (ut.Name + tArgsToGo(tGo, ut.Targs))
 }
 
 func fSliceToGo(fs SliceType, toGo func(FType) string) string {
@@ -227,7 +228,7 @@ func FTypeToGo(ft FType) string {
 		return recordTypeToGo(FTypeToGo, fr)
 	case FType_FUnion:
 		fu := _v1.Value
-		return fUnionToGo(fu)
+		return fUnionToGo(FTypeToGo, fu)
 	case FType_FParamd:
 		pt := _v1.Value
 		return fpToGo(FTypeToGo, pt)
@@ -334,7 +335,7 @@ type UnionTypeInfo struct {
 var g_uniInfoDic = dict.New[string, UnionTypeInfo]()
 
 func uniToKey(ut UnionType) string {
-	return ut.Name
+	return encodedKey(ut.Name, ut.Targs)
 }
 
 func lookupUniInfo(ut UnionType) UnionTypeInfo {

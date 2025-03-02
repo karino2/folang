@@ -32,16 +32,10 @@ and FieldAccessType = {RecType: FType; FieldName: string}
 and TupleType = {ElemTypes: []FType}
 and NameTypePair = {Name: string; Ftype: FType}
 and RecordType = {Name: string; Targs: []FType}
-and UnionType = {Name: string}
-
-/* UnionType related */
+and UnionType = {Name: string; Targs: []FType}
 
 package_info _ =
   let PanicNow: string->()
-
-let utName (ut:UnionType) =
-  ut.Name
-
 
 /*
   FuncType related
@@ -87,8 +81,13 @@ let tArgsToGo tGo targs=
 let recordTypeToGo tGo (frec: RecordType) =
   frec.Name + (tArgsToGo tGo frec.Targs)
 
-let fUnionToGo (fu: UnionType) =
-  utName fu
+/* UnionType related */
+
+let utName (ut:UnionType) =
+  ut.Name
+
+let fUnionToGo tGo (ut: UnionType) =
+  ut.Name + (tArgsToGo tGo ut.Targs)
 
 
 let fSliceToGo (fs: SliceType) (toGo:FType->string) =
@@ -121,7 +120,7 @@ let FTypeToGo (ft:FType) : string =
   | FUnit -> "" // When use as return type in Go, "" is suitable.
   | FFunc ft -> funcTypeToGo ft FTypeToGo
   | FRecord fr -> recordTypeToGo FTypeToGo fr
-  | FUnion fu -> fUnionToGo fu
+  | FUnion fu -> fUnionToGo FTypeToGo fu
   | FParamd pt -> fpToGo FTypeToGo pt
   | FSlice fs -> fSliceToGo fs FTypeToGo
   | FTuple ft -> fTupleToGo FTypeToGo ft
@@ -201,7 +200,7 @@ type UnionTypeInfo = {Cases: []NameTypePair}
 let g_uniInfoDic = dict.New<string, UnionTypeInfo> ()
 
 let uniToKey (ut: UnionType) =
-  ut.Name
+  encodedKey ut.Name ut.Targs
 
 let lookupUniInfo ut =
   let (ui, ok) = dict.TryFind g_uniInfoDic (uniToKey ut)
@@ -218,8 +217,6 @@ let utCases (ut:UnionType) =
   let ui = lookupUniInfo ut
   ui.Cases
 
-let utUpdateCases (ut:UnionType) cases =
-  updateUniInfo ut {UnionTypeInfo.Cases=cases}
 
 let lookupCase (fu: UnionType) (caseName: string) =
   utCases fu |> lookupPairByName caseName

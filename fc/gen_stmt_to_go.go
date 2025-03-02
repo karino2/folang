@@ -94,22 +94,32 @@ func rdfToGo(rdf RecordDef) string {
 
 func udUnionDef(ud UnionDef) string {
 	b := buf.New()
-	buf.Write(b, frt.SInterP("type %s interface ", ud.Name))
-	buf.Write(b, "{\n")
+	buf.Write(b, frt.SInterP("type %s", ud.Name))
+	writeTParamsIfAny(b, ud.Tparams)
+	buf.Write(b, " interface {\n")
 	buf.Write(b, frt.SInterP("  %s_Union()\n", ud.Name))
 	buf.Write(b, "}\n")
 	return buf.String(b)
 }
 
-func csToConformMethod(uname string, method string, cas NameTypePair) string {
+func toStringTParamsIfAny(tparams []string) string {
+	return frt.IfElse(slice.IsEmpty(tparams), (func() string {
+		return ""
+	}), (func() string {
+		return frt.Pipe(strings.Concat(", ", tparams), (func(_r0 string) string { return strings.EncloseWith("[", "]", _r0) }))
+	}))
+}
+
+func csToConformMethod(uname string, tparams []string, method string, cas NameTypePair) string {
 	csname := unionCSName(uname, cas.Name)
-	return frt.SInterP("func (%s) %s", csname, method)
+	tparaStr := toStringTParamsIfAny(tparams)
+	return frt.SInterP("func (%s%s) %s", csname, tparaStr, method)
 }
 
 func udCSConformMethods(ud UnionDef) string {
 	method := (frt.SInterP("%s_Union()", ud.Name) + "{}\n")
 	return frt.Pipe(frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []string {
-		return slice.Map((func(_r0 NameTypePair) string { return csToConformMethod(ud.Name, method, _r0) }), _r0)
+		return slice.Map((func(_r0 NameTypePair) string { return csToConformMethod(ud.Name, ud.Tparams, method, _r0) }), _r0)
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) }))
 }
 
@@ -117,6 +127,7 @@ func udCSDef(ud UnionDef, cas NameTypePair) string {
 	b := buf.New()
 	buf.Write(b, "type ")
 	frt.PipeUnit(unionCSName(ud.Name, cas.Name), (func(_r0 string) { buf.Write(b, _r0) }))
+	writeTParamsIfAny(b, ud.Tparams)
 	buf.Write(b, " struct {\n")
 	frt.IfOnly(frt.OpNotEqual(cas.Ftype, New_FType_FUnit), (func() {
 		buf.Write(b, "  Value ")
@@ -131,17 +142,28 @@ func csConstructorName(unionName string, cas NameTypePair) string {
 	return ("New_" + unionCSName(unionName, cas.Name))
 }
 
-func csConstructFunc(uname string, cas NameTypePair) string {
+func csConstructFunc(uname string, tparams []string, cas NameTypePair) string {
 	b := buf.New()
 	buf.Write(b, "func ")
 	frt.PipeUnit(csConstructorName(uname, cas), (func(_r0 string) { buf.Write(b, _r0) }))
-	buf.Write(b, "(v ")
-	frt.PipeUnit(FTypeToGo(cas.Ftype), (func(_r0 string) { buf.Write(b, _r0) }))
+	writeTParamsIfAny(b, tparams)
+	buf.Write(b, "(")
+	frt.IfOnly(frt.OpNotEqual(cas.Ftype, New_FType_FUnit), (func() {
+		buf.Write(b, "v ")
+		frt.PipeUnit(FTypeToGo(cas.Ftype), (func(_r0 string) { buf.Write(b, _r0) }))
+	}))
 	buf.Write(b, ") ")
 	buf.Write(b, uname)
+	targ := toStringTParamsIfAny(tparams)
+	buf.Write(b, targ)
 	buf.Write(b, " { return ")
 	buf.Write(b, unionCSName(uname, cas.Name))
-	buf.Write(b, "{v} }\n")
+	buf.Write(b, targ)
+	buf.Write(b, "{")
+	frt.IfOnly(frt.OpNotEqual(cas.Ftype, New_FType_FUnit), (func() {
+		buf.Write(b, "v")
+	}))
+	buf.Write(b, "} }\n")
 	return buf.String(b)
 }
 
@@ -155,17 +177,21 @@ func csConstructVar(uname string, cas NameTypePair) string {
 	return buf.String(b)
 }
 
-func csConstruct(uname string, cas NameTypePair) string {
-	return frt.IfElse(frt.OpEqual(cas.Ftype, New_FType_FUnit), (func() string {
+func csIsVar[T0 any](tparams []T0, cas NameTypePair) bool {
+	return (frt.OpEqual(cas.Ftype, New_FType_FUnit) && slice.IsEmpty(tparams))
+}
+
+func csConstruct(uname string, tparams []string, cas NameTypePair) string {
+	return frt.IfElse(csIsVar(tparams, cas), (func() string {
 		return csConstructVar(uname, cas)
 	}), (func() string {
-		return csConstructFunc(uname, cas)
+		return csConstructFunc(uname, tparams, cas)
 	}))
 }
 
 func caseToGo(ud UnionDef, cas NameTypePair) string {
 	sdf := udCSDef(ud, cas)
-	csdf := csConstruct(ud.Name, cas)
+	csdf := csConstruct(ud.Name, ud.Tparams, cas)
 	return (((sdf + "\n") + csdf) + "\n")
 }
 

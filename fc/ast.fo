@@ -107,7 +107,7 @@ and LLetVarDef =
 | LLDestVarDef of LetDestVarDef
 and PackageInfo = {Name: string; FuncInfo: dict.Dict<string, FuncFactory>; TypeInfo: dict.Dict<string, TypeFactoryData>}
 and RecordDef = {Name: string; Tparams:[]string; Fields: []NameTypePair}
-and UnionDef = {Name: string; Cases: []NameTypePair}
+and UnionDef = {Name: string; Tparams:[]string; Cases: []NameTypePair}
 and DefStmt =
 | DRecordDef of RecordDef
 | DUnionDef of UnionDef
@@ -118,11 +118,11 @@ let NewPackageInfo (name:string) =
   let tfdd = dict.New<string, TypeFactoryData> ()
   {Name=name; FuncInfo=ffd; TypeInfo=tfdd}
 
-let NewUnionDef name cases =
-  {UnionDef.Name=name; Cases=cases}
+let NewUnionDef name tparams cases =
+  {UnionDef.Name=name; Tparams= tparams; Cases=cases}
 
 let udUpdate (ud:UnionDef) cases =
-  {UnionDef.Name=ud.Name; Cases=cases}
+  {UnionDef.Name=ud.Name; Tparams=ud.Tparams; Cases=cases}
 
 let udCases (ud:UnionDef) =
   ud.Cases

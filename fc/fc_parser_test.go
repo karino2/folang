@@ -909,6 +909,19 @@ let hoge () =
 `,
 			", \\nnext",
 		},
+		{
+			`package main
+
+type Result<T> =
+| Success of T
+| Failure
+
+let hoge () =
+  Failure<string> ()
+
+`,
+			"hoge() Result[string]",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1256,6 +1269,19 @@ let hoge () =
 `,
 			[]string{`var g_var = "abc"`, "return (g_var"},
 		},
+		{
+			`package main
+
+type Result<T> =
+| Success of T
+| Failure
+
+let hoge () =
+  Success 123
+
+`,
+			[]string{"New_Result_Failure[T any]()", "hoge() Result[int]"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1271,10 +1297,12 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let g_var = "abc"
+type Result<T> =
+| Success of T
+| Failure
 
 let hoge () =
-  g_var + "def"
+  Failure<string> ()
 
 `
 
