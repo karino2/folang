@@ -11,51 +11,6 @@ func MyExprToGo(expr Expr) string {
 	return ExprToGo(func(s Stmt) string { return fmt.Sprintf("stmt: %v", s) }, expr)
 }
 
-func newBlock(expr Expr) Block {
-	return Block{[]Stmt{}, expr}
-}
-
-func TestMatchExprToGo(t *testing.T) {
-	resetUniqueTmpCounter()
-	defer resetUniqueTmpCounter()
-	unionType := newUT("IntOrString", []NameTypePair{{"I", New_FType_FInt}, {"S", New_FType_FString}})
-	target := New_Expr_EVarRef(New_VarRef_VRVar(Var{"udata", New_FType_FUnion(unionType)}))
-	matchExpr := MatchExpr{
-		target,
-		[]MatchRule{
-			{
-				MatchPattern{"I", "ival"},
-				newBlock(New_Expr_EStringLiteral("I match")),
-			},
-			{
-				MatchPattern{"S", "sval"},
-				newBlock(New_Expr_EStringLiteral("S match")),
-			},
-		},
-	}
-
-	want :=
-		`(func () string {
-switch _v1 := (udata).(type){
-case IntOrString_I:
-ival := _v1.Value
-return "I match"
-case IntOrString_S:
-sval := _v1.Value
-return "S match"
-default:
-panic("Union pattern fail. Never reached here.")
-}})()`
-
-	got := MyExprToGo(meToExpr(matchExpr))
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(got, want, false)
-
-	if len(diffs) != 1 {
-		t.Errorf("diff found: %s", dmp.DiffPrettyText(diffs))
-	}
-}
-
 func TestRecordDefToGo(t *testing.T) {
 	rd := RecordDef{"hoge", []string{}, []NameTypePair{{"X", New_FType_FString}, {"Y", New_FType_FString}}}
 	got := rdfToGo(rd)

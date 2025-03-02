@@ -1003,7 +1003,11 @@ func psIsNeighborLT(ps ParseState) bool {
 }
 
 func udToUt(ud UnionDef) UnionType {
-	return UnionType{Name: ud.Name, CasesPtr: ud.CasesPtr}
+	cases := NTPsPtrGet(ud.CasesPtr)
+	ut := UnionType{Name: ud.Name}
+	ui := UnionTypeInfo{Cases: cases}
+	updateUniInfo(ut, ui)
+	return ut
 }
 
 func udToFUt(ud UnionDef) FType {

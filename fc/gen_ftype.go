@@ -131,29 +131,11 @@ type RecordType struct {
 	Targs []FType
 }
 type UnionType struct {
-	Name     string
-	CasesPtr NTPsPtr
-}
-
-func newUTWithPtr(name string, cptr NTPsPtr) UnionType {
-	return UnionType{Name: name, CasesPtr: cptr}
-}
-
-func newUT(name string, cases []NameTypePair) UnionType {
-	ptr := NewNTPsPtr(cases)
-	return newUTWithPtr(name, ptr)
+	Name string
 }
 
 func utName(ut UnionType) string {
 	return ut.Name
-}
-
-func utCases(ut UnionType) []NameTypePair {
-	return NTPsPtrGet(ut.CasesPtr)
-}
-
-func utUpdateCases(ut UnionType, cases []NameTypePair) {
-	NTPsUpdate(ut.CasesPtr, cases)
 }
 
 func fargs(ft FuncType) []FType {
@@ -275,9 +257,13 @@ type RecordTypeInfo struct {
 
 var g_recInfoDic = dict.New[string, RecordTypeInfo]()
 
+func encodedKey[T0 any](name T0, targs []FType) string {
+	encts := frt.Pipe(slice.Map(FTypeToGo, targs), (func(_r0 []string) string { return strings.Concat("_", _r0) }))
+	return frt.SInterP("%s_%s", name, encts)
+}
+
 func rtToKey(rt RecordType) string {
-	encts := frt.Pipe(slice.Map(FTypeToGo, rt.Targs), (func(_r0 []string) string { return strings.Concat("_", _r0) }))
-	return frt.SInterP("%s_%s", rt.Name, encts)
+	return encodedKey(rt.Name, rt.Targs)
 }
 
 func lookupRecInfo(rt RecordType) RecordTypeInfo {
@@ -339,6 +325,37 @@ func faResolve(fat FieldAccessType) FType {
 	default:
 		return frt.Pipe(fat, New_FType_FFieldAccess)
 	}
+}
+
+type UnionTypeInfo struct {
+	Cases []NameTypePair
+}
+
+var g_uniInfoDic = dict.New[string, UnionTypeInfo]()
+
+func uniToKey(ut UnionType) string {
+	return ut.Name
+}
+
+func lookupUniInfo(ut UnionType) UnionTypeInfo {
+	ui, ok := frt.Destr(dict.TryFind(g_uniInfoDic, uniToKey(ut)))
+	frt.IfOnly(frt.OpNot(ok), (func() {
+		frt.PipeUnit(frt.Sprintf1("Can't find union info: %s.", ut.Name), PanicNow)
+	}))
+	return ui
+}
+
+func updateUniInfo(ut UnionType, uinfo UnionTypeInfo) {
+	dict.Add(g_uniInfoDic, uniToKey(ut), uinfo)
+}
+
+func utCases(ut UnionType) []NameTypePair {
+	ui := lookupUniInfo(ut)
+	return ui.Cases
+}
+
+func utUpdateCases(ut UnionType, cases []NameTypePair) {
+	updateUniInfo(ut, UnionTypeInfo{Cases: cases})
 }
 
 func lookupCase(fu UnionType, caseName string) NameTypePair {

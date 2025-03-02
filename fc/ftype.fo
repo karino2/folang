@@ -41,7 +41,7 @@ and FieldAccessType = {RecType: FType; FieldName: string}
 and TupleType = {ElemTypes: []FType}
 and NameTypePair = {Name: string; Ftype: FType}
 and RecordType = {Name: string; Targs: []FType}
-and UnionType = {Name: string; CasesPtr: NTPsPtr}
+and UnionType = {Name: string}
 
 /* UnionType related */
 
@@ -51,22 +51,9 @@ package_info _ =
   let NTPsUpdate: NTPsPtr->[]NameTypePair->()
   let PanicNow: string->()
 
-let newUTWithPtr name cptr =
-  {UnionType.Name=name; CasesPtr=cptr}
-
-let newUT name cases =
-  let ptr = NewNTPsPtr cases
-  newUTWithPtr name ptr
-
-
 let utName (ut:UnionType) =
   ut.Name
 
-let utCases (ut:UnionType) =
-  NTPsPtrGet ut.CasesPtr
-
-let utUpdateCases (ut:UnionType) cases =
-  NTPsUpdate ut.CasesPtr cases
 
 /*
   FuncType related
@@ -166,9 +153,12 @@ let g_recInfoDic = dict.New<string, RecordTypeInfo> ()
 /*
   Unique key which encode targs info.
 */
+let encodedKey name targs =
+  let encts = slice.Map FTypeToGo targs |> strings.Concat "_"
+  $"{name}_{encts}"
+
 let rtToKey (rt: RecordType) =
-   let encts = slice.Map FTypeToGo rt.Targs |> strings.Concat "_"
-   $"{rt.Name}_{encts}"
+  encodedKey rt.Name rt.Targs
 
 
 let lookupRecInfo rt =
@@ -217,6 +207,31 @@ let faResolve (fat:FieldAccessType) =
   | _ -> fat |> FFieldAccess
 
 /* UnionType related utils */
+
+type UnionTypeInfo = {Cases: []NameTypePair}
+
+let g_uniInfoDic = dict.New<string, UnionTypeInfo> ()
+
+let uniToKey (ut: UnionType) =
+  ut.Name
+
+let lookupUniInfo ut =
+  let (ui, ok) = dict.TryFind g_uniInfoDic (uniToKey ut)
+  if not ok then
+    frt.Sprintf1 "Can't find union info: %s." ut.Name
+    |> PanicNow 
+  ui
+
+let updateUniInfo ut uinfo =
+   dict.Add g_uniInfoDic (uniToKey ut) uinfo
+
+
+let utCases (ut:UnionType) =
+  let ui = lookupUniInfo ut
+  ui.Cases
+
+let utUpdateCases (ut:UnionType) cases =
+  updateUniInfo ut {UnionTypeInfo.Cases=cases}
 
 let lookupCase (fu: UnionType) (caseName: string) =
   utCases fu |> lookupPairByName caseName
