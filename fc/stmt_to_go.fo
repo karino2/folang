@@ -250,7 +250,6 @@ let RootStmtToGo (rstmt:RootStmt) : string=
   | RSImport im -> imToGo im
   | RSPackage pn -> pmToGo pn
   | RSPackageInfo -> ""
-  | RSLetFuncDef lfd -> lfdToGo bToGoRet lfd
   | RSRootFuncDef rfd -> rfdToGo bToGoRet rfd
   | RSDefStmt ds -> dsToGo ds
   | RSMultipleDefs md -> mdToGo md

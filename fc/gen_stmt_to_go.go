@@ -234,9 +234,6 @@ func RootStmtToGo(rstmt RootStmt) string {
 		return pmToGo(pn)
 	case RootStmt_RSPackageInfo:
 		return ""
-	case RootStmt_RSLetFuncDef:
-		lfd := _v4.Value
-		return lfdToGo(bToGoRet, lfd)
 	case RootStmt_RSRootFuncDef:
 		rfd := _v4.Value
 		return rfdToGo(bToGoRet, rfd)

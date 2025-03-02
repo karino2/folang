@@ -303,7 +303,6 @@ func (RootStmt_RSPackageInfo) RootStmt_Union()  {}
 func (RootStmt_RSDefStmt) RootStmt_Union()      {}
 func (RootStmt_RSMultipleDefs) RootStmt_Union() {}
 func (RootStmt_RSRootFuncDef) RootStmt_Union()  {}
-func (RootStmt_RSLetFuncDef) RootStmt_Union()   {}
 
 type RootStmt_RSImport struct {
 	Value string
@@ -340,12 +339,6 @@ type RootStmt_RSRootFuncDef struct {
 }
 
 func New_RootStmt_RSRootFuncDef(v RootFuncDef) RootStmt { return RootStmt_RSRootFuncDef{v} }
-
-type RootStmt_RSLetFuncDef struct {
-	Value LetFuncDef
-}
-
-func New_RootStmt_RSLetFuncDef(v LetFuncDef) RootStmt { return RootStmt_RSLetFuncDef{v} }
 
 type LetFuncDef struct {
 	Fvar   Var

@@ -96,7 +96,6 @@ and RootStmt =
 | RSDefStmt of DefStmt
 | RSMultipleDefs of MultipleDefs
 | RSRootFuncDef of RootFuncDef
-| RSLetFuncDef of LetFuncDef
 and LetFuncDef = {Fvar: Var; Params: []Var; Body:Block}
 and RootFuncDef = {Tparams:[]string; Lfd:LetFuncDef}
 and LetVarDef = {Lvar: Var; Rhs: Expr}
