@@ -355,10 +355,6 @@ func utCases(ut UnionType) []NameTypePair {
 	return ui.Cases
 }
 
-func utUpdateCases(ut UnionType, cases []NameTypePair) {
-	updateUniInfo(ut, UnionTypeInfo{Cases: cases})
-}
-
 func lookupCase(fu UnionType, caseName string) NameTypePair {
 	return frt.Pipe(utCases(fu), (func(_r0 []NameTypePair) NameTypePair { return lookupPairByName(caseName, _r0) }))
 }

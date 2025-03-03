@@ -624,7 +624,7 @@ func parseAll(ps ParseState) (ParseState, []RootStmt) {
 
 func OnParseError(fname string) {
 	if r := recover(); r != nil {
-		fmt.Printf("Parse Error in file %s: %s\n", fname, r)
+		fmt.Printf("%s: %s\n", fname, r)
 		os.Exit(1)
 	}
 }
