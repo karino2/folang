@@ -922,6 +922,18 @@ let hoge () =
 `,
 			"hoge() Result[string]",
 		},
+		{
+			`package main
+
+package_info _ =
+  let GetF: ()->float
+
+let hoge () =
+  GetF ()
+
+`,
+			"hoge() float64",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1297,12 +1309,11 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type Result<T> =
-| Success of T
-| Failure
+package_info _ =
+  let GetF: ()->float
 
 let hoge () =
-  Failure<string> ()
+  GetF ()
 
 `
 

@@ -15,6 +15,7 @@ type FType =
 | FInt
 | FString
 | FBool
+| FFloat
 | FUnit
 | FAny
 | FFunc of FuncType
@@ -115,6 +116,7 @@ let FTypeToGo (ft:FType) : string =
   match ft with
   | FInt -> "int"
   | FBool -> "bool"
+  | FFloat -> "float64"
   | FAny -> "any"
   | FString -> "string"    
   | FUnit -> "" // When use as return type in Go, "" is suitable.

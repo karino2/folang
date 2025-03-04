@@ -79,20 +79,24 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 				return frt.IfElse(frt.OpEqual(tname, "bool"), (func() frt.Tuple2[ParseState, FType] {
 					return frt.NewTuple2(ps3, New_FType_FBool)
 				}), (func() frt.Tuple2[ParseState, FType] {
-					return frt.IfElse(frt.OpEqual(tname, "any"), (func() frt.Tuple2[ParseState, FType] {
-						return frt.NewTuple2(ps3, New_FType_FAny)
+					return frt.IfElse(frt.OpEqual(tname, "float"), (func() frt.Tuple2[ParseState, FType] {
+						return frt.NewTuple2(ps3, New_FType_FFloat)
 					}), (func() frt.Tuple2[ParseState, FType] {
-						ps4, fullName := frt.Destr(parseFullName(ps))
-						tfac, ok := frt.Destr(scLookupTypeFac(ps3.scope, fullName))
-						return frt.IfElse(ok, (func() frt.Tuple2[ParseState, FType] {
-							return frt.Pipe(mightParseSpecifiedTypeList(pType, ps4), (func(_r0 frt.Tuple2[ParseState, []FType]) frt.Tuple2[ParseState, FType] { return CnvR(tfac, _r0) }))
+						return frt.IfElse(frt.OpEqual(tname, "any"), (func() frt.Tuple2[ParseState, FType] {
+							return frt.NewTuple2(ps3, New_FType_FAny)
 						}), (func() frt.Tuple2[ParseState, FType] {
-							return frt.IfElse(psInsideTypeDef(ps4), (func() frt.Tuple2[ParseState, FType] {
-								tvarf := tdctxTVFAlloc(ps4.tdctx, fullName)
-								return frt.NewTuple2(ps4, tvarf)
+							ps4, fullName := frt.Destr(parseFullName(ps))
+							tfac, ok := frt.Destr(scLookupTypeFac(ps3.scope, fullName))
+							return frt.IfElse(ok, (func() frt.Tuple2[ParseState, FType] {
+								return frt.Pipe(mightParseSpecifiedTypeList(pType, ps4), (func(_r0 frt.Tuple2[ParseState, []FType]) frt.Tuple2[ParseState, FType] { return CnvR(tfac, _r0) }))
 							}), (func() frt.Tuple2[ParseState, FType] {
-								frt.Panicf1("type not found: %s.", fullName)
-								return frt.NewTuple2(ps4, New_FType_FUnit)
+								return frt.IfElse(psInsideTypeDef(ps4), (func() frt.Tuple2[ParseState, FType] {
+									tvarf := tdctxTVFAlloc(ps4.tdctx, fullName)
+									return frt.NewTuple2(ps4, tvarf)
+								}), (func() frt.Tuple2[ParseState, FType] {
+									frt.Panicf1("type not found: %s.", fullName)
+									return frt.NewTuple2(ps4, New_FType_FUnit)
+								}))
 							}))
 						}))
 					}))

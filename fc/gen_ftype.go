@@ -21,6 +21,7 @@ type FType interface {
 func (FType_FInt) FType_Union()         {}
 func (FType_FString) FType_Union()      {}
 func (FType_FBool) FType_Union()        {}
+func (FType_FFloat) FType_Union()       {}
 func (FType_FUnit) FType_Union()        {}
 func (FType_FAny) FType_Union()         {}
 func (FType_FFunc) FType_Union()        {}
@@ -46,6 +47,11 @@ type FType_FBool struct {
 }
 
 var New_FType_FBool FType = FType_FBool{}
+
+type FType_FFloat struct {
+}
+
+var New_FType_FFloat FType = FType_FFloat{}
 
 type FType_FUnit struct {
 }
@@ -214,6 +220,8 @@ func FTypeToGo(ft FType) string {
 		return "int"
 	case FType_FBool:
 		return "bool"
+	case FType_FFloat:
+		return "float64"
 	case FType_FAny:
 		return "any"
 	case FType_FString:

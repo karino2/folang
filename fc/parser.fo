@@ -77,6 +77,8 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
       (ps3, FInt)
     elif tname = "bool" then
       (ps3, FBool)
+    elif tname = "float" then
+      (ps3, FFloat)
     elif tname = "any" then
       (ps3, FAny)
     else
