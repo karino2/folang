@@ -176,16 +176,17 @@ package_info _ =
   let ParseList2<T>: (ParseState->ParseState*T)->(ParseState->bool)->(ParseState->ParseState)->ParseState->ParseState*[]T
 
 
-let CnvL fn tup =
+let MapL fn tup =
   let nl = frt.Fst tup |> fn
   (nl, frt.Snd tup)
 
-let CnvR fn tup =
+let MapR fn tup =
   let nr = frt.Snd tup |> fn
   (frt.Fst tup, nr)
 
-let withPs (ps:ParseState) v =
-  (ps, v)
+// new pair.
+let NPair l r =
+  (l, r)
 
 let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tvc:TypeVarCtx) (tdctx:TypeDefCtx) =
   {tkz=tkz; scope=scope; offsideCol=offCols; tvc=tvc; tdctx=tdctx}
@@ -341,10 +342,10 @@ let psStringValNx (ps:ParseState) =
 
 // NxL means NextNOL
 let psIdentNameNxL (ps:ParseState) =
-  psIdentNameNx ps |> CnvL psSkipEOL
+  psIdentNameNx ps |> MapL psSkipEOL
 
 let psStringValNxL (ps:ParseState) =
-  psStringValNx ps |> CnvL psSkipEOL
+  psStringValNx ps |> MapL psSkipEOL
 
 let psResetTmpCtx (ps:ParseState) =
   resetUniqueTmpCounter ()

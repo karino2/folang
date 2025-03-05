@@ -182,18 +182,18 @@ type ParseState struct {
 	tdctx      TypeDefCtx
 }
 
-func CnvL[T0 any, T1 any, T2 any](fn func(T0) T1, tup frt.Tuple2[T0, T2]) frt.Tuple2[T1, T2] {
+func MapL[T0 any, T1 any, T2 any](fn func(T0) T1, tup frt.Tuple2[T0, T2]) frt.Tuple2[T1, T2] {
 	nl := frt.Pipe(frt.Fst(tup), fn)
 	return frt.NewTuple2(nl, frt.Snd(tup))
 }
 
-func CnvR[T0 any, T1 any, T2 any](fn func(T0) T1, tup frt.Tuple2[T2, T0]) frt.Tuple2[T2, T1] {
+func MapR[T0 any, T1 any, T2 any](fn func(T0) T1, tup frt.Tuple2[T2, T0]) frt.Tuple2[T2, T1] {
 	nr := frt.Pipe(frt.Snd(tup), fn)
 	return frt.NewTuple2(frt.Fst(tup), nr)
 }
 
-func withPs[T0 any](ps ParseState, v T0) frt.Tuple2[ParseState, T0] {
-	return frt.NewTuple2(ps, v)
+func NPair[T0 any, T1 any](l T0, r T1) frt.Tuple2[T0, T1] {
+	return frt.NewTuple2(l, r)
 }
 
 func newParse(tkz Tokenizer, scope Scope, offCols []int, tvc TypeVarCtx, tdctx TypeDefCtx) ParseState {
@@ -378,11 +378,11 @@ func psStringValNx(ps ParseState) frt.Tuple2[ParseState, string] {
 }
 
 func psIdentNameNxL(ps ParseState) frt.Tuple2[ParseState, string] {
-	return frt.Pipe(psIdentNameNx(ps), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return CnvL(psSkipEOL, _r0) }))
+	return frt.Pipe(psIdentNameNx(ps), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return MapL(psSkipEOL, _r0) }))
 }
 
 func psStringValNxL(ps ParseState) frt.Tuple2[ParseState, string] {
-	return frt.Pipe(psStringValNx(ps), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return CnvL(psSkipEOL, _r0) }))
+	return frt.Pipe(psStringValNx(ps), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return MapL(psSkipEOL, _r0) }))
 }
 
 func psResetTmpCtx(ps ParseState) ParseState {
