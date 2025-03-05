@@ -63,7 +63,7 @@ func Values[K comparable, V any](d Dict[K, V]) []V {
 func ToDict[K comparable, V any](ss []frt.Tuple2[K, V]) Dict[K, V] {
 	dic := New[K, V]()
 	for _, tp := range ss {
-		k, v := frt.Destr(tp)
+		k, v := frt.Destr2(tp)
 		Add(dic, k, v)
 	}
 	return dic

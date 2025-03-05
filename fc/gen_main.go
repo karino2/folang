@@ -1,13 +1,14 @@
 package main
 
-import (
-	"path/filepath"
+import "github.com/karino2/folang/pkg/frt"
 
-	"github.com/karino2/folang/pkg/frt"
-	"github.com/karino2/folang/pkg/slice"
-	"github.com/karino2/folang/pkg/strings"
-	"github.com/karino2/folang/pkg/sys"
-)
+import "github.com/karino2/folang/pkg/sys"
+
+import "github.com/karino2/folang/pkg/slice"
+
+import "github.com/karino2/folang/pkg/strings"
+
+import "path/filepath"
 
 func printUsage() {
 	frt.Println("Usage: fc file1.fo file2.fo file3.fo ...")
@@ -15,10 +16,10 @@ func printUsage() {
 
 func transpileOne(parser ParseState, file string) ParseState {
 	frt.Printf1("transpile: %s\n", file)
-	src, ok := frt.Destr(sys.ReadFile(file))
+	src, ok := frt.Destr2(sys.ReadFile(file))
 	return frt.IfElse(ok, (func() ParseState {
-		// defer OnParseError(file)
-		ps2, stmts := frt.Destr(frt.Pipe(psSetNewSrc(src, parser), ParseAll))
+		defer OnParseError(file)
+		ps2, stmts := frt.Destr2(frt.Pipe(psSetNewSrc(src, parser), ParseAll))
 		res := RootStmtsToGo(stmts)
 		frt.IfOnly(strings.HasSuffix(".fo", file), (func() {
 			dir := filepath.Dir(file)

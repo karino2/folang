@@ -73,7 +73,7 @@ func TestTokenizernextNOL(t *testing.T) {
 }
 
 func TestInterP(t *testing.T) {
-	stext, vars := frt.Destr(ParseSInterP("abc{hoge}def{ika}fuga"))
+	stext, vars := frt.Destr2(ParseSInterP("abc{hoge}def{ika}fuga"))
 	want := "abc%sdef%sfuga"
 	if stext != want {
 		t.Errorf("want %s, got %s", want, stext)

@@ -277,7 +277,7 @@ func rtToKey(rt RecordType) string {
 }
 
 func lookupRecInfo(rt RecordType) RecordTypeInfo {
-	ri, ok := frt.Destr(dict.TryFind(g_recInfoDic, rtToKey(rt)))
+	ri, ok := frt.Destr2(dict.TryFind(g_recInfoDic, rtToKey(rt)))
 	frt.IfOnly(frt.OpNot(ok), (func() {
 		frt.PipeUnit(frt.Sprintf1("Can't find record info: %s.", rt.Name), PanicNow)
 	}))
@@ -348,7 +348,7 @@ func uniToKey(ut UnionType) string {
 }
 
 func lookupUniInfo(ut UnionType) UnionTypeInfo {
-	ui, ok := frt.Destr(dict.TryFind(g_uniInfoDic, uniToKey(ut)))
+	ui, ok := frt.Destr2(dict.TryFind(g_uniInfoDic, uniToKey(ut)))
 	frt.IfOnly(frt.OpNot(ok), (func() {
 		frt.PipeUnit(frt.Sprintf1("Can't find union info: %s.", ut.Name), PanicNow)
 	}))

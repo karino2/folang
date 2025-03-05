@@ -50,7 +50,7 @@ func emptyVarFac(tlist []FType, tgen func() TypeVar) VarRef {
 
 func scLookupVarFac(s Scope, name string) frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
 	sd := SCSDict(s)
-	vfac, ok := frt.Destr(dict.TryFind(sd.VarFacMap, name))
+	vfac, ok := frt.Destr2(dict.TryFind(sd.VarFacMap, name))
 	return frt.IfElse(ok, (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
 		return frt.NewTuple2(vfac, ok)
 	}), (func() frt.Tuple2[func([]FType, func() TypeVar) VarRef, bool] {
@@ -93,7 +93,7 @@ func emptyRecFac() RecordFactory {
 }
 
 func scLookupRecFac(s Scope, fieldNames []string) frt.Tuple2[RecordFactory, bool] {
-	rfac, ok := frt.Destr(scLookupRecFacCur(s, fieldNames))
+	rfac, ok := frt.Destr2(scLookupRecFacCur(s, fieldNames))
 	return frt.IfElse(ok, (func() frt.Tuple2[RecordFactory, bool] {
 		return frt.NewTuple2(rfac, ok)
 	}), (func() frt.Tuple2[RecordFactory, bool] {
@@ -107,7 +107,7 @@ func scLookupRecFac(s Scope, fieldNames []string) frt.Tuple2[RecordFactory, bool
 
 func scLookupRecFacByName(s Scope, name string) frt.Tuple2[RecordFactory, bool] {
 	sd := SCSDict(s)
-	rfac, ok := frt.Destr(dict.TryFind(sd.RecFacMap, name))
+	rfac, ok := frt.Destr2(dict.TryFind(sd.RecFacMap, name))
 	return frt.IfElse(ok, (func() frt.Tuple2[RecordFactory, bool] {
 		return frt.NewTuple2(rfac, ok)
 	}), (func() frt.Tuple2[RecordFactory, bool] {
@@ -121,7 +121,7 @@ func scLookupRecFacByName(s Scope, name string) frt.Tuple2[RecordFactory, bool] 
 
 func scLookupTypeFac(s Scope, name string) frt.Tuple2[func([]FType) FType, bool] {
 	sd := SCSDict(s)
-	rec, ok := frt.Destr(dict.TryFind(sd.TypeFacMap, name))
+	rec, ok := frt.Destr2(dict.TryFind(sd.TypeFacMap, name))
 	return frt.IfElse(ok, (func() frt.Tuple2[func([]FType) FType, bool] {
 		return frt.NewTuple2(rec, ok)
 	}), (func() frt.Tuple2[func([]FType) FType, bool] {
@@ -472,7 +472,7 @@ func piRegFF(pi PackageInfo, fname string, ff FuncFactory, ps ParseState) ParseS
 }
 
 func regFF(pi PackageInfo, sc Scope, sff frt.Tuple2[string, FuncFactory]) {
-	ffname, ff := frt.Destr(sff)
+	ffname, ff := frt.Destr2(sff)
 	fullName := piFullName(pi, ffname)
 	scRegFunFac(sc, fullName, ff)
 }
@@ -498,7 +498,7 @@ func rdToRecFac(rd RecordDef) RecordFactory {
 func psRegRecDefToTDCtx(rd RecordDef, ps ParseState) {
 	rfac := rdToRecFac(rd)
 	scRegisterRecFac(ps.scope, rd.Name, rfac)
-	rtype, ok := frt.Destr(tryRecFacToRecType(rfac))
+	rtype, ok := frt.Destr2(tryRecFacToRecType(rfac))
 	frt.IfOnly(ok, (func() {
 		dict.Add(ps.tdctx.defined, rtype.Name, New_FType_FRecord(rtype))
 	}))
@@ -509,16 +509,16 @@ func psRegUdToTDCtx(ud UnionDef, ps ParseState) {
 	ufac := udToUniFac(ud)
 	udRegisterCsCtors(sc, ud)
 	scRegisterTypeFac(sc, ud.Name, (func(_r0 []FType) FType { return GenUnionFType(ufac, _r0) }))
-	utype, ok := frt.Destr(tryUniFacToUniType(ufac))
+	utype, ok := frt.Destr2(tryUniFacToUniType(ufac))
 	frt.IfOnly(ok, (func() {
 		dict.Add(ps.tdctx.defined, utype.Name, New_FType_FUnion(utype))
 	}))
 }
 
 func transTVByTDCtx(tdctx TypeDefCtx, tv TypeVar) FType {
-	rname, ok := frt.Destr(dict.TryFind(tdctx.allocedDict, tv.Name))
+	rname, ok := frt.Destr2(dict.TryFind(tdctx.allocedDict, tv.Name))
 	return frt.IfElse(ok, (func() FType {
-		nt, ok2 := frt.Destr(dict.TryFind(tdctx.defined, rname))
+		nt, ok2 := frt.Destr2(dict.TryFind(tdctx.defined, rname))
 		return frt.IfElse(ok2, (func() FType {
 			return nt
 		}), (func() FType {

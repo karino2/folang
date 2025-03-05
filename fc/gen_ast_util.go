@@ -160,7 +160,7 @@ func NewSSet() SSet {
 }
 
 func SSetHasKey(st SSet, key string) bool {
-	_, ok := frt.Destr(dict.TryFind(st.Dict, key))
+	_, ok := frt.Destr2(dict.TryFind(st.Dict, key))
 	return ok
 }
 

@@ -16,7 +16,7 @@ func emptyRels() []UniRel {
 }
 
 func tupApply(f func(FType, FType) frt.Tuple2[FType, []UniRel], tup frt.Tuple2[FType, FType]) frt.Tuple2[FType, []UniRel] {
-	lhs, rhs := frt.Destr(tup)
+	lhs, rhs := frt.Destr2(tup)
 	return f(lhs, rhs)
 }
 
@@ -69,7 +69,7 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 			switch _v4 := (lhs).(type) {
 			case FType_FSlice:
 				ts1 := _v4.Value
-				rtp, rels := frt.Destr(compositeTp(ts1.ElemType, ts2.ElemType))
+				rtp, rels := frt.Destr2(compositeTp(ts1.ElemType, ts2.ElemType))
 				return frt.Pipe(frt.Pipe(SliceType{ElemType: rtp}, New_FType_FSlice), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 			case FType_FFieldAccess:
 				return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(rhs, _r0) }))
@@ -88,7 +88,7 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 					fa12 := faResolve(fa1)
 					switch (fa12).(type) {
 					case FType_FFieldAccess:
-						rtp, rels := frt.Destr(compositeTp(fa1.RecType, fa2.RecType))
+						rtp, rels := frt.Destr2(compositeTp(fa1.RecType, fa2.RecType))
 						return frt.Pipe(frt.Pipe(FieldAccessType{RecType: rtp, FieldName: fa1.FieldName}, faResolve), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 					default:
 						return compositeTp(fa12, rhs)
@@ -106,7 +106,7 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 			switch _v6 := (lhs).(type) {
 			case FType_FFunc:
 				tf1 := _v6.Value
-				tps, rels := frt.Destr(compositeTpList(compositeTp, tf1.Targets, tf2.Targets))
+				tps, rels := frt.Destr2(compositeTpList(compositeTp, tf1.Targets, tf2.Targets))
 				return frt.Pipe(newFFunc(tps), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 			default:
 				PanicNow("Lhs is not FFunc, Rhs is FFunc.")
@@ -115,12 +115,12 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 		case FType_FParamd:
 			pt2 := _v3.Value
 			pt1 := lhs.(FType_FParamd).Value
-			tps, rels := frt.Destr(compositeTpList(compositeTp, pt1.Targs, pt2.Targs))
+			tps, rels := frt.Destr2(compositeTpList(compositeTp, pt1.Targs, pt2.Targs))
 			return frt.Pipe(frt.Pipe(ParamdType{Name: pt1.Name, Targs: tps}, New_FType_FParamd), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 		case FType_FTuple:
 			tt2 := _v3.Value
 			tt1 := lhs.(FType_FTuple).Value
-			tps, rels := frt.Destr(compositeTpList(compositeTp, tt1.ElemTypes, tt2.ElemTypes))
+			tps, rels := frt.Destr2(compositeTpList(compositeTp, tt1.ElemTypes, tt2.ElemTypes))
 			return frt.Pipe(frt.Pipe(TupleType{ElemTypes: tps}, New_FType_FTuple), (func(_r0 FType) frt.Tuple2[FType, []UniRel] { return withRels(rels, _r0) }))
 		default:
 			return frt.Pipe(emptyRels(), (func(_r0 []UniRel) frt.Tuple2[FType, []UniRel] { return withTp(lhs, _r0) }))
@@ -129,17 +129,17 @@ func compositeTp(lhs FType, rhs FType) frt.Tuple2[FType, []UniRel] {
 }
 
 func unifyType(lhs FType, rhs FType) []UniRel {
-	_, rels := frt.Destr(compositeTp(lhs, rhs))
+	_, rels := frt.Destr2(compositeTp(lhs, rhs))
 	return rels
 }
 
 func unifyTupArg(tup frt.Tuple2[FType, FType]) []UniRel {
-	lhs, rhs := frt.Destr(tup)
+	lhs, rhs := frt.Destr2(tup)
 	return unifyType(lhs, rhs)
 }
 
 func unifyVETup(veTup frt.Tuple2[Var, FType]) []UniRel {
-	v, ft := frt.Destr(veTup)
+	v, ft := frt.Destr2(veTup)
 	return frt.IfElse(frt.OpEqual(v.Name, "_"), (func() []UniRel {
 		return emptyRels()
 	}), (func() []UniRel {
@@ -223,7 +223,7 @@ func NEPToNT(nep NEPair) frt.Tuple2[string, FType] {
 }
 
 func recNTUnify(rec RecordType, ntp frt.Tuple2[string, FType]) []UniRel {
-	name, ftp := frt.Destr(ntp)
+	name, ftp := frt.Destr2(ntp)
 	rpair := frGetField(rec, name)
 	return unifyType(ftp, rpair.Ftype)
 }
@@ -341,13 +341,13 @@ func eqsUnion(es1 EquivSet, es2 EquivSet) EquivSet {
 
 func eiUnion(e1 EquivInfo, e2 EquivInfo) frt.Tuple2[EquivInfo, []UniRel] {
 	nset := eqsUnion(e1.eset, e2.eset)
-	nres, rels := frt.Destr(compositeTp(e1.resType, e2.resType))
+	nres, rels := frt.Destr2(compositeTp(e1.resType, e2.resType))
 	nei := EquivInfo{eset: nset, resType: nres}
 	return frt.NewTuple2(nei, rels)
 }
 
 func eiUpdateResT(e EquivInfo, tcan FType) frt.Tuple2[EquivInfo, []UniRel] {
-	nres, rels := frt.Destr(compositeTp(e.resType, tcan))
+	nres, rels := frt.Destr2(compositeTp(e.resType, tcan))
 	nei := EquivInfo{eset: e.eset, resType: nres}
 	return frt.NewTuple2(nei, rels)
 }
@@ -359,7 +359,7 @@ func eiInit(tv TypeVar) EquivInfo {
 }
 
 func rsLookupEI(res Resolver, tvname string) EquivInfo {
-	ei, ok := frt.Destr(dict.TryFind(res.eid, tvname))
+	ei, ok := frt.Destr2(dict.TryFind(res.eid, tvname))
 	return frt.IfElse(ok, (func() EquivInfo {
 		return ei
 	}), (func() EquivInfo {
@@ -381,11 +381,11 @@ func updateResOne(res Resolver, rel UniRel) []UniRel {
 	case FType_FTypeVar:
 		tvd := _v14.Value
 		ei2 := rsLookupEI(res, tvd.Name)
-		nei, rels := frt.Destr(eiUnion(ei1, ei2))
+		nei, rels := frt.Destr2(eiUnion(ei1, ei2))
 		rsRegisterNewEI(res, nei)
 		return rels
 	default:
-		nei, rels := frt.Destr(eiUpdateResT(ei1, rel.Dest))
+		nei, rels := frt.Destr2(eiUpdateResT(ei1, rel.Dest))
 		return frt.IfElse(slice.IsEmpty(rels), (func() []UniRel {
 			return emptyRels()
 		}), (func() []UniRel {
@@ -481,6 +481,6 @@ func InferLfd(tvc TypeVarCtx, lfd LetFuncDef) RootFuncDef {
 	updateResolver(tvc.resolver, rels)
 	nlfd := resolveLfd(tvc.resolver, lfd)
 	unresTvs := frt.Pipe(collectTVarLfd(nlfd), slice.Distinct)
-	newTvs, nlfd2 := frt.Destr(hoistTVar(unresTvs, nlfd))
+	newTvs, nlfd2 := frt.Destr2(hoistTVar(unresTvs, nlfd))
 	return RootFuncDef{Tparams: newTvs, Lfd: nlfd2}
 }

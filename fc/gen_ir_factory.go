@@ -7,7 +7,7 @@ import "github.com/karino2/folang/pkg/slice"
 import "github.com/karino2/folang/pkg/dict"
 
 func tpReplaceOne(tdic dict.Dict[string, FType], tv TypeVar) FType {
-	tp, ok := frt.Destr(dict.TryFind(tdic, tv.Name))
+	tp, ok := frt.Destr2(dict.TryFind(tdic, tv.Name))
 	return frt.IfElse(ok, (func() FType {
 		return tp
 	}), (func() FType {

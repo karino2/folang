@@ -18,10 +18,10 @@ func printUsage() {
 
 func convOne(dir string, oneline string) string {
 	cols := strings.SplitN(2, " ", oneline)
-	foFname, title := frt.Destr(frt.NewTuple2(slice.Head(cols), slice.Last(cols)))
+	foFname, title := frt.Destr2(frt.NewTuple2(slice.Head(cols), slice.Last(cols)))
 	b := buf.New()
 	frt.Printf1("process: %s\n", foFname)
-	content, ok := frt.Destr(frt.Pipe(filepath.Join(dir, foFname), sys.ReadFile))
+	content, ok := frt.Destr2(frt.Pipe(filepath.Join(dir, foFname), sys.ReadFile))
 	frt.IfOnly(frt.OpNot(ok), (func() {
 		frt.Panicf1("Can't open file %s", foFname)
 	}))
@@ -39,7 +39,7 @@ func convOne(dir string, oneline string) string {
 
 func processListFile(destName string, listPath string) {
 	dir := filepath.Dir(listPath)
-	content, ok := frt.Destr(sys.ReadFile(listPath))
+	content, ok := frt.Destr2(sys.ReadFile(listPath))
 	frt.IfOnly(frt.OpNot(ok), (func() {
 		frt.Panicf1("Can't open list file: %s", listPath)
 	}))

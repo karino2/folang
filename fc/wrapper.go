@@ -563,7 +563,7 @@ func ParseList[T any](one func(ParseState) frt.Tuple2[ParseState, T], endPred fu
 	var res []T
 	var rone T
 	for !endPred(ps) {
-		ps, rone = frt.Destr(one(ps))
+		ps, rone = frt.Destr2(one(ps))
 		res = append(res, rone)
 	}
 	return frt.NewTuple2(ps, res)
@@ -590,12 +590,12 @@ func ParseList2[T any](
 	var res []T
 	var rone T
 
-	ps, rone = frt.Destr(one(ps))
+	ps, rone = frt.Destr2(one(ps))
 	res = append(res, rone)
 
 	for !endPred(ps) {
 		ps = nextFunc(ps)
-		ps, rone = frt.Destr(one(ps))
+		ps, rone = frt.Destr2(one(ps))
 		res = append(res, rone)
 	}
 	return frt.NewTuple2(ps, res)
@@ -624,7 +624,7 @@ func ParseAll(ps ParseState) frt.Tuple2[ParseState, []RootStmt] {
 // for test backward compat.
 func parseAll(ps ParseState) (ParseState, []RootStmt) {
 	res := ParseAll(ps)
-	return frt.Destr(res)
+	return frt.Destr2(res)
 }
 
 func OnParseError(fname string) {
