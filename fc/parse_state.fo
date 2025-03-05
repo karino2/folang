@@ -184,8 +184,23 @@ let MapR fn tup =
   let nr = frt.Snd tup |> fn
   (frt.Fst tup, nr)
 
-// new pair.
-let NPair l r =
+/*
+  New Pair.
+
+  Using like.
+  XXX |> PairL lval
+  XXX |> PairR rval
+
+  The results are
+    (lval, XXX)
+    (XXX, rval)
+  respectively.
+*/
+
+let PairL l r =
+  (l, r)
+
+let PairR r l =
   (l, r)
 
 let newParse (tkz:Tokenizer) (scope:Scope) (offCols:[]int) (tvc:TypeVarCtx) (tdctx:TypeDefCtx) =
@@ -306,16 +321,26 @@ let psSkipEOL (ps:ParseState) =
   else
     ps
 
-let psExpect (ttype:TokenType) (ps:ParseState) =
-  let cur = psCurrent ps
-  if cur.ttype <> ttype then
-    psPanic ps "non expected token"
+let psExpectMsg (ttype:TokenType) (ps:ParseState) msg =
+  if not (psCurIs ttype ps) then
+    psPanic ps msg
   ()
+
+let psUnexpect (ttype:TokenType) (ps:ParseState) msg =
+  if psCurIs ttype ps then
+    psPanic ps msg
+  ()
+
+let psExpect (ttype:TokenType) (ps:ParseState) =
+  psExpectMsg ttype ps "non expected token"
 
 let psConsume (ttype:TokenType) (ps:ParseState) =
   psExpect ttype ps
   psNext ps
 
+let psMulConsume ttypes ps =
+  let consOne = fun p tt -> psConsume tt p
+  slice.Fold consOne ps ttypes
 
 let psIdentName (ps:ParseState) =
   psExpect IDENTIFIER ps

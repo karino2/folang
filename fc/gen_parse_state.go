@@ -192,7 +192,11 @@ func MapR[T0 any, T1 any, T2 any](fn func(T0) T1, tup frt.Tuple2[T2, T0]) frt.Tu
 	return frt.NewTuple2(frt.Fst(tup), nr)
 }
 
-func NPair[T0 any, T1 any](l T0, r T1) frt.Tuple2[T0, T1] {
+func PairL[T0 any, T1 any](l T0, r T1) frt.Tuple2[T0, T1] {
+	return frt.NewTuple2(l, r)
+}
+
+func PairR[T0 any, T1 any](r T0, l T1) frt.Tuple2[T1, T0] {
 	return frt.NewTuple2(l, r)
 }
 
@@ -338,17 +342,34 @@ func psSkipEOL(ps ParseState) ParseState {
 	}))
 }
 
-func psExpect(ttype TokenType, ps ParseState) {
-	cur := psCurrent(ps)
-	frt.IfOnly(frt.OpNotEqual(cur.ttype, ttype), (func() {
-		psPanic(ps, "non expected token")
+func psExpectMsg(ttype TokenType, ps ParseState, msg string) {
+	frt.IfOnly(frt.OpNot(psCurIs(ttype, ps)), (func() {
+		psPanic(ps, msg)
 	}))
 
+}
+
+func psUnexpect(ttype TokenType, ps ParseState, msg string) {
+	frt.IfOnly(psCurIs(ttype, ps), (func() {
+		psPanic(ps, msg)
+	}))
+
+}
+
+func psExpect(ttype TokenType, ps ParseState) {
+	psExpectMsg(ttype, ps, "non expected token")
 }
 
 func psConsume(ttype TokenType, ps ParseState) ParseState {
 	psExpect(ttype, ps)
 	return psNext(ps)
+}
+
+func psMulConsume(ttypes []TokenType, ps ParseState) ParseState {
+	consOne := func(p ParseState, tt TokenType) ParseState {
+		return psConsume(tt, p)
+	}
+	return slice.Fold(consOne, ps, ttypes)
 }
 
 func psIdentName(ps ParseState) string {
