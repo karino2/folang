@@ -285,7 +285,8 @@ let sliceToGo (tGo:FType->string) (eGo:Expr->string) (exprs: []Expr) =
 
 let tupleToGo (eGo:Expr->string) (exprs: []Expr) =
   let b = buf.New ()
-  buf.Write b "frt.NewTuple2("
+  let len = slice.Length exprs
+  buf.Write b $"frt.NewTuple{len}("
   slice.Map eGo exprs
   |> strings.Concat ", "
   |> buf.Write b

@@ -581,7 +581,12 @@ func ParseList[T any](one func(ParseState) frt.Tuple2[ParseState, T], endPred fu
 
 		nextFunc consume ';'.
 */
-func ParseList2[T any](one func(ParseState) frt.Tuple2[ParseState, T], endPred func(ParseState) bool, nextFunc func(ParseState) ParseState, ps ParseState) frt.Tuple2[ParseState, []T] {
+func ParseList2[T any](
+	one func(ParseState) frt.Tuple2[ParseState, T],
+	endPred func(ParseState) bool,
+	nextFunc func(ParseState) ParseState,
+	ps ParseState,
+) frt.Tuple2[ParseState, []T] {
 	var res []T
 	var rone T
 

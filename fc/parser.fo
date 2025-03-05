@@ -452,10 +452,13 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     else
       let (ps2, e1) = parseE pn
       if (psCurrentTT ps2) = COMMA then
-        let (ps3, e2) = psConsume COMMA ps2
-                        |> parseE
-        psUnexpect COMMA ps3 "only pair is supported for tuple expr."
-        [e1; e2]
+        let endPred = psCurIsNot COMMA
+        let next = psConsume COMMA
+        let (ps3, elist) = psConsume COMMA ps2 |> ParseList2 parseE endPred next
+                           |> MapR (slice.PushHead e1)
+        if slice.Length elist > 3 then
+          psPanic ps3 "More then 3 elem tuple, NYI."
+        elist
         |> ETupleExpr
         |> PairL (psConsume RPAREN ps3)
       else

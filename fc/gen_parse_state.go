@@ -324,6 +324,10 @@ func psCurIs(expectTT TokenType, ps ParseState) bool {
 	return frt.OpEqual(psCurrentTT(ps), expectTT)
 }
 
+func psCurIsNot(expectTT TokenType, ps ParseState) bool {
+	return frt.OpNotEqual(psCurrentTT(ps), expectTT)
+}
+
 func psNext(ps ParseState) ParseState {
 	ntk := tkzNext(ps.tkz)
 	return psWithTkz(ps, ntk)

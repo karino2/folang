@@ -419,9 +419,15 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			ps2, e1 := frt.Destr(parseE(pn))
 			return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_COMMA), (func() frt.Tuple2[ParseState, Expr] {
-				ps3, e2 := frt.Destr(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), parseE))
-				psUnexpect(New_TokenType_COMMA, ps3, "only pair is supported for tuple expr.")
-				return frt.Pipe(frt.Pipe(([]Expr{e1, e2}), New_Expr_ETupleExpr), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return PairL(psConsume(New_TokenType_RPAREN, ps3), _r0) }))
+				endPred := (func(_r0 ParseState) bool { return psCurIsNot(New_TokenType_COMMA, _r0) })
+				next := (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) })
+				ps3, elist := frt.Destr(frt.Pipe(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return ParseList2(parseE, endPred, next, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+					return MapR((func(_r0 []Expr) []Expr { return slice.PushHead(e1, _r0) }), _r0)
+				})))
+				frt.IfOnly((slice.Length(elist) > 3), (func() {
+					psPanic(ps3, "More then 3 elem tuple, NYI.")
+				}))
+				return frt.Pipe(frt.Pipe(elist, New_Expr_ETupleExpr), (func(_r0 Expr) frt.Tuple2[ParseState, Expr] { return PairL(psConsume(New_TokenType_RPAREN, ps3), _r0) }))
 			}), (func() frt.Tuple2[ParseState, Expr] {
 				return frt.Pipe(frt.NewTuple2(ps2, e1), (func(_r0 frt.Tuple2[ParseState, Expr]) frt.Tuple2[ParseState, Expr] {
 					return MapL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RPAREN, _r0) }), _r0)

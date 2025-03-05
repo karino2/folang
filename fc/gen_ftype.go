@@ -199,7 +199,8 @@ func fSliceToGo(fs SliceType, toGo func(FType) string) string {
 
 func fTupleToGo(toGo func(FType) string, ft TupleType) string {
 	args := frt.Pipe(slice.Map(toGo, ft.ElemTypes), (func(_r0 []string) string { return strings.Concat(", ", _r0) }))
-	return frt.Sprintf1("frt.Tuple2[%s]", args)
+	len := slice.Length(ft.ElemTypes)
+	return frt.SInterP("frt.Tuple%s[%s]", len, args)
 }
 
 func encloseWith(beg string, end string, center string) string {

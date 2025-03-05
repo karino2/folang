@@ -1294,6 +1294,15 @@ let hoge () =
 `,
 			[]string{"New_Result_Failure[T any]()", "hoge() Result[int]"},
 		},
+		{
+			`package main
+
+let hoge () =
+  (1, "2", 3)
+
+`,
+			[]string{"frt.Tuple3[int, string, int]", `frt.NewTuple3(1, "2", 3)`},
+		},
 	}
 
 	for _, test := range tests {
@@ -1309,11 +1318,8 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-package_info _ =
-  let GetF: ()->float
-
 let hoge () =
-  GetF ()
+  (1, "2", 3)
 
 `
 

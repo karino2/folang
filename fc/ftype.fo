@@ -97,7 +97,8 @@ let fSliceToGo (fs: SliceType) (toGo:FType->string) =
 // only support two tuple for a while
 let fTupleToGo (toGo:FType->string) (ft:TupleType) =
   let args = slice.Map toGo ft.ElemTypes |> strings.Concat ", "
-  frt.Sprintf1 "frt.Tuple2[%s]" args
+  let len = slice.Length ft.ElemTypes
+  $"frt.Tuple{len}[{args}]"
 
 let encloseWith (beg:string) (end:string) (center:string) =
   beg+center+end

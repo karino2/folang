@@ -307,6 +307,10 @@ let psCurrentTT (ps:ParseState) =
 let psCurIs (expectTT: TokenType) (ps:ParseState) =
   (psCurrentTT ps) = expectTT
 
+let psCurIsNot (expectTT: TokenType) (ps:ParseState) =
+  (psCurrentTT ps) <> expectTT
+
+
 let psNext (ps:ParseState) =
   let ntk = tkzNext ps.tkz
   psWithTkz ps ntk

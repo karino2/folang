@@ -294,7 +294,8 @@ func sliceToGo(tGo func(FType) string, eGo func(Expr) string, exprs []Expr) stri
 
 func tupleToGo(eGo func(Expr) string, exprs []Expr) string {
 	b := buf.New()
-	buf.Write(b, "frt.NewTuple2(")
+	len := slice.Length(exprs)
+	buf.Write(b, frt.SInterP("frt.NewTuple%s(", len))
 	frt.PipeUnit(frt.Pipe(slice.Map(eGo, exprs), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ")")
 	return buf.String(b)
