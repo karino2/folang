@@ -347,7 +347,7 @@ let ika () =
 			`package main
 
 package_info slice =
-  let Zip<T, U>: []T->[]U->[]T*U
+  let Zip<T, U>: []T->[]U->[](T*U)
 
 let ika () =
   let s1 = [1; 2; 3]
@@ -485,7 +485,7 @@ let ika (ab:AorB) =
 			`package main
 
 package_info slice =
-  let Zip<T, U>: []T->[]U->[]T*U
+  let Zip<T, U>: []T->[]U->[](T*U)
 
 let ika () =
   let s1 = [1; 2; 3]
@@ -934,6 +934,20 @@ let hoge () =
 `,
 			"hoge() float64",
 		},
+		// 3 tuple package_info test.
+		// if inference pass, it must be parsed collectly.
+		{
+			`package main
+
+type Expr =
+| BinOp of (int*string*int)
+
+let ika a b c =
+  (a, b, c) |> BinOp
+
+`,
+			"frt.NewTuple3", // whatever.
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1328,9 +1342,11 @@ let ika () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let ika () =
-  let (a, b, c) = (1, "2", 3)
-  a+c
+type Expr =
+| BinOp of (int*string*int)
+
+let ika a b c =
+  (a, b, c) |> BinOp
 
 `
 

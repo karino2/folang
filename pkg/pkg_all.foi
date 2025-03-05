@@ -44,7 +44,7 @@ package_info slice =
   let Sort<T>: []T -> []T
   let SortBy<T, U>: (T->U)->[]T->[]T
   let Skip<T>: int->[]T->[]T
-  let Zip<T, U>: []T->[]U->[]T*U
+  let Zip<T, U>: []T->[]U->[](T*U)
   let Forall<T>: (T->bool)->[]T->bool
   let Forany<T>: (T->bool)->[]T->bool
   // T must be comparable
@@ -80,7 +80,7 @@ package_info dict =
   let ContainsKey<K, V>: Dict<K, V>->K->bool
   let TryFind<K, V>: Dict<K, V>->K->V*bool
   let Item<K, V>: Dict<K, V>->K->V
-  let KVs<K, V>: Dict<K, V>->[]K*V
+  let KVs<K, V>: Dict<K, V>->[](K*V)
   let Keys<K, V>: Dict<K, V>->[]K
   let Values<K, V>: Dict<K, V>->[]V
-  let ToDict<K, V>: []K*V->Dict<K, V>
+  let ToDict<K, V>: [](K*V)->Dict<K, V>

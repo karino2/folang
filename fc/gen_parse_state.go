@@ -419,6 +419,12 @@ func psIsNeighborLT(ps ParseState) bool {
 	return tkzIsNeighborLT(ps.tkz)
 }
 
+func ParseSepList[T0 any](one func(ParseState) frt.Tuple2[ParseState, T0], sep TokenType, ps ParseState) frt.Tuple2[ParseState, []T0] {
+	endPred := (func(_r0 ParseState) bool { return psCurIsNot(sep, _r0) })
+	next := (func(_r0 ParseState) ParseState { return psConsume(sep, _r0) })
+	return ParseList2(one, endPred, next, ps)
+}
+
 func scRegFunFac(sc Scope, fname string, ff FuncFactory) {
 	scRegisterVarFac(sc, fname, (func(_r0 []FType, _r1 func() TypeVar) VarRef { return GenFuncVar(fname, ff, _r0, _r1) }))
 }

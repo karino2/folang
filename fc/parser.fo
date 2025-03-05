@@ -103,35 +103,10 @@ let parseAtomType (pType:ParseState->ParseState*FType) (ps:ParseState) =
 
 
 /*
-  TERM_TYPE = ATOM_TYPE | TUPLE_TYPE
-  TUPLE_TYPE = ATOM_TYPE '*' ELEM_TYPE ('*' ELEM_TYPE)*
-
-  []T*U should parse [](T*U).
-  So tuple is higher precedance.
-
-  But T*[]U is also valid. So right hand side must be ELEM_TYPE.
+  TERM_TYPE = ATOM_TYPE | '[' ']' TERM_TYPE
 */
-let parseTermType (pType:ParseState->ParseState*FType) (pElem:ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
-  let pAtom = parseAtomType pType
-  let (ps2, ft) = pAtom ps
-  if (psCurrentTT ps2) = ASTER then
-    let (ps3, ft2) = psConsume ASTER ps2
-                      |> pElem
-    psUnexpect ASTER ps3 "More than three elem tuple, NYI"
-    {ElemTypes=[ft;ft2]}
-    |> FTuple
-    |> PairL ps3
-  else
-    (ps2, ft)
-
-
-/*
-ELEM_TYPE = TERM_TYPE | '[' ']' ELEM_TYPE
-
-[]T*U should parse [](T*U)
-*/
-let parseElemType (pType: ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
-  let recurse = parseElemType pType
+let parseTermType (pType:ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
+  let recurse = parseTermType pType
   if psCurIs LSBRACKET ps then
     let (ps2, et) = psMulConsume [LSBRACKET; RSBRACKET] ps
                     |> recurse
@@ -139,7 +114,27 @@ let parseElemType (pType: ParseState->ParseState*FType) (ps:ParseState) : ParseS
     |> FSlice
     |> PairL ps2
   else
-    parseTermType pType recurse ps
+    parseAtomType pType ps
+
+
+/*
+  ELEM_TYPE = TERM_TYPE | TUPLE_TYPE
+  TUPLE_TYPE = TERM_TYPE '*' TERM_TYPE ('*' TERM_TYPE)*
+
+  T*U*V must parse as 3D tuple.
+  And T*[]U is also valid.
+  Naturally, []T*U must be ([]T)*U.
+  [] is higher precedance.
+*/
+let parseElemType (pType: ParseState->ParseState*FType) (ps:ParseState) : ParseState*FType =
+  let pTerm = parseTermType pType
+  let (ps2, fts) = ParseSepList pTerm ASTER ps
+  if (slice.Length fts) = 1 then
+    (ps2, slice.Head fts)
+  else
+    {ElemTypes=fts}
+    |> FTuple
+    |> PairL ps2
 
 /*
   TYPE_ARROWS = ELEM_TYPE ('->' ELEM_TYPE)*

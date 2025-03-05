@@ -24,7 +24,7 @@ package_info slice =
   let Sort<T>: []T -> []T
   let SortBy<T, U>: (T->U)->[]T->[]T
   let Skip<T>: int->[]T->[]T
-  let Zip<T, U>: []T->[]U->[]T*U
+  let Zip<T, U>: []T->[]U->[](T*U)
   let Forall<T>: (T->bool)->[]T->bool
   let Forany<T>: (T->bool)->[]T->bool
   // T must be comparable

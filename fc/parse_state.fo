@@ -175,7 +175,6 @@ package_info _ =
   let ParseList<T>: (ParseState->ParseState*T)->(ParseState->bool)->ParseState->ParseState*[]T
   let ParseList2<T>: (ParseState->ParseState*T)->(ParseState->bool)->(ParseState->ParseState)->ParseState->ParseState*[]T
 
-
 let MapL fn tup =
   let nl = frt.Fst tup |> fn
   (nl, frt.Snd tup)
@@ -381,9 +380,14 @@ let psResetTmpCtx (ps:ParseState) =
   newTypeVarCtx ()
   |> psWithTVCtx ps
 
-
 let psIsNeighborLT (ps:ParseState) =
    tkzIsNeighborLT ps.tkz
+
+let ParseSepList one sep ps =
+   let endPred = psCurIsNot sep
+   let next = psConsume sep
+   ParseList2 one endPred next ps
+
 
 let scRegFunFac (sc:Scope) (fname:string) (ff:FuncFactory) =
   scRegisterVarFac sc fname (GenFuncVar fname ff)

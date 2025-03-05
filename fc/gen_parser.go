@@ -108,25 +108,23 @@ func parseAtomType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps Pars
 	}
 }
 
-func parseTermType(pType func(ParseState) frt.Tuple2[ParseState, FType], pElem func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
-	pAtom := (func(_r0 ParseState) frt.Tuple2[ParseState, FType] { return parseAtomType(pType, _r0) })
-	ps2, ft := frt.Destr2(pAtom(ps))
-	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_ASTER), (func() frt.Tuple2[ParseState, FType] {
-		ps3, ft2 := frt.Destr2(frt.Pipe(psConsume(New_TokenType_ASTER, ps2), pElem))
-		psUnexpect(New_TokenType_ASTER, ps3, "More than three elem tuple, NYI")
-		return frt.Pipe(frt.Pipe(TupleType{ElemTypes: ([]FType{ft, ft2})}, New_FType_FTuple), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return PairL(ps3, _r0) }))
-	}), (func() frt.Tuple2[ParseState, FType] {
-		return frt.NewTuple2(ps2, ft)
-	}))
-}
-
-func parseElemType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
-	recurse := (func(_r0 ParseState) frt.Tuple2[ParseState, FType] { return parseElemType(pType, _r0) })
+func parseTermType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
+	recurse := (func(_r0 ParseState) frt.Tuple2[ParseState, FType] { return parseTermType(pType, _r0) })
 	return frt.IfElse(psCurIs(New_TokenType_LSBRACKET, ps), (func() frt.Tuple2[ParseState, FType] {
 		ps2, et := frt.Destr2(frt.Pipe(psMulConsume(([]TokenType{New_TokenType_LSBRACKET, New_TokenType_RSBRACKET}), ps), recurse))
 		return frt.Pipe(frt.Pipe(SliceType{ElemType: et}, New_FType_FSlice), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return PairL(ps2, _r0) }))
 	}), (func() frt.Tuple2[ParseState, FType] {
-		return parseTermType(pType, recurse, ps)
+		return parseAtomType(pType, ps)
+	}))
+}
+
+func parseElemType(pType func(ParseState) frt.Tuple2[ParseState, FType], ps ParseState) frt.Tuple2[ParseState, FType] {
+	pTerm := (func(_r0 ParseState) frt.Tuple2[ParseState, FType] { return parseTermType(pType, _r0) })
+	ps2, fts := frt.Destr2(ParseSepList(pTerm, New_TokenType_ASTER, ps))
+	return frt.IfElse(frt.OpEqual(slice.Length(fts), 1), (func() frt.Tuple2[ParseState, FType] {
+		return frt.NewTuple2(ps2, slice.Head(fts))
+	}), (func() frt.Tuple2[ParseState, FType] {
+		return frt.Pipe(frt.Pipe(TupleType{ElemTypes: fts}, New_FType_FTuple), (func(_r0 FType) frt.Tuple2[ParseState, FType] { return PairL(ps2, _r0) }))
 	}))
 }
 
