@@ -72,7 +72,8 @@ func ldvdToGo(eToGo func(Expr) string, ldvd LetDestVarDef) string {
 	frt.PipeUnit(frt.Pipe(slice.Map(func(_v1 Var) string {
 		return _v1.Name
 	}, ldvd.Lvars), (func(_r0 []string) string { return strings.Concat(", ", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
-	buf.Write(b, " := frt.Destr(")
+	len := slice.Length(ldvd.Lvars)
+	buf.Write(b, frt.SInterP(" := frt.Destr%s(", len))
 	frt.PipeUnit(eToGo(ldvd.Rhs), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ")")
 	return buf.String(b)

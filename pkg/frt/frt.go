@@ -86,7 +86,22 @@ func Fst[T any, U any](tup Tuple2[T, U]) T { return tup.E0 }
 func Snd[T any, U any](tup Tuple2[T, U]) U { return tup.E1 }
 
 // Destructuring.
+func Destr2[T any, U any](tup Tuple2[T, U]) (T, U) { return tup.E0, tup.E1 }
+
+// backward compat, obsolete.
 func Destr[T any, U any](tup Tuple2[T, U]) (T, U) { return tup.E0, tup.E1 }
+
+type Tuple3[T any, U any, V any] struct {
+	E0 T
+	E1 U
+	E2 V
+}
+
+func NewTuple3[T any, U any, V any](e0 T, e1 U, e2 V) Tuple3[T, U, V] {
+	return Tuple3[T, U, V]{E0: e0, E1: e1, E2: e2}
+}
+
+func Destr3[T any, U any, V any](tup Tuple3[T, U, V]) (T, U, V) { return tup.E0, tup.E1, tup.E2 }
 
 func Assert(cond bool, msg string) {
 	if !cond {

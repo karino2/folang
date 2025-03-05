@@ -661,7 +661,7 @@ let updateFunCallFunType (tgen:()->TypeVar) (res:Resolver) (vr: VarRef) (args:[]
   FUNC_EXPR = 'fun' PARAMS '->' block
 */
 let parseFunExpr (pBlock:ParseState->ParseState*Block) ps =
-  let (ps2, params) = psConsume FUN ps |> psPushScope |> parseParams |> MapL (psConsume RARROW)
+  let (ps2, params) = psConsume FUN ps |> psPushScope |> parseParams |> MapL (psConsume RARROW) |> MapL psSkipEOL
   let (ps3, body) = pBlock ps2 |> MapL psPopScope
   (ps3, ELambda {LambdaExpr.Params=params; Body=body} )
 
@@ -816,41 +816,37 @@ let defVarIfNecessary (sc:Scope) (v:Var) =
   LL_DEST_VAR_DEF = 'let' '(' IDENTIFIER ',' IDENTIFIER ')' '=' expr
 */
 let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
-  let (ps2, vname1) = psMulConsume [LET; LPAREN] ps
-                     |> psIdentOrUSNameNx
-                     |> MapL (psConsume COMMA)
-  let (ps3, vname2) = psIdentOrUSNameNx ps2
-                     |> MapL (psMulConsume [RPAREN; EQ])
+  let ps2 = psMulConsume [LET; LPAREN] ps
+  let endPred = psCurIsNot COMMA
+  let next = psConsume COMMA
+  let (ps3, vnames) = ParseList2 psIdentOrUSNameNx endPred next ps2 |> MapL (psMulConsume [RPAREN; EQ])
+  if (slice.Length vnames) > 3 then
+    psPanic ps3 "More than 3 let destructuring, NYI"
+
   let (ps4, rhs0) = pExpr ps3
   let rhs = InferExpr ps4.tvc rhs0
   let rtype = ExprToType rhs
   match rtype with
   | FTuple tup ->
-    let v1 = {Var.Name=vname1; Ftype= slice.Head tup.ElemTypes}
-    let v2 = {Var.Name=vname2; Ftype= slice.Last tup.ElemTypes}
-    defVarIfNecessary ps4.scope v1
-    defVarIfNecessary ps4.scope v2
-    let vs = [v1; v2]
-    {LetDestVarDef.Lvars=vs; Rhs=rhs}
+    let vars = slice.Zip vnames tup.ElemTypes
+               |> slice.Map (fun t-> newVar (frt.Fst t) (frt.Snd t))
+    slice.Iter (defVarIfNecessary ps4.scope) vars
+    {LetDestVarDef.Lvars=vars; Rhs=rhs}
     |> LLDestVarDef
     |> PairL ps4
   | FTypeVar _ ->
     // rhs is TypeVar (unresolved), so assign left vars new TypeVar's and resolve later.
     let tpgen = psTypeVarGen ps4
-    let vt1 = if vname1 = "_" then
-                FUnit // dont't care, use FUnit
-              else
-                tpgen () |> FTypeVar
-    let vt2 = if vname1 = "_" then
-                FUnit
-              else
-                tpgen () |> FTypeVar
-    let v1 = {Var.Name=vname1; Ftype=vt1}
-    let v2 = {Var.Name=vname2; Ftype=vt2}
-    defVarIfNecessary ps4.scope v1
-    defVarIfNecessary ps4.scope v2
-    let vs = [v1; v2]
-    {LetDestVarDef.Lvars=vs; Rhs=rhs}
+    let name2tp = fun name ->
+        if name = "_" then
+          FUnit // dont't care, use FUnit
+        else
+          tpgen () |> FTypeVar
+    let vtypes = slice.Map name2tp vnames
+    let vars = slice.Zip vnames vtypes
+               |> slice.Map (fun t-> newVar (frt.Fst t) (frt.Snd t))
+    slice.Iter (defVarIfNecessary ps4.scope) vars
+    {LetDestVarDef.Lvars=vars; Rhs=rhs}
     |> LLDestVarDef
     |> PairL ps4
   | _ ->

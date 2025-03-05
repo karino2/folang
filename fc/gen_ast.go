@@ -445,3 +445,7 @@ func udCases(ud UnionDef) []NameTypePair {
 func varToExpr(v Var) Expr {
 	return frt.Pipe(New_VarRef_VRVar(v), New_Expr_EVarRef)
 }
+
+func newVar(vname string, vtype FType) Var {
+	return Var{Name: vname, Ftype: vtype}
+}

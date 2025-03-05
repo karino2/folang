@@ -73,7 +73,8 @@ let lvdToGo (eToGo: Expr->string) (lvd:LetVarDef) =
 let ldvdToGo (eToGo: Expr->string) (ldvd:LetDestVarDef) =
   let b = buf.New ()
   slice.Map _.Name ldvd.Lvars |> strings.Concat ", " |> buf.Write b
-  buf.Write b " := frt.Destr("
+  let len = slice.Length ldvd.Lvars
+  buf.Write b $" := frt.Destr{len}("
   eToGo ldvd.Rhs |> buf.Write b
   buf.Write b ")"
   buf.String b

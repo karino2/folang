@@ -129,3 +129,6 @@ let udCases (ud:UnionDef) =
 
 let varToExpr (v:Var) =
   VRVar v |> EVarRef
+
+let newVar vname vtype =
+  {Var.Name=vname; Ftype=vtype}

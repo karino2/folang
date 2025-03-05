@@ -568,7 +568,7 @@ let fuga () =
   a+1
 
 `,
-			"a, b := frt.Destr(ika())",
+			"a, b := frt.Destr2(ika())",
 		},
 		{
 			`package main
@@ -1303,6 +1303,16 @@ let hoge () =
 `,
 			[]string{"frt.Tuple3[int, string, int]", `frt.NewTuple3(1, "2", 3)`},
 		},
+		{
+			`package main
+
+let ika () =
+  let (a, b, c) = (1, "2", 3)
+  a+c
+
+`,
+			[]string{"frt.Destr3", "frt.NewTuple3"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1318,8 +1328,9 @@ let hoge () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let hoge () =
-  (1, "2", 3)
+let ika () =
+  let (a, b, c) = (1, "2", 3)
+  a+c
 
 `
 

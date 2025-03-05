@@ -623,9 +623,9 @@ func updateFunCallFunType(tgen func() TypeVar, res Resolver, vr VarRef, args []E
 }
 
 func parseFunExpr(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, Expr] {
-	ps2, params := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_FUN, ps), psPushScope), parseParams), (func(_r0 frt.Tuple2[ParseState, []Var]) frt.Tuple2[ParseState, []Var] {
+	ps2, params := frt.Destr(frt.Pipe(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_FUN, ps), psPushScope), parseParams), (func(_r0 frt.Tuple2[ParseState, []Var]) frt.Tuple2[ParseState, []Var] {
 		return MapL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RARROW, _r0) }), _r0)
-	})))
+	})), (func(_r0 frt.Tuple2[ParseState, []Var]) frt.Tuple2[ParseState, []Var] { return MapL(psSkipEOL, _r0) })))
 	ps3, body := frt.Destr(frt.Pipe(pBlock(ps2), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return MapL(psPopScope, _r0) })))
 	return frt.NewTuple2(ps3, New_Expr_ELambda(LambdaExpr{Params: params, Body: body}))
 }
@@ -786,44 +786,47 @@ func defVarIfNecessary(sc Scope, v Var) {
 }
 
 func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
-	ps2, vname1 := frt.Destr(frt.Pipe(frt.Pipe(psMulConsume(([]TokenType{New_TokenType_LET, New_TokenType_LPAREN}), ps), psIdentOrUSNameNx), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] {
-		return MapL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) }), _r0)
-	})))
-	ps3, vname2 := frt.Destr(frt.Pipe(psIdentOrUSNameNx(ps2), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] {
+	ps2 := psMulConsume(([]TokenType{New_TokenType_LET, New_TokenType_LPAREN}), ps)
+	endPred := (func(_r0 ParseState) bool { return psCurIsNot(New_TokenType_COMMA, _r0) })
+	next := (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) })
+	ps3, vnames := frt.Destr(frt.Pipe(ParseList2(psIdentOrUSNameNx, endPred, next, ps2), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
 		return MapL((func(_r0 ParseState) ParseState {
 			return psMulConsume(([]TokenType{New_TokenType_RPAREN, New_TokenType_EQ}), _r0)
 		}), _r0)
 	})))
+	frt.IfOnly((slice.Length(vnames) > 3), (func() {
+		psPanic(ps3, "More than 3 let destructuring, NYI")
+	}))
 	ps4, rhs0 := frt.Destr(pExpr(ps3))
 	rhs := InferExpr(ps4.tvc, rhs0)
 	rtype := ExprToType(rhs)
 	switch _v6 := (rtype).(type) {
 	case FType_FTuple:
 		tup := _v6.Value
-		v1 := Var{Name: vname1, Ftype: slice.Head(tup.ElemTypes)}
-		v2 := Var{Name: vname2, Ftype: slice.Last(tup.ElemTypes)}
-		defVarIfNecessary(ps4.scope, v1)
-		defVarIfNecessary(ps4.scope, v2)
-		vs := ([]Var{v1, v2})
-		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vs, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return PairL(ps4, _r0) }))
+		vars := frt.Pipe(slice.Zip(vnames, tup.ElemTypes), (func(_r0 []frt.Tuple2[string, FType]) []Var {
+			return slice.Map(func(t frt.Tuple2[string, FType]) Var {
+				return newVar(frt.Fst(t), frt.Snd(t))
+			}, _r0)
+		}))
+		slice.Iter((func(_r0 Var) { defVarIfNecessary(ps4.scope, _r0) }), vars)
+		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vars, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return PairL(ps4, _r0) }))
 	case FType_FTypeVar:
 		tpgen := psTypeVarGen(ps4)
-		vt1 := frt.IfElse(frt.OpEqual(vname1, "_"), (func() FType {
-			return New_FType_FUnit
-		}), (func() FType {
-			return frt.Pipe(tpgen(), New_FType_FTypeVar)
+		name2tp := func(name string) FType {
+			return frt.IfElse(frt.OpEqual(name, "_"), (func() FType {
+				return New_FType_FUnit
+			}), (func() FType {
+				return frt.Pipe(tpgen(), New_FType_FTypeVar)
+			}))
+		}
+		vtypes := slice.Map(name2tp, vnames)
+		vars := frt.Pipe(slice.Zip(vnames, vtypes), (func(_r0 []frt.Tuple2[string, FType]) []Var {
+			return slice.Map(func(t frt.Tuple2[string, FType]) Var {
+				return newVar(frt.Fst(t), frt.Snd(t))
+			}, _r0)
 		}))
-		vt2 := frt.IfElse(frt.OpEqual(vname1, "_"), (func() FType {
-			return New_FType_FUnit
-		}), (func() FType {
-			return frt.Pipe(tpgen(), New_FType_FTypeVar)
-		}))
-		v1 := Var{Name: vname1, Ftype: vt1}
-		v2 := Var{Name: vname2, Ftype: vt2}
-		defVarIfNecessary(ps4.scope, v1)
-		defVarIfNecessary(ps4.scope, v2)
-		vs := ([]Var{v1, v2})
-		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vs, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return PairL(ps4, _r0) }))
+		slice.Iter((func(_r0 Var) { defVarIfNecessary(ps4.scope, _r0) }), vars)
+		return frt.Pipe(frt.Pipe(LetDestVarDef{Lvars: vars, Rhs: rhs}, New_LLetVarDef_LLDestVarDef), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return PairL(ps4, _r0) }))
 	default:
 		psPanic(ps2, "Destructuring let, but rhs is not tuple. NYI.")
 		dummy := []Var{}
