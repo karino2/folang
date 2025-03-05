@@ -7,6 +7,6 @@ func ika() frt.Tuple2[int, string] {
 }
 
 func main() {
-	a, _ := frt.Destr(ika())
+	a, _ := frt.Destr2(ika())
 	frt.PipeUnit(frt.Sprintf1("a=%d", a), frt.Println)
 }
