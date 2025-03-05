@@ -382,12 +382,9 @@ let parseVarRef (ps:ParseState) =
       refVar fullName stlist ps4
       |> PairL ps4
 
-let isSemiExprEnd ps =
-  (psCurrentTT ps) <> SEMICOLON 
-
 // expr (; expr)*
 let parseSemiExprs (pExpr: ParseState->ParseState*Expr) (ps:ParseState) : ParseState*[]Expr =  
-  ParseList2 pExpr isSemiExprEnd (psConsume SEMICOLON) ps
+  ParseSepList pExpr SEMICOLON ps
 
 /*
   SLICE_EXPR = '[' expr (; expr)* ']'
@@ -447,9 +444,7 @@ let parseAtom (parseE: ParseState->ParseState*Expr) (ps:ParseState) =
     else
       let (ps2, e1) = parseE pn
       if (psCurrentTT ps2) = COMMA then
-        let endPred = psCurIsNot COMMA
-        let next = psConsume COMMA
-        let (ps3, elist) = psConsume COMMA ps2 |> ParseList2 parseE endPred next
+        let (ps3, elist) = psConsume COMMA ps2 |> ParseSepList parseE COMMA
                            |> MapR (slice.PushHead e1)
         if slice.Length elist > 3 then
           psPanic ps3 "More then 3 elem tuple, NYI."
@@ -812,9 +807,7 @@ let defVarIfNecessary (sc:Scope) (v:Var) =
 */
 let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let ps2 = psMulConsume [LET; LPAREN] ps
-  let endPred = psCurIsNot COMMA
-  let next = psConsume COMMA
-  let (ps3, vnames) = ParseList2 psIdentOrUSNameNx endPred next ps2 |> MapL (psMulConsume [RPAREN; EQ])
+  let (ps3, vnames) = ParseSepList psIdentOrUSNameNx COMMA ps2 |> MapL (psMulConsume [RPAREN; EQ])
   if (slice.Length vnames) > 3 then
     psPanic ps3 "More than 3 let destructuring, NYI"
 
@@ -1031,9 +1024,7 @@ let emptyDefStmt () =
   ID_LIST = IDENTIFIER (',' IDENTIFIER)*
 */
 let parseIdList (ps:ParseState) : ParseState*[]string =
-  let endPred = fun tps-> (psCurrentTT tps) <> COMMA
-  let next = psConsume COMMA
-  ParseList2 psIdentNameNx endPred next ps
+  ParseSepList psIdentNameNx COMMA ps
 
 /*
   if '<' ID_LIST '>', return ID_LIST as []string

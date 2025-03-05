@@ -359,12 +359,8 @@ func parseVarRef(ps ParseState) frt.Tuple2[ParseState, Expr] {
 	}))
 }
 
-func isSemiExprEnd(ps ParseState) bool {
-	return frt.OpNotEqual(psCurrentTT(ps), New_TokenType_SEMICOLON)
-}
-
 func parseSemiExprs(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, []Expr] {
-	return ParseList2(pExpr, isSemiExprEnd, (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_SEMICOLON, _r0) }), ps)
+	return ParseSepList(pExpr, New_TokenType_SEMICOLON, ps)
 }
 
 func parseSliceExpr(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, Expr] {
@@ -417,9 +413,9 @@ func parseAtom(parseE func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseSta
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			ps2, e1 := frt.Destr2(parseE(pn))
 			return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_COMMA), (func() frt.Tuple2[ParseState, Expr] {
-				endPred := (func(_r0 ParseState) bool { return psCurIsNot(New_TokenType_COMMA, _r0) })
-				next := (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) })
-				ps3, elist := frt.Destr2(frt.Pipe(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] { return ParseList2(parseE, endPred, next, _r0) })), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
+				ps3, elist := frt.Destr2(frt.Pipe(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), (func(_r0 ParseState) frt.Tuple2[ParseState, []Expr] {
+					return ParseSepList(parseE, New_TokenType_COMMA, _r0)
+				})), (func(_r0 frt.Tuple2[ParseState, []Expr]) frt.Tuple2[ParseState, []Expr] {
 					return MapR((func(_r0 []Expr) []Expr { return slice.PushHead(e1, _r0) }), _r0)
 				})))
 				frt.IfOnly((slice.Length(elist) > 3), (func() {
@@ -785,9 +781,7 @@ func defVarIfNecessary(sc Scope, v Var) {
 
 func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
 	ps2 := psMulConsume(([]TokenType{New_TokenType_LET, New_TokenType_LPAREN}), ps)
-	endPred := (func(_r0 ParseState) bool { return psCurIsNot(New_TokenType_COMMA, _r0) })
-	next := (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) })
-	ps3, vnames := frt.Destr2(frt.Pipe(ParseList2(psIdentOrUSNameNx, endPred, next, ps2), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
+	ps3, vnames := frt.Destr2(frt.Pipe(ParseSepList(psIdentOrUSNameNx, New_TokenType_COMMA, ps2), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
 		return MapL((func(_r0 ParseState) ParseState {
 			return psMulConsume(([]TokenType{New_TokenType_RPAREN, New_TokenType_EQ}), _r0)
 		}), _r0)
@@ -1016,11 +1010,7 @@ func emptyDefStmt() DefStmt {
 }
 
 func parseIdList(ps ParseState) frt.Tuple2[ParseState, []string] {
-	endPred := func(tps ParseState) bool {
-		return frt.OpNotEqual(psCurrentTT(tps), New_TokenType_COMMA)
-	}
-	next := (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) })
-	return ParseList2(psIdentNameNx, endPred, next, ps)
+	return ParseSepList(psIdentNameNx, New_TokenType_COMMA, ps)
 }
 
 func mightParseIdList(ps ParseState) frt.Tuple2[ParseState, []string] {
