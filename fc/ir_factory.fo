@@ -1,0 +1,272 @@
+package main
+
+import frt
+import slice
+import dict
+
+/*
+  GenFunc related
+*/
+
+let tpReplaceOne (tdic:dict.Dict<string, FType>) (tv:TypeVar) =
+  let (tp, ok) = dict.TryFind tdic tv.Name
+  if ok then
+    tp
+  else
+    FTypeVar tv
+
+let tpreplace (tdic:dict.Dict<string, FType>) (ft:FType) =
+  transTVFType (tpReplaceOne tdic) ft
+
+let emptyFtps () =
+  slice.New<FType> ()
+
+let tpname2tvtp (tvgen: ()->TypeVar) (slist:[]FType) (i:int) (tpname:string) =
+  if (slice.Len slist) > i then
+    let item = slice.Item i slist
+    (tpname, item)
+  else
+    let tv = tvgen () |> FTypeVar
+    (tpname, tv)
+
+let GenFunc (ff:FuncFactory) (stlist:[]FType) (tvgen: ()->TypeVar) =
+  if (slice.Len stlist) > (slice.Len ff.Tparams) then
+    PanicNow "Too many type specified."
+  let tdic = slice.Mapi (tpname2tvtp tvgen stlist) ff.Tparams |> dict.ToDict
+  let ntargets = slice.Map (tpreplace tdic) ff.Targets
+  {FuncType.Targets=ntargets}
+
+let GenFuncVar (vname:string) (ff:FuncFactory) (stlist: []FType) (tvgen: ()->TypeVar) =
+  let funct = GenFunc ff stlist tvgen
+  let ft = FFunc funct
+  let v = {Var.Name=vname; Ftype=ft}
+  if slice.IsEmpty stlist then
+    VRVar v
+  else
+    VRSVar {SpecVar.Var = v; SpecList=stlist}
+
+let genBuiltinFunCall (tvgen: ()->TypeVar) (fname:string) (tpnames: []string) (targetTPs:[]FType) (args:[]Expr) =
+  let ff = {Tparams=tpnames; Targets=targetTPs}
+  let fvar = GenFuncVar fname ff (emptyFtps ()) tvgen
+  {TargetFunc=fvar; Args=args}
+  |> EFunCall
+
+let newTvf (name:string) =
+   {TypeVar.Name=name}
+   |> FTypeVar
+
+/*
+  TypeFactory related.
+*/
+let GenType (tfd:TypeFactoryData) (targs:[]FType)  =
+  if (slice.Len tfd.Tparams) <> (slice.Len targs) then
+    PanicNow "wrong type param num for instantiate."
+  {ParamdType.Name=tfd.Name; Targs=targs}
+  |> FParamd
+
+/*
+  GenRecord related
+*/
+type RecordFactory = {Name: string; Tparams:[]string; Fields: []NameTypePair}
+
+let GenRecordType (rf:RecordFactory) stlist =
+  if (slice.Len stlist) <> (slice.Len rf.Tparams) then
+    PanicNow "wrong type param num for instantiate."
+  let tdic = slice.Zip rf.Tparams stlist |> dict.ToDict
+  let nftypes = slice.Map _.Ftype rf.Fields
+                |> slice.Map (tpreplace tdic)
+  let fnames = slice.Map _.Name rf.Fields
+  let nfields = slice.Zip fnames nftypes
+                |> slice.Map tupToNTPair
+  let rt = {RecordType.Name=rf.Name; Targs=stlist}
+  let ri = {RecordTypeInfo.Fields=nfields}
+  updateRecInfo rt ri
+  rt
+
+let GenRecordFType rf stlist =
+  GenRecordType rf stlist |> FRecord
+
+// Create RecordType by TypeVar for tparams.
+// This will resolve in RecordGen Unify.
+let GenRecordTypeByTgen (rf: RecordFactory) (tvgen: ()->TypeVar) =
+  let ftvs = slice.Map (fun x-> tvgen () |> FTypeVar) rf.Tparams
+  GenRecordType rf ftvs
+
+let recFacMatch (fieldNames: []string) (rf: RecordFactory) =
+  if (slice.Length fieldNames) <> (slice.Length rf.Fields) then
+    false
+  else
+    let sortedInput = fieldNames |> slice.Sort
+    let sortedFName = slice.Map _.Name rf.Fields
+                      |> slice.Sort
+    sortedInput = sortedFName
+
+/*
+  If no type param, return RecordType*true, else empty*false
+*/
+let tryRecFacToRecType (rf:RecordFactory) =
+  if slice.IsEmpty rf.Tparams then
+    let rt = {RecordType.Name=rf.Name}
+    let ri = {RecordTypeInfo.Fields=rf.Fields}
+    updateRecInfo rt ri
+    (rt, true)
+  else
+    (frt.Empty<RecordType> (), false)
+
+
+/*
+  UnionFactory related
+*/
+type UnionFactory = {Name: string; Tparams:[]string; Cases: []NameTypePair}
+
+let ufCases (uf:UnionFactory) =
+  uf.Cases
+
+let GenUnionType (uf:UnionFactory) stlist =
+  if (slice.Len stlist) <> (slice.Len uf.Tparams) then
+    PanicNow "wrong type param num for instantiate."
+  let tdic = slice.Zip uf.Tparams stlist |> dict.ToDict
+  let cases = ufCases uf
+  let nftypes = slice.Map _.Ftype cases
+                |> slice.Map (tpreplace tdic)
+  let cnames = slice.Map _.Name cases
+  let ncases = slice.Zip cnames nftypes
+                |> slice.Map tupToNTPair
+  let ui = {UnionTypeInfo.Cases=ncases}
+  let ut = {UnionType.Name=uf.Name; Targs=stlist}
+  updateUniInfo ut ui
+  ut
+
+let GenUnionFType ufac stlist =
+  GenUnionType ufac stlist |> FUnion
+
+/*
+  If no type param, return UnionType*true, else empty*false
+*/
+let tryUniFacToUniType (uf:UnionFactory) =
+  if slice.IsEmpty uf.Tparams then
+    let ut = {UnionType.Name=uf.Name}
+    let ui = {UnionTypeInfo.Cases=uf.Cases}
+    updateUniInfo ut ui
+    (ut, true)
+  else
+    (frt.Empty<UnionType> (), false)
+
+
+let udToUniFac (ud:UnionDef) =
+  // S1016 - Use a type conversion instead of manually copying struct fields 
+  GoEval<UnionFactory> "UnionFactory(ud)"
+
+/*
+  BinOp related
+*/
+
+type BinOpInfo = {Precedence: int; GoFuncName: string; IsBoolOp: bool}
+
+package_info _ =
+  let lookupBinOp: TokenType->BinOpInfo*bool
+
+/*
+  '=' and '<>', we want to use DeepEqual isntead of go comparison.
+  So it need special handling.
+*/
+let newEqNeq (tvgen: ()->TypeVar) (goFname:string) (lhs:Expr) (rhs:Expr) =
+  let t1name = "T1"
+  let t1tp = newTvf t1name
+  let names =  [t1name]
+  let tps = [t1tp; t1tp; FBool]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen goFname names tps args
+
+
+let newPipeCallNormal (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let t1name = "T1"
+  let t1type = newTvf t1name
+  let t2name = "T2"
+  let t2type = newTvf t2name
+  let secFncT = newFFunc [t1type;t2type]
+  let names =  [t1name; t2name]
+  let tps = [t1type; secFncT; t2type]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen "frt.Pipe" names tps args
+
+/*
+frt.PipeUnit<T>: T->(T->())->()
+*/
+let newPipeCallUnit (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let t1name = "T1"
+  let t1type = newTvf t1name
+  let secFncT = newFFunc [t1type;FUnit]
+  let names =  [t1name]
+  let tps = [t1type; secFncT; FUnit]
+  let args = [lhs;rhs]
+  genBuiltinFunCall tvgen "frt.PipeUnit" names tps args
+
+
+/*
+frt.Pipe<T1, T2> : T1->(T1->T2)->T2
+
+lhs |> rhs
+rhs must be T1->T2 and we might resolve T1 or T2 by lhs T1 type.
+
+If T2 is unit, use frt.PipeUnit instead.
+
+*/
+let newPipeCall (tvgen: ()->TypeVar) (lhs:Expr) (rhs:Expr) =  
+  let rht = ExprToType rhs
+  match rht with
+  | FFunc ft ->
+    match freturn ft with
+    | FUnit -> newPipeCallUnit tvgen lhs rhs
+    | _ -> newPipeCallNormal tvgen lhs rhs
+  | _ -> newPipeCallNormal tvgen lhs rhs
+
+// BinOpCall = {op: string; rtype: FType; lhs: Expr; rhs: Expr}
+let newBinOpNormal (binfo:BinOpInfo) (lhs: Expr) (rhs:Expr) =
+  let rtype = if binfo.IsBoolOp then FBool else (ExprToType rhs)
+  {Op=binfo.GoFuncName; Rtype=rtype; Lhs=lhs; Rhs=rhs}
+  |> EBinOpCall
+
+let newBinOpCall (tvgen: ()->TypeVar) (tk:TokenType) (binfo: BinOpInfo) (lhs: Expr) (rhs:Expr) =
+  match tk with
+  | PIPE -> newPipeCall tvgen lhs rhs
+  | EQ -> newEqNeq tvgen binfo.GoFuncName lhs rhs
+  | BRACKET -> newEqNeq tvgen binfo.GoFuncName lhs rhs
+  | _ -> newBinOpNormal binfo lhs rhs
+
+let newFnTp (argType:FType) (retType:FType) =
+  [argType;retType]
+  |> newFFunc
+
+let emptySS () =
+  slice.New<string> ()
+
+/*
+  if else call.
+*/
+let newIfElseCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) (fbody: Block) =
+  let ltbody = {LazyBlock.Block=tbody} |> ELazyBlock
+  let lfbody = {LazyBlock.Block=fbody} |> ELazyBlock
+  let retType = blockReturnType ExprToType tbody
+  let fname = match retType with
+              | FUnit -> "frt.IfElseUnit"
+              | _ -> "frt.IfElse"
+  let emptyS = emptySS ()
+  let args = [cond; ltbody;lfbody]
+  let ft = newFnTp FUnit retType
+  let tps = [FBool; ft; ft; retType]
+  genBuiltinFunCall tvgen fname emptyS tps args
+  
+let newIfOnlyCall (tvgen: ()->TypeVar) (cond: Expr) (tbody: Block) =
+  let ltbody = {LazyBlock.Block=tbody} |> ELazyBlock
+  let emptyS = emptySS ()
+  let args = [cond; ltbody]
+  let ft = newFnTp FUnit FUnit
+  let tps = [FBool; ft; FUnit]
+  genBuiltinFunCall tvgen "frt.IfOnly" emptyS tps args
+
+let newUnaryNotCall (tvgen: ()->TypeVar) (cond: Expr) =
+  let emptyS = emptySS ()
+  let args = [cond]
+  let tps = [FBool; FBool]
+  genBuiltinFunCall tvgen "frt.OpNot" emptyS tps args
