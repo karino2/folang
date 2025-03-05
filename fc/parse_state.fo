@@ -295,12 +295,6 @@ let psNext (ps:ParseState) =
   let ntk = tkzNext ps.tkz
   psWithTkz ps ntk
 
-let psNextTT (ps:ParseState) =
-  psNext ps |> psCurrentTT
-
-let psNextIs  (expectTT: TokenType) (ps:ParseState) =
-  (psNextTT ps) = expectTT
-
 let psNextNOL (ps:ParseState) =
   let ntk = tkzNextNOL ps.tkz
   psWithTkz ps ntk
@@ -345,29 +339,12 @@ let psIdentNameNx (ps:ParseState) =
 let psStringValNx (ps:ParseState) =
   psStrNx psStringVal ps
 
-// get current and Goto Next
-let psCurrentNx (ps:ParseState) =
-  let tk = psCurrent ps
-  let ps2 = psNext ps
-  (ps2, tk)
-
-let psCurrentTTNx (ps:ParseState) =
-  let tt = psCurrentTT ps
-  let ps2 = psNext ps
-  (ps2, tt)
-
 // NxL means NextNOL
 let psIdentNameNxL (ps:ParseState) =
   psIdentNameNx ps |> CnvL psSkipEOL
 
 let psStringValNxL (ps:ParseState) =
   psStringValNx ps |> CnvL psSkipEOL
-
-let psCurrentNxL (ps:ParseState) =
-  psCurrentNx ps |> CnvL psSkipEOL
-
-let psCurrentTTNxL (ps:ParseState) =
-  psCurrentTTNx ps |> CnvL psSkipEOL
 
 let psResetTmpCtx (ps:ParseState) =
   resetUniqueTmpCounter ()

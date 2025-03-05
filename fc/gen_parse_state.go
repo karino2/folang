@@ -325,14 +325,6 @@ func psNext(ps ParseState) ParseState {
 	return psWithTkz(ps, ntk)
 }
 
-func psNextTT(ps ParseState) TokenType {
-	return frt.Pipe(psNext(ps), psCurrentTT)
-}
-
-func psNextIs(expectTT TokenType, ps ParseState) bool {
-	return frt.OpEqual(psNextTT(ps), expectTT)
-}
-
 func psNextNOL(ps ParseState) ParseState {
 	ntk := tkzNextNOL(ps.tkz)
 	return psWithTkz(ps, ntk)
@@ -385,34 +377,12 @@ func psStringValNx(ps ParseState) frt.Tuple2[ParseState, string] {
 	return psStrNx(psStringVal, ps)
 }
 
-func psCurrentNx(ps ParseState) frt.Tuple2[ParseState, Token] {
-	tk := psCurrent(ps)
-	ps2 := psNext(ps)
-	return frt.NewTuple2(ps2, tk)
-}
-
-func psCurrentTTNx(ps ParseState) frt.Tuple2[ParseState, TokenType] {
-	tt := psCurrentTT(ps)
-	ps2 := psNext(ps)
-	return frt.NewTuple2(ps2, tt)
-}
-
 func psIdentNameNxL(ps ParseState) frt.Tuple2[ParseState, string] {
 	return frt.Pipe(psIdentNameNx(ps), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return CnvL(psSkipEOL, _r0) }))
 }
 
 func psStringValNxL(ps ParseState) frt.Tuple2[ParseState, string] {
 	return frt.Pipe(psStringValNx(ps), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return CnvL(psSkipEOL, _r0) }))
-}
-
-func psCurrentNxL(ps ParseState) frt.Tuple2[ParseState, Token] {
-	return frt.Pipe(psCurrentNx(ps), (func(_r0 frt.Tuple2[ParseState, Token]) frt.Tuple2[ParseState, Token] { return CnvL(psSkipEOL, _r0) }))
-}
-
-func psCurrentTTNxL(ps ParseState) frt.Tuple2[ParseState, TokenType] {
-	return frt.Pipe(psCurrentTTNx(ps), (func(_r0 frt.Tuple2[ParseState, TokenType]) frt.Tuple2[ParseState, TokenType] {
-		return CnvL(psSkipEOL, _r0)
-	}))
 }
 
 func psResetTmpCtx(ps ParseState) ParseState {

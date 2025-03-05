@@ -1044,13 +1044,9 @@ let emptyDefStmt () =
   ID_LIST = IDENTIFIER (',' IDENTIFIER)*
 */
 let parseIdList (ps:ParseState) : ParseState*[]string =
-  let (ps2, tname) = psIdentNameNx ps
-  if (psCurrentTT ps2) = COMMA then
-    psConsume COMMA ps2
-    |> parseIdList
-    |> CnvR (slice.PushHead tname)
-  else
-    (ps2, [tname])
+  let endPred = fun tps-> (psCurrentTT tps) <> COMMA
+  let next = psConsume COMMA
+  ParseList2 psIdentNameNx endPred next ps
 
 /*
   if '<' ID_LIST '>', return ID_LIST as []string

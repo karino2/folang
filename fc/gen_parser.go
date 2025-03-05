@@ -1015,14 +1015,11 @@ func emptyDefStmt() DefStmt {
 }
 
 func parseIdList(ps ParseState) frt.Tuple2[ParseState, []string] {
-	ps2, tname := frt.Destr(psIdentNameNx(ps))
-	return frt.IfElse(frt.OpEqual(psCurrentTT(ps2), New_TokenType_COMMA), (func() frt.Tuple2[ParseState, []string] {
-		return frt.Pipe(frt.Pipe(psConsume(New_TokenType_COMMA, ps2), parseIdList), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
-			return CnvR((func(_r0 []string) []string { return slice.PushHead(tname, _r0) }), _r0)
-		}))
-	}), (func() frt.Tuple2[ParseState, []string] {
-		return frt.NewTuple2(ps2, ([]string{tname}))
-	}))
+	endPred := func(tps ParseState) bool {
+		return frt.OpNotEqual(psCurrentTT(tps), New_TokenType_COMMA)
+	}
+	next := (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_COMMA, _r0) })
+	return ParseList2(psIdentNameNx, endPred, next, ps)
 }
 
 func mightParseIdList(ps ParseState) frt.Tuple2[ParseState, []string] {
