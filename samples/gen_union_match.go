@@ -9,6 +9,9 @@ type IorS interface {
 func (IorS_IT) IorS_Union() {}
 func (IorS_ST) IorS_Union() {}
 
+func (v IorS_IT) String() string { return frt.Sprintf1("(IT: %v)", v.Value) }
+func (v IorS_ST) String() string { return frt.Sprintf1("(ST: %v)", v.Value) }
+
 type IorS_IT struct {
 	Value int
 }

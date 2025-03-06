@@ -7,6 +7,9 @@ type IntOrString interface {
 func (IntOrString_I) IntOrString_Union() {}
 func (IntOrString_S) IntOrString_Union() {}
 
+func (v IntOrString_I) String() string { return frt.Sprintf1("(I: %v)", v.Value) }
+func (v IntOrString_S) String() string { return frt.Sprintf1("(S: %v)", v.Value) }
+
 type IntOrString_I struct {
 	Value int
 }

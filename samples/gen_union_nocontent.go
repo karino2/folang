@@ -9,6 +9,9 @@ type AorB interface {
 func (AorB_A) AorB_Union() {}
 func (AorB_B) AorB_Union() {}
 
+func (v AorB_A) String() string { return "(A)" }
+func (v AorB_B) String() string { return "(B)" }
+
 type AorB_A struct {
 }
 
