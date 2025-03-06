@@ -156,6 +156,9 @@ return hoge{X: "abc", Y: 123}
 func (IntOrString_I) IntOrString_Union(){}
 func (IntOrString_S) IntOrString_Union(){}
 
+func (v IntOrString_I) String() string { return frt.Sprintf1("(I: %v)", v.Value) }
+func (v IntOrString_S) String() string { return frt.Sprintf1("(S: %v)", v.Value) }
+
 type IntOrString_I struct {
   Value int
 }
@@ -180,6 +183,9 @@ func New_IntOrString_S(v string) IntOrString { return IntOrString_S{v} }
 
 func (AorB_A) AorB_Union(){}
 func (AorB_B) AorB_Union(){}
+
+func (v AorB_A) String() string { return "(A)" }
+func (v AorB_B) String() string { return "(B)" }
 
 type AorB_A struct {
 }
@@ -1342,11 +1348,9 @@ let ika () =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type Expr =
-| BinOp of (int*string*int)
-
-let ika a b c =
-  (a, b, c) |> BinOp
+type Union =
+| A
+| B of string
 
 `
 

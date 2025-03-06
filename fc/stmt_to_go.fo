@@ -112,6 +112,7 @@ The result becomes following three types.
 - IntOrString interface
 - IntOrString_I struct (with Value int)
 - IntOrString_B struct (with Value bool)
+- IntOrString_I and IntOrString_B String() method
 
 We call IntOrString_I "case struct of I".
 */
@@ -164,6 +165,33 @@ func (IntOrString_B) IntOrString_Union(){}
 let udCSConformMethods (ud:UnionDef) =
   let method =  $"{ud.Name}_Union()" + "{}\n"
   udCases ud |> slice.Map (csToConformMethod ud.Name ud.Tparams method) |> strings.Concat ""
+
+/*
+func (v Rexpr_Atom) String() string    { return $"(Atom: {v.Value})" }
+func (v Result_Success[T0]) String() string { return $"(Success {v.Value})" }
+*/
+let csToStringerMethod (uname:string) tparams (cas: NameTypePair) =
+  let csname = unionCSName uname cas.Name
+  let tparaStr = toStringTParamsIfAny tparams
+  let b = buf.New ()
+  buf.Write b $"func (v {csname}{tparaStr}) String() string "
+  buf.Write b "{ return "
+  if cas.Ftype = FUnit then
+    buf.Write b "\""
+    buf.Write b $"({cas.Name})"
+    buf.Write b "\""
+  else
+    // buiuld frt.Sprintf2("(Atom: %v)", v.Value )
+    buf.Write b "frt.Sprintf1(\""
+    buf.Write b $"({cas.Name}"
+    buf.Write b ": %v)"
+    buf.Write b "\", v.Value)"
+  buf.Write b  " }\n"
+  buf.String b
+
+let udCSStringerMethods (ud:UnionDef) =
+  udCases ud |> slice.Map (csToStringerMethod ud.Name ud.Tparams) |> strings.Concat ""
+
 
 /*
 	type IntOrString_I struct {
@@ -263,6 +291,8 @@ let udfToGo (ud:UnionDef) =
   udUnionDef ud |> buf.Write b
   buf.Write b "\n"
   udCSConformMethods ud |> buf.Write b
+  buf.Write b "\n"
+  udCSStringerMethods ud |> buf.Write b
   buf.Write b "\n"
   udCases ud |> slice.Map (caseToGo ud) |> strings.Concat "" |> buf.Write b
   buf.String b

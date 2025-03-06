@@ -33,6 +33,9 @@ func TestUnionDefToGo(t *testing.T) {
 func (IntOrString_I) IntOrString_Union(){}
 func (IntOrString_S) IntOrString_Union(){}
 
+func (v IntOrString_I) String() string { return frt.Sprintf1("(I: %v)", v.Value) }
+func (v IntOrString_S) String() string { return frt.Sprintf1("(S: %v)", v.Value) }
+
 type IntOrString_I struct {
   Value int
 }
@@ -63,6 +66,9 @@ func TestUnionDefGenToGo(t *testing.T) {
 
 func (Result_Success[T0]) Result_Union(){}
 func (Result_Failure[T0]) Result_Union(){}
+
+func (v Result_Success[T0]) String() string { return frt.Sprintf1("(Success: %v)", v.Value) }
+func (v Result_Failure[T0]) String() string { return "(Failure)" }
 
 type Result_Success[T0 any] struct {
   Value T0

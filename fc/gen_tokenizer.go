@@ -59,6 +59,59 @@ func (TokenType_ELSE) TokenType_Union()         {}
 func (TokenType_ELIF) TokenType_Union()         {}
 func (TokenType_NOT) TokenType_Union()          {}
 
+func (v TokenType_ILLEGAL) String() string      { return "(ILLEGAL)" }
+func (v TokenType_EOF) String() string          { return "(EOF)" }
+func (v TokenType_SPACE) String() string        { return "(SPACE)" }
+func (v TokenType_IDENTIFIER) String() string   { return "(IDENTIFIER)" }
+func (v TokenType_EQ) String() string           { return "(EQ)" }
+func (v TokenType_LET) String() string          { return "(LET)" }
+func (v TokenType_FUN) String() string          { return "(FUN)" }
+func (v TokenType_TYPE) String() string         { return "(TYPE)" }
+func (v TokenType_EOL) String() string          { return "(EOL)" }
+func (v TokenType_PACKAGE) String() string      { return "(PACKAGE)" }
+func (v TokenType_IMPORT) String() string       { return "(IMPORT)" }
+func (v TokenType_LPAREN) String() string       { return "(LPAREN)" }
+func (v TokenType_RPAREN) String() string       { return "(RPAREN)" }
+func (v TokenType_LBRACE) String() string       { return "(LBRACE)" }
+func (v TokenType_RBRACE) String() string       { return "(RBRACE)" }
+func (v TokenType_LSBRACKET) String() string    { return "(LSBRACKET)" }
+func (v TokenType_RSBRACKET) String() string    { return "(RSBRACKET)" }
+func (v TokenType_LT) String() string           { return "(LT)" }
+func (v TokenType_GT) String() string           { return "(GT)" }
+func (v TokenType_LE) String() string           { return "(LE)" }
+func (v TokenType_GE) String() string           { return "(GE)" }
+func (v TokenType_BRACKET) String() string      { return "(BRACKET)" }
+func (v TokenType_PIPE) String() string         { return "(PIPE)" }
+func (v TokenType_STRING) String() string       { return "(STRING)" }
+func (v TokenType_SINTERP) String() string      { return "(SINTERP)" }
+func (v TokenType_COLON) String() string        { return "(COLON)" }
+func (v TokenType_COMMA) String() string        { return "(COMMA)" }
+func (v TokenType_SEMICOLON) String() string    { return "(SEMICOLON)" }
+func (v TokenType_INT_IMM) String() string      { return "(INT_IMM)" }
+func (v TokenType_OF) String() string           { return "(OF)" }
+func (v TokenType_BAR) String() string          { return "(BAR)" }
+func (v TokenType_BARBAR) String() string       { return "(BARBAR)" }
+func (v TokenType_RARROW) String() string       { return "(RARROW)" }
+func (v TokenType_UNDER_SCORE) String() string  { return "(UNDER_SCORE)" }
+func (v TokenType_MATCH) String() string        { return "(MATCH)" }
+func (v TokenType_WITH) String() string         { return "(WITH)" }
+func (v TokenType_TRUE) String() string         { return "(TRUE)" }
+func (v TokenType_FALSE) String() string        { return "(FALSE)" }
+func (v TokenType_PACKAGE_INFO) String() string { return "(PACKAGE_INFO)" }
+func (v TokenType_DOT) String() string          { return "(DOT)" }
+func (v TokenType_AND) String() string          { return "(AND)" }
+func (v TokenType_AMP) String() string          { return "(AMP)" }
+func (v TokenType_AMPAMP) String() string       { return "(AMPAMP)" }
+func (v TokenType_PLUS) String() string         { return "(PLUS)" }
+func (v TokenType_MINUS) String() string        { return "(MINUS)" }
+func (v TokenType_ASTER) String() string        { return "(ASTER)" }
+func (v TokenType_SLASH) String() string        { return "(SLASH)" }
+func (v TokenType_IF) String() string           { return "(IF)" }
+func (v TokenType_THEN) String() string         { return "(THEN)" }
+func (v TokenType_ELSE) String() string         { return "(ELSE)" }
+func (v TokenType_ELIF) String() string         { return "(ELIF)" }
+func (v TokenType_NOT) String() string          { return "(NOT)" }
+
 type TokenType_ILLEGAL struct {
 }
 

@@ -155,6 +155,9 @@ type Param interface {
 func (Param_PVar) Param_Union()  {}
 func (Param_PUnit) Param_Union() {}
 
+func (v Param_PVar) String() string  { return frt.Sprintf1("(PVar: %v)", v.Value) }
+func (v Param_PUnit) String() string { return "(PUnit)" }
+
 type Param_PVar struct {
 	Value Var
 }

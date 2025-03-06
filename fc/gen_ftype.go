@@ -33,6 +33,21 @@ func (FType_FFieldAccess) FType_Union() {}
 func (FType_FTypeVar) FType_Union()     {}
 func (FType_FParamd) FType_Union()      {}
 
+func (v FType_FInt) String() string         { return "(FInt)" }
+func (v FType_FString) String() string      { return "(FString)" }
+func (v FType_FBool) String() string        { return "(FBool)" }
+func (v FType_FFloat) String() string       { return "(FFloat)" }
+func (v FType_FUnit) String() string        { return "(FUnit)" }
+func (v FType_FAny) String() string         { return "(FAny)" }
+func (v FType_FFunc) String() string        { return frt.Sprintf1("(FFunc: %v)", v.Value) }
+func (v FType_FRecord) String() string      { return frt.Sprintf1("(FRecord: %v)", v.Value) }
+func (v FType_FUnion) String() string       { return frt.Sprintf1("(FUnion: %v)", v.Value) }
+func (v FType_FSlice) String() string       { return frt.Sprintf1("(FSlice: %v)", v.Value) }
+func (v FType_FTuple) String() string       { return frt.Sprintf1("(FTuple: %v)", v.Value) }
+func (v FType_FFieldAccess) String() string { return frt.Sprintf1("(FFieldAccess: %v)", v.Value) }
+func (v FType_FTypeVar) String() string     { return frt.Sprintf1("(FTypeVar: %v)", v.Value) }
+func (v FType_FParamd) String() string      { return frt.Sprintf1("(FParamd: %v)", v.Value) }
+
 type FType_FInt struct {
 }
 

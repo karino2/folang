@@ -26,6 +26,9 @@ type VarRef interface {
 func (VarRef_VRVar) VarRef_Union()  {}
 func (VarRef_VRSVar) VarRef_Union() {}
 
+func (v VarRef_VRVar) String() string  { return frt.Sprintf1("(VRVar: %v)", v.Value) }
+func (v VarRef_VRSVar) String() string { return frt.Sprintf1("(VRSVar: %v)", v.Value) }
+
 type VarRef_VRVar struct {
 	Value Var
 }
@@ -118,6 +121,23 @@ func (Expr_ETupleExpr) Expr_Union()      {}
 func (Expr_ELambda) Expr_Union()         {}
 func (Expr_EBinOpCall) Expr_Union()      {}
 func (Expr_EReturnableExpr) Expr_Union() {}
+
+func (v Expr_EGoEvalExpr) String() string     { return frt.Sprintf1("(EGoEvalExpr: %v)", v.Value) }
+func (v Expr_EStringLiteral) String() string  { return frt.Sprintf1("(EStringLiteral: %v)", v.Value) }
+func (v Expr_ESInterP) String() string        { return frt.Sprintf1("(ESInterP: %v)", v.Value) }
+func (v Expr_EIntImm) String() string         { return frt.Sprintf1("(EIntImm: %v)", v.Value) }
+func (v Expr_EUnit) String() string           { return "(EUnit)" }
+func (v Expr_EBoolLiteral) String() string    { return frt.Sprintf1("(EBoolLiteral: %v)", v.Value) }
+func (v Expr_EFunCall) String() string        { return frt.Sprintf1("(EFunCall: %v)", v.Value) }
+func (v Expr_EFieldAccess) String() string    { return frt.Sprintf1("(EFieldAccess: %v)", v.Value) }
+func (v Expr_EVarRef) String() string         { return frt.Sprintf1("(EVarRef: %v)", v.Value) }
+func (v Expr_ESlice) String() string          { return frt.Sprintf1("(ESlice: %v)", v.Value) }
+func (v Expr_ERecordGen) String() string      { return frt.Sprintf1("(ERecordGen: %v)", v.Value) }
+func (v Expr_ELazyBlock) String() string      { return frt.Sprintf1("(ELazyBlock: %v)", v.Value) }
+func (v Expr_ETupleExpr) String() string      { return frt.Sprintf1("(ETupleExpr: %v)", v.Value) }
+func (v Expr_ELambda) String() string         { return frt.Sprintf1("(ELambda: %v)", v.Value) }
+func (v Expr_EBinOpCall) String() string      { return frt.Sprintf1("(EBinOpCall: %v)", v.Value) }
+func (v Expr_EReturnableExpr) String() string { return frt.Sprintf1("(EReturnableExpr: %v)", v.Value) }
 
 type Expr_EGoEvalExpr struct {
 	Value GoEvalExpr
@@ -262,6 +282,9 @@ type ReturnableExpr interface {
 func (ReturnableExpr_RBlock) ReturnableExpr_Union()     {}
 func (ReturnableExpr_RMatchExpr) ReturnableExpr_Union() {}
 
+func (v ReturnableExpr_RBlock) String() string     { return frt.Sprintf1("(RBlock: %v)", v.Value) }
+func (v ReturnableExpr_RMatchExpr) String() string { return frt.Sprintf1("(RMatchExpr: %v)", v.Value) }
+
 type ReturnableExpr_RBlock struct {
 	Value Block
 }
@@ -280,6 +303,9 @@ type Stmt interface {
 
 func (Stmt_SLetVarDef) Stmt_Union() {}
 func (Stmt_SExprStmt) Stmt_Union()  {}
+
+func (v Stmt_SLetVarDef) String() string { return frt.Sprintf1("(SLetVarDef: %v)", v.Value) }
+func (v Stmt_SExprStmt) String() string  { return frt.Sprintf1("(SExprStmt: %v)", v.Value) }
 
 type Stmt_SLetVarDef struct {
 	Value LLetVarDef
@@ -304,6 +330,16 @@ func (RootStmt_RSDefStmt) RootStmt_Union()      {}
 func (RootStmt_RSMultipleDefs) RootStmt_Union() {}
 func (RootStmt_RSRootFuncDef) RootStmt_Union()  {}
 func (RootStmt_RSRootVarDef) RootStmt_Union()   {}
+
+func (v RootStmt_RSImport) String() string      { return frt.Sprintf1("(RSImport: %v)", v.Value) }
+func (v RootStmt_RSPackage) String() string     { return frt.Sprintf1("(RSPackage: %v)", v.Value) }
+func (v RootStmt_RSPackageInfo) String() string { return frt.Sprintf1("(RSPackageInfo: %v)", v.Value) }
+func (v RootStmt_RSDefStmt) String() string     { return frt.Sprintf1("(RSDefStmt: %v)", v.Value) }
+func (v RootStmt_RSMultipleDefs) String() string {
+	return frt.Sprintf1("(RSMultipleDefs: %v)", v.Value)
+}
+func (v RootStmt_RSRootFuncDef) String() string { return frt.Sprintf1("(RSRootFuncDef: %v)", v.Value) }
+func (v RootStmt_RSRootVarDef) String() string  { return frt.Sprintf1("(RSRootVarDef: %v)", v.Value) }
 
 type RootStmt_RSImport struct {
 	Value string
@@ -374,6 +410,9 @@ type LLetVarDef interface {
 func (LLetVarDef_LLOneVarDef) LLetVarDef_Union()  {}
 func (LLetVarDef_LLDestVarDef) LLetVarDef_Union() {}
 
+func (v LLetVarDef_LLOneVarDef) String() string  { return frt.Sprintf1("(LLOneVarDef: %v)", v.Value) }
+func (v LLetVarDef_LLDestVarDef) String() string { return frt.Sprintf1("(LLDestVarDef: %v)", v.Value) }
+
 type LLetVarDef_LLOneVarDef struct {
 	Value LetVarDef
 }
@@ -407,6 +446,9 @@ type DefStmt interface {
 
 func (DefStmt_DRecordDef) DefStmt_Union() {}
 func (DefStmt_DUnionDef) DefStmt_Union()  {}
+
+func (v DefStmt_DRecordDef) String() string { return frt.Sprintf1("(DRecordDef: %v)", v.Value) }
+func (v DefStmt_DUnionDef) String() string  { return frt.Sprintf1("(DUnionDef: %v)", v.Value) }
 
 type DefStmt_DRecordDef struct {
 	Value RecordDef

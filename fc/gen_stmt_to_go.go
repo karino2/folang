@@ -124,6 +124,32 @@ func udCSConformMethods(ud UnionDef) string {
 	})), (func(_r0 []string) string { return strings.Concat("", _r0) }))
 }
 
+func csToStringerMethod(uname string, tparams []string, cas NameTypePair) string {
+	csname := unionCSName(uname, cas.Name)
+	tparaStr := toStringTParamsIfAny(tparams)
+	b := buf.New()
+	buf.Write(b, frt.SInterP("func (v %s%s) String() string ", csname, tparaStr))
+	buf.Write(b, "{ return ")
+	frt.IfElseUnit(frt.OpEqual(cas.Ftype, New_FType_FUnit), (func() {
+		buf.Write(b, "\"")
+		buf.Write(b, frt.SInterP("(%s)", cas.Name))
+		buf.Write(b, "\"")
+	}), (func() {
+		buf.Write(b, "frt.Sprintf1(\"")
+		buf.Write(b, frt.SInterP("(%s", cas.Name))
+		buf.Write(b, ": %v)")
+		buf.Write(b, "\", v.Value)")
+	}))
+	buf.Write(b, " }\n")
+	return buf.String(b)
+}
+
+func udCSStringerMethods(ud UnionDef) string {
+	return frt.Pipe(frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []string {
+		return slice.Map((func(_r0 NameTypePair) string { return csToStringerMethod(ud.Name, ud.Tparams, _r0) }), _r0)
+	})), (func(_r0 []string) string { return strings.Concat("", _r0) }))
+}
+
 func udCSDef(ud UnionDef, cas NameTypePair) string {
 	b := buf.New()
 	buf.Write(b, "type ")
@@ -201,6 +227,8 @@ func udfToGo(ud UnionDef) string {
 	frt.PipeUnit(udUnionDef(ud), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n")
 	frt.PipeUnit(udCSConformMethods(ud), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "\n")
+	frt.PipeUnit(udCSStringerMethods(ud), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n")
 	frt.PipeUnit(frt.Pipe(frt.Pipe(udCases(ud), (func(_r0 []NameTypePair) []string {
 		return slice.Map((func(_r0 NameTypePair) string { return caseToGo(ud, _r0) }), _r0)

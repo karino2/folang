@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -19,13 +18,11 @@ func TestFArgs(t *testing.T) {
 	}
 }
 
-func toGoSimple(ftype FType) string { return fmt.Sprintf("%v", ftype) }
-
 func TestFFuncToGo(t *testing.T) {
 	target := FuncType{[]FType{New_FType_FInt, New_FType_FInt, New_FType_FString, New_FType_FString}}
-	got := funcTypeToGo(target, toGoSimple)
+	got := funcTypeToGo(target, FTypeToGo)
 
-	if got != "func ({},{},{}) {}" {
+	if got != "func (int,int,string) string" {
 		t.Errorf("got %s", got)
 	}
 }
