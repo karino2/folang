@@ -92,13 +92,13 @@ Build following case header. (If unit or _ variable, generate code appropriately
   case IntOrBool_I:
     [VarName] := tmpV
 */
-let mpToCaseHeader (uname: string) (mp: MatchPattern) (tmpVarName: string) =
+let umpToCaseHeader (uname: string) (ump: UnionMatchPattern) (tmpVarName: string) =
   let b = buf.New ()
   buf.Write b "case "
-  unionCSName uname mp.CaseId |> buf.Write b
+  unionCSName uname ump.CaseId |> buf.Write b
   buf.Write b ":\n"
-  if mp.VarName <> "_" && mp.VarName <> "" then
-    buf.Write b mp.VarName
+  if ump.VarName <> "_" && ump.VarName <> "" then
+    buf.Write b ump.VarName
     buf.Write b " := "
     buf.Write b tmpVarName
     buf.Write b ".Value"
@@ -114,48 +114,51 @@ case IntOrBool_I:
 	[VarName] := tmpV
 	body...
 
-or
+*/
+let umrToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (umr: UnionMatchRule)  =
+  let b = buf.New ()
+  let mp = umr.UnionPattern
+  umpToCaseHeader uname mp tmpVarName |> buf.Write b
+  btogRet umr.Body |> buf.Write b
+  buf.Write b "\n"
+  buf.String b  
 
+/*
 default:
    body...
 
 */
-let mrToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (mr: MatchRule)  =
+let drToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (db: Block)  =
   let b = buf.New ()
-  let mp = mr.Pattern
-  let cheader = if mp.CaseId = "_" then
-                  "default:\n"
-                else
-                  mpToCaseHeader uname mp tmpVarName
-  buf.Write b cheader
-  btogRet mr.Body |> buf.Write b
+  buf.Write b "default:\n"
+  btogRet db |> buf.Write b
   buf.Write b "\n"
   buf.String b  
 
-let mrHasNoCaseVar (mr: MatchRule) =
-  let pat = mr.Pattern
-  pat.CaseId = "_" || pat.VarName = "" || pat.VarName = "_"
+let umrHasNoCaseVar (umr: UnionMatchRule) =
+  let pat = umr.UnionPattern
+  pat.VarName = "" || pat.VarName = "_"
 
 /*
   If atlease one value or not (if not, tmp var is not necessary).
 */
-let meHasCaseVar (me:MatchExpr) =
-  not (slice.Forall mrHasNoCaseVar me.Rules)
-
-let mrIsDefault (mr:MatchRule) =
-  let pat = mr.Pattern
-  pat.CaseId = "_"
-
+let mrsHasCaseVar (rules:MatchRules) =
+  let allNoCaseF = slice.Forall umrHasNoCaseVar
+  match rules with
+  | Unions us -> not (allNoCaseF us)
+  | UnionsWD uds -> not (allNoCaseF uds.Unions)
+  | DefaultOnly -> false
 
 let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   let ttype = ExprToType me.Target
   let uttype = GoEval<UnionType> "ttype.(FType_FUnion).Value" // for non UnionType, NYI.
   let uname = utName uttype
-  let hasCaseVar = meHasCaseVar me
-  let hasDefault = slice.Forany mrIsDefault me.Rules
+  let hasCaseVar = mrsHasCaseVar me.Rules
   let tmpVarName = if hasCaseVar then uniqueTmpVarName () else ""
-  let mrtocase = mrToCase btogRet uname tmpVarName
   let b = buf.New ()
+  let umrstocases = slice.Map (umrToCase btogRet uname tmpVarName)
+  let drtocase = drToCase btogRet uname tmpVarName
+  let writeUmrs = fun umrs -> umrstocases umrs |> strings.Concat "" |> buf.Write b
   buf.Write b "switch "
   if hasCaseVar then
     buf.Write b tmpVarName
@@ -163,11 +166,16 @@ let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
   buf.Write b "("
   toGo me.Target |> buf.Write b 
   buf.Write b ").(type){\n"
-  slice.Map mrtocase me.Rules
-   |> strings.Concat ""
-   |> buf.Write b
-  if not hasDefault then
-     buf.Write b "default:\npanic(\"Union pattern fail. Never reached here.\")\n"
+  // case code.
+  match me.Rules with
+  | Unions us ->
+    writeUmrs us
+    buf.Write b "default:\npanic(\"Union pattern fail. Never reached here.\")\n"
+  | UnionsWD uds ->
+    writeUmrs uds.Unions
+    drtocase uds.Default |> buf.Write b
+  | DefaultOnly db ->
+    drtocase db |> buf.Write b
   buf.Write b "}"
   buf.String b
 

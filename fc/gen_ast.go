@@ -86,7 +86,7 @@ func transVarVR(transV func(Var) Var, vr VarRef) VarRef {
 	}
 }
 
-type MatchPattern struct {
+type UnionMatchPattern struct {
 	CaseId  string
 	VarName string
 }
@@ -267,13 +267,47 @@ type Block struct {
 type LazyBlock struct {
 	Block Block
 }
-type MatchRule struct {
-	Pattern MatchPattern
-	Body    Block
+type UnionMatchRule struct {
+	UnionPattern UnionMatchPattern
+	Body         Block
 }
+type UnionMatchRulesWD struct {
+	Unions  []UnionMatchRule
+	Default Block
+}
+type MatchRules interface {
+	MatchRules_Union()
+}
+
+func (MatchRules_Unions) MatchRules_Union()      {}
+func (MatchRules_UnionsWD) MatchRules_Union()    {}
+func (MatchRules_DefaultOnly) MatchRules_Union() {}
+
+func (v MatchRules_Unions) String() string      { return frt.Sprintf1("(Unions: %v)", v.Value) }
+func (v MatchRules_UnionsWD) String() string    { return frt.Sprintf1("(UnionsWD: %v)", v.Value) }
+func (v MatchRules_DefaultOnly) String() string { return frt.Sprintf1("(DefaultOnly: %v)", v.Value) }
+
+type MatchRules_Unions struct {
+	Value []UnionMatchRule
+}
+
+func New_MatchRules_Unions(v []UnionMatchRule) MatchRules { return MatchRules_Unions{v} }
+
+type MatchRules_UnionsWD struct {
+	Value UnionMatchRulesWD
+}
+
+func New_MatchRules_UnionsWD(v UnionMatchRulesWD) MatchRules { return MatchRules_UnionsWD{v} }
+
+type MatchRules_DefaultOnly struct {
+	Value Block
+}
+
+func New_MatchRules_DefaultOnly(v Block) MatchRules { return MatchRules_DefaultOnly{v} }
+
 type MatchExpr struct {
 	Target Expr
-	Rules  []MatchRule
+	Rules  MatchRules
 }
 type ReturnableExpr interface {
 	ReturnableExpr_Union()

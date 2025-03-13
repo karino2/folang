@@ -241,7 +241,6 @@ let recNTUnify (rec:RecordType) (ntp: string*FType) =
    let rpair = frGetField rec name
    unifyType ftp rpair.Ftype
 
-
 let collectExprRel (expr:Expr) : []UniRel =
   let colE = collectExprRel
   let colB = collectBlock colE (collectStmtRel colE)
@@ -285,7 +284,7 @@ let collectExprRel (expr:Expr) : []UniRel =
     | RBlock bl ->
       colB bl
     | RMatchExpr me ->
-      slice.Map _.Body me.Rules
+      mrsToBlocks me.Rules
       |> slice.Map colB
       |> slice.Concat
       |> slice.Append (colE me.Target)

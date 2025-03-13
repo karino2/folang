@@ -83,13 +83,13 @@ func lbToGo(bToRet func(Block) string, lb LazyBlock) string {
 	return wrapFunc(FTypeToGo, rtype, returnBody)
 }
 
-func mpToCaseHeader(uname string, mp MatchPattern, tmpVarName string) string {
+func umpToCaseHeader(uname string, ump UnionMatchPattern, tmpVarName string) string {
 	b := buf.New()
 	buf.Write(b, "case ")
-	frt.PipeUnit(unionCSName(uname, mp.CaseId), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(unionCSName(uname, ump.CaseId), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ":\n")
-	frt.IfOnly((frt.OpNotEqual(mp.VarName, "_") && frt.OpNotEqual(mp.VarName, "")), (func() {
-		buf.Write(b, mp.VarName)
+	frt.IfOnly((frt.OpNotEqual(ump.VarName, "_") && frt.OpNotEqual(ump.VarName, "")), (func() {
+		buf.Write(b, ump.VarName)
 		buf.Write(b, " := ")
 		buf.Write(b, tmpVarName)
 		buf.Write(b, ".Value")
@@ -98,47 +98,62 @@ func mpToCaseHeader(uname string, mp MatchPattern, tmpVarName string) string {
 	return buf.String(b)
 }
 
-func mrToCase(btogRet func(Block) string, uname string, tmpVarName string, mr MatchRule) string {
+func umrToCase(btogRet func(Block) string, uname string, tmpVarName string, umr UnionMatchRule) string {
 	b := buf.New()
-	mp := mr.Pattern
-	cheader := frt.IfElse(frt.OpEqual(mp.CaseId, "_"), (func() string {
-		return "default:\n"
-	}), (func() string {
-		return mpToCaseHeader(uname, mp, tmpVarName)
-	}))
-	buf.Write(b, cheader)
-	frt.PipeUnit(btogRet(mr.Body), (func(_r0 string) { buf.Write(b, _r0) }))
+	mp := umr.UnionPattern
+	frt.PipeUnit(umpToCaseHeader(uname, mp, tmpVarName), (func(_r0 string) { buf.Write(b, _r0) }))
+	frt.PipeUnit(btogRet(umr.Body), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, "\n")
 	return buf.String(b)
 }
 
-func mrHasNoCaseVar(mr MatchRule) bool {
-	pat := mr.Pattern
-	return ((frt.OpEqual(pat.CaseId, "_") || frt.OpEqual(pat.VarName, "")) || frt.OpEqual(pat.VarName, "_"))
+func drToCase(btogRet func(Block) string, uname string, tmpVarName string, db Block) string {
+	b := buf.New()
+	buf.Write(b, "default:\n")
+	frt.PipeUnit(btogRet(db), (func(_r0 string) { buf.Write(b, _r0) }))
+	buf.Write(b, "\n")
+	return buf.String(b)
 }
 
-func meHasCaseVar(me MatchExpr) bool {
-	return frt.OpNot(slice.Forall(mrHasNoCaseVar, me.Rules))
+func umrHasNoCaseVar(umr UnionMatchRule) bool {
+	pat := umr.UnionPattern
+	return (frt.OpEqual(pat.VarName, "") || frt.OpEqual(pat.VarName, "_"))
 }
 
-func mrIsDefault(mr MatchRule) bool {
-	pat := mr.Pattern
-	return frt.OpEqual(pat.CaseId, "_")
+func mrsHasCaseVar(rules MatchRules) bool {
+	allNoCaseF := (func(_r0 []UnionMatchRule) bool { return slice.Forall(umrHasNoCaseVar, _r0) })
+	switch _v2 := (rules).(type) {
+	case MatchRules_Unions:
+		us := _v2.Value
+		return frt.OpNot(allNoCaseF(us))
+	case MatchRules_UnionsWD:
+		uds := _v2.Value
+		return frt.OpNot(allNoCaseF(uds.Unions))
+	case MatchRules_DefaultOnly:
+		return false
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
 }
 
 func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) string {
 	ttype := ExprToType(me.Target)
 	uttype := ttype.(FType_FUnion).Value
 	uname := utName(uttype)
-	hasCaseVar := meHasCaseVar(me)
-	hasDefault := slice.Forany(mrIsDefault, me.Rules)
+	hasCaseVar := mrsHasCaseVar(me.Rules)
 	tmpVarName := frt.IfElse(hasCaseVar, (func() string {
 		return uniqueTmpVarName()
 	}), (func() string {
 		return ""
 	}))
-	mrtocase := (func(_r0 MatchRule) string { return mrToCase(btogRet, uname, tmpVarName, _r0) })
 	b := buf.New()
+	umrstocases := (func(_r0 []UnionMatchRule) []string {
+		return slice.Map((func(_r0 UnionMatchRule) string { return umrToCase(btogRet, uname, tmpVarName, _r0) }), _r0)
+	})
+	drtocase := (func(_r0 Block) string { return drToCase(btogRet, uname, tmpVarName, _r0) })
+	writeUmrs := func(umrs []UnionMatchRule) {
+		frt.PipeUnit(frt.Pipe(umrstocases(umrs), (func(_r0 []string) string { return strings.Concat("", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
+	}
 	buf.Write(b, "switch ")
 	frt.IfOnly(hasCaseVar, (func() {
 		buf.Write(b, tmpVarName)
@@ -147,10 +162,23 @@ func meToGoReturn(toGo func(Expr) string, btogRet func(Block) string, me MatchEx
 	buf.Write(b, "(")
 	frt.PipeUnit(toGo(me.Target), (func(_r0 string) { buf.Write(b, _r0) }))
 	buf.Write(b, ").(type){\n")
-	frt.PipeUnit(frt.Pipe(slice.Map(mrtocase, me.Rules), (func(_r0 []string) string { return strings.Concat("", _r0) })), (func(_r0 string) { buf.Write(b, _r0) }))
-	frt.IfOnly(frt.OpNot(hasDefault), (func() {
-		buf.Write(b, "default:\npanic(\"Union pattern fail. Never reached here.\")\n")
-	}))
+	(func() {
+		switch _v3 := (me.Rules).(type) {
+		case MatchRules_Unions:
+			us := _v3.Value
+			writeUmrs(us)
+			buf.Write(b, "default:\npanic(\"Union pattern fail. Never reached here.\")\n")
+		case MatchRules_UnionsWD:
+			uds := _v3.Value
+			writeUmrs(uds.Unions)
+			frt.PipeUnit(drtocase(uds.Default), (func(_r0 string) { buf.Write(b, _r0) }))
+		case MatchRules_DefaultOnly:
+			db := _v3.Value
+			frt.PipeUnit(drtocase(db), (func(_r0 string) { buf.Write(b, _r0) }))
+		default:
+			panic("Union pattern fail. Never reached here.")
+		}
+	})()
 	buf.Write(b, "}")
 	return buf.String(b)
 }
@@ -168,12 +196,12 @@ func meToGo(toGo func(Expr) string, btogRet func(Block) string, me MatchExpr) st
 func reToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr ReturnableExpr) string {
 	rtgr := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	btogoRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, rtgr, _r0) })
-	switch _v2 := (rexpr).(type) {
+	switch _v4 := (rexpr).(type) {
 	case ReturnableExpr_RBlock:
-		b := _v2.Value
+		b := _v4.Value
 		return blockToGoReturn(sToGo, eToGo, rtgr, b)
 	case ReturnableExpr_RMatchExpr:
-		me := _v2.Value
+		me := _v4.Value
 		return meToGoReturn(eToGo, btogoRet, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -183,12 +211,12 @@ func reToGoReturn(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr Return
 func reToGo(sToGo func(Stmt) string, eToGo func(Expr) string, rexpr ReturnableExpr) string {
 	rtgr := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	btogRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, rtgr, _r0) })
-	switch _v3 := (rexpr).(type) {
+	switch _v5 := (rexpr).(type) {
 	case ReturnableExpr_RBlock:
-		b := _v3.Value
+		b := _v5.Value
 		return blockToGo(sToGo, eToGo, rtgr, b)
 	case ReturnableExpr_RMatchExpr:
-		me := _v3.Value
+		me := _v5.Value
 		return meToGo(eToGo, btogRet, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -206,12 +234,12 @@ func ntpairToParam(tGo func(FType) string, ntp frt.Tuple2[string, FType]) string
 }
 
 func varRefToGo(tGo func(FType) string, vr VarRef) string {
-	switch _v4 := (vr).(type) {
+	switch _v6 := (vr).(type) {
 	case VarRef_VRVar:
-		v := _v4.Value
+		v := _v6.Value
 		return v.Name
 	case VarRef_VRSVar:
-		sv := _v4.Value
+		sv := _v6.Value
 		return (sv.Var.Name + tArgsToGo(tGo, sv.SpecList))
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -344,53 +372,53 @@ func ExprToGo(sToGo func(Stmt) string, expr Expr) string {
 	eToGo := (func(_r0 Expr) string { return ExprToGo(sToGo, _r0) })
 	reToGoRet := (func(_r0 ReturnableExpr) string { return reToGoReturn(sToGo, eToGo, _r0) })
 	bToGoRet := (func(_r0 Block) string { return blockToGoReturn(sToGo, eToGo, reToGoRet, _r0) })
-	switch _v5 := (expr).(type) {
+	switch _v7 := (expr).(type) {
 	case Expr_EBoolLiteral:
-		b := _v5.Value
+		b := _v7.Value
 		return frt.Sprintf1("%t", b)
 	case Expr_EGoEvalExpr:
-		ge := _v5.Value
+		ge := _v7.Value
 		return reinterpretEscape(ge.GoStmt)
 	case Expr_EStringLiteral:
-		s := _v5.Value
+		s := _v7.Value
 		return frt.Sprintf1("\"%s\"", s)
 	case Expr_ESInterP:
-		sp := _v5.Value
+		sp := _v7.Value
 		return sinterpToGo(sp)
 	case Expr_EIntImm:
-		i := _v5.Value
+		i := _v7.Value
 		return frt.Sprintf1("%d", i)
 	case Expr_EUnit:
 		return ""
 	case Expr_EFieldAccess:
-		fa := _v5.Value
+		fa := _v7.Value
 		return faToGo(eToGo, fa)
 	case Expr_EVarRef:
-		vr := _v5.Value
+		vr := _v7.Value
 		return varRefName(vr)
 	case Expr_ESlice:
-		es := _v5.Value
+		es := _v7.Value
 		return sliceToGo(FTypeToGo, eToGo, es)
 	case Expr_ETupleExpr:
-		es := _v5.Value
+		es := _v7.Value
 		return tupleToGo(eToGo, es)
 	case Expr_ELambda:
-		le := _v5.Value
+		le := _v7.Value
 		return lambdaToGo(bToGoRet, le)
 	case Expr_EBinOpCall:
-		bop := _v5.Value
+		bop := _v7.Value
 		return binOpToGo(eToGo, bop)
 	case Expr_ERecordGen:
-		rg := _v5.Value
+		rg := _v7.Value
 		return rgToGo(eToGo, rg)
 	case Expr_EReturnableExpr:
-		re := _v5.Value
+		re := _v7.Value
 		return reToGo(sToGo, eToGo, re)
 	case Expr_EFunCall:
-		fc := _v5.Value
+		fc := _v7.Value
 		return fcToGo(FTypeToGo, eToGo, fc)
 	case Expr_ELazyBlock:
-		lb := _v5.Value
+		lb := _v7.Value
 		return lbToGo(bToGoRet, lb)
 	default:
 		panic("Union pattern fail. Never reached here.")

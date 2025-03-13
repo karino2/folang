@@ -43,7 +43,7 @@ Only support variable match for a while:
 | I i -> ...
 | Record r -> ...
 */
-type MatchPattern = {CaseId: string; VarName: string}
+type UnionMatchPattern = {CaseId: string; VarName: string}
 
 // external package func info.
 type FuncFactory = {Tparams:[]string; Targets:[]FType}
@@ -81,8 +81,13 @@ and NEPair = {Name: string; Expr: Expr}
 and RecordGen = {FieldsNV: []NEPair; RecordType: RecordType}
 and Block = {Stmts: []Stmt; FinalExpr: Expr}
 and LazyBlock = {Block: Block}
-and MatchRule = {Pattern: MatchPattern; Body: Block}
-and MatchExpr = {Target: Expr; Rules: []MatchRule}
+and UnionMatchRule = {UnionPattern: UnionMatchPattern; Body: Block}
+and UnionMatchRulesWD = {Unions: []UnionMatchRule; Default: Block}
+and MatchRules =
+| Unions of []UnionMatchRule
+| UnionsWD of UnionMatchRulesWD
+| DefaultOnly of Block
+and MatchExpr = {Target: Expr; Rules: MatchRules}
 and ReturnableExpr =
 | RBlock of Block
 | RMatchExpr of MatchExpr

@@ -36,10 +36,19 @@ let transStmt (transV:Var->Var) (transE:Expr->Expr) (stmt:Stmt) =
   | SExprStmt e -> 
     transE e |> SExprStmt
 
-let transExprMatchRule (pExpr: Expr->Expr) (mr:MatchRule) =
-  let nbody = blockToExpr mr.Body |> pExpr |> exprToBlock
-  {Pattern=mr.Pattern; Body=nbody}
+let umrMapBlock (pBlock: Block->Block) (umr: UnionMatchRule) =
+   let nbody = pBlock umr.Body
+   {UnionPattern=umr.UnionPattern; Body=nbody}
 
+let mrsMapBlock pBlock (mr:MatchRules) =
+  let one = umrMapBlock pBlock
+  match mr with
+  | Unions us -> slice.Map one us |> Unions
+  | UnionsWD uds ->
+    let nus = slice.Map one uds.Unions
+    let nd = pBlock uds.Default
+    {Unions=nus; Default=nd} |> UnionsWD
+    
 let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let nss = bl.Stmts |> slice.Map transS
   let fexpr = transE bl.FinalExpr
@@ -96,7 +105,7 @@ let transExpr transT transV transS transB (expr:Expr) : Expr =
       |> blockToExpr
     | RMatchExpr me ->
       let ntarget = transE me.Target
-      let nrules = slice.Map (transExprMatchRule transE) me.Rules
+      let nrules = mrsMapBlock transB me.Rules
       {Target=ntarget; Rules=nrules}
       |> RMatchExpr
       |> EReturnableExpr
@@ -188,6 +197,12 @@ let collectTVarBlock (collE:Expr->[]string) (collS:Stmt->[]string) (bl:Block) =
   let fexpr = collE bl.FinalExpr
   slice.Append nss fexpr
 
+let mrsToBlocks (rules:MatchRules) =
+  match rules with
+  | Unions us -> slice.Map _.Body us
+  | UnionsWD uds -> slice.Map _.Body uds.Unions |> slice.PushLast uds.Default
+  | DefaultOnly db -> [db]
+
 let collectTVarExpr (expr:Expr) : []string =
   let recurse = collectTVarExpr
   let collS = collectTVarStmt recurse
@@ -215,7 +230,7 @@ let collectTVarExpr (expr:Expr) : []string =
     | RBlock bl ->
       collB bl
     | RMatchExpr me ->
-      slice.Map _.Body me.Rules |> slice.Collect collB
+      mrsToBlocks me.Rules |> slice.Collect collB
       |> slice.Append (recurse me.Target)
   | EFunCall fc ->
     let colt = varRefVarType fc.TargetFunc |> collectTVarFType 

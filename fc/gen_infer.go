@@ -285,9 +285,7 @@ func collectExprRel(expr Expr) []UniRel {
 			return colB(bl)
 		case ReturnableExpr_RMatchExpr:
 			me := _v12.Value
-			return frt.Pipe(frt.Pipe(frt.Pipe(slice.Map(func(_v2 MatchRule) Block {
-				return _v2.Body
-			}, me.Rules), (func(_r0 []Block) [][]UniRel { return slice.Map(colB, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(colE(me.Target), _r0) }))
+			return frt.Pipe(frt.Pipe(frt.Pipe(mrsToBlocks(me.Rules), (func(_r0 []Block) [][]UniRel { return slice.Map(colB, _r0) })), slice.Concat), (func(_r0 []UniRel) []UniRel { return slice.Append(colE(me.Target), _r0) }))
 		default:
 			panic("Union pattern fail. Never reached here.")
 		}

@@ -496,59 +496,87 @@ let parseAtomList (parseE: ParseState->ParseState*Expr) (ps:ParseState) : ParseS
     parseAtomList parseE ps2
     |> MapR (slice.PushHead one)
 
+/*
+  begin with
+  '|' '_'
+  or not.
+*/
+let isDefaultMR ps =
+  if psCurIsNot BAR ps then
+    false
+  else
+    let ps2 = psConsume BAR ps
+    (psCurrentTT ps2) = UNDER_SCORE
 
 /*
-  MATCH_RULE = '|' IDENTIFIER IDENTIFIER '->' BLOCK
-            |  '|' '_' '->' BLOCK
+DEFAULT_MATCH_RULE = '|' '_' '->' BLOCK
+
+return (ps, block).
+*/
+let parseDefaultMatchRule (pBlock: ParseState->ParseState*Block) (ps:ParseState) =
+  psMulConsume [BAR; UNDER_SCORE; RARROW] ps
+                |> psSkipEOL
+                |> pBlock
+
+/*
+  UNION_MATCH_RULE = '|' IDENTIFIER (IDENTIFIER|UNDER_SCORE)?'->' BLOCK
 
 ex:
-	| Record r -> hoge r
-  | _-> ""
+  | Record r -> hoge r
+  | Record _ -> ""
+  | None -> ""
 */
-let parseMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) =
-  let ps2 = psConsume BAR ps
-  match psCurrentTT ps2 with
-  | UNDER_SCORE -> // default case
-    let (ps3, block) = psMulConsume [UNDER_SCORE; RARROW] ps2
-                      |> psSkipEOL
-                      |> pBlock
-    //  return &MatchRule{&MatchPattern{"_", ""}, block}
-    let mp = {CaseId="_"; VarName=""}
-    {Pattern=mp; Body=block}
-    |> PairL ps3
-  | _ -> // normal case
-    let (ps3, cname) = psIdentNameNx ps2
-    let (ps4, vname) = match (psCurrentTT ps3) with
-                        | RARROW ->
-                          // no content case. use "".
-                          (ps3, "")
-                        | UNDER_SCORE ->
-                          (ps3, "_") |> MapL psNext
-                        | _ ->
-                           psIdentNameNx ps3
-    let ps5 = psConsume RARROW ps4 |> psSkipEOL |> psPushScope
-    if vname <> "" && vname <> "_" then
-      let tt = ExprToType target
-      // currently, match expect union type
-      let fu = GoEval<UnionType> "tt.(FType_FUnion).Value"
-      let cp = lookupCase fu cname
-      scDefVar ps5.scope vname {Var.Name=vname; Ftype=cp.Ftype}
-    let (ps6, block) = pBlock ps5 |> MapL psPopScope
-    let mp = {CaseId=cname; VarName=vname}
-    {Pattern=mp; Body=block}
-    |> PairL ps6
+let parseUnonMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) =
+  let (ps3, cname) = psConsume BAR ps |> psIdentNameNx
+  let (ps4, vname) = match (psCurrentTT ps3) with
+                      | RARROW ->
+                        // no content case. use "".
+                        (ps3, "")
+                      | UNDER_SCORE ->
+                        (ps3, "_") |> MapL psNext
+                      | _ ->
+                          psIdentNameNx ps3
+  let ps5 = psConsume RARROW ps4 |> psSkipEOL |> psPushScope
+  if vname <> "" && vname <> "_" then
+    let tt = ExprToType target
+    // currently, match expect union type
+    let fu = GoEval<UnionType> "tt.(FType_FUnion).Value"
+    let cp = lookupCase fu cname
+    scDefVar ps5.scope vname {Var.Name=vname; Ftype=cp.Ftype}
+  let (ps6, block) = pBlock ps5 |> MapL psPopScope
+  let ump = {CaseId=cname; VarName=vname}
+  {UnionPattern=ump; Body=block}
+  |> PairL ps6
 
 let insideOffside (ps:ParseState) =
   let curCol = psCurCol ps
   let curOff = psCurOffside ps
   curCol >= curOff
 
-let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : ParseState*[]MatchRule =
-  let (ps2, one) = parseMatchRule pBlock target ps |> MapL psSkipEOL
-  if (psCurrentTT ps2) = BAR && insideOffside ps2 then
-    parseMatchRules pBlock target ps2 |> MapR (slice.PushHead one)
+let parseUnionMatchRules pBlock target ps =
+  let nextIsUMR = fun tps -> (insideOffside tps) && (psCurIs BAR tps) && not (isDefaultMR tps)
+  let endPred = fun tps -> not (nextIsUMR tps)
+  let parseOne = parseUnonMatchRule pBlock target
+  ParseList2 parseOne endPred psSkipEOL ps
+
+/*
+MATCH_RULES = UNION_MATCH_RULES (DEFAULT_MATCH_RULE)?
+            | DEFAULT_MATCH_RULE
+*/
+let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : ParseState*MatchRules =
+  if isDefaultMR ps then
+    // default only
+    parseDefaultMatchRule pBlock ps
+    |> MapR DefaultOnly
   else
-    (ps2, [one])
+    let (ps2, us) = parseUnionMatchRules pBlock target ps
+    if (insideOffside ps2) && (isDefaultMR ps2) then
+      let (ps3, db) = parseDefaultMatchRule pBlock ps2
+      {Unions=us; Default=db}
+      |> UnionsWD
+      |> PairL ps3
+    else
+      (ps2, Unions us)
 
 /*
   MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+

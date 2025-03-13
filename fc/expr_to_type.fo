@@ -42,8 +42,13 @@ let exprToBlock (bexpr:Expr) =
     frt.Empty<Block> ()
 
 let meToType (toT: Expr->FType) (me:MatchExpr) =
-  let frule = me.Rules |> slice.Head
-  frule.Body |> blockToExpr |> toT
+  let bToT = fun b -> blockToExpr b |> toT
+  match me.Rules with
+  | Unions us ->
+    slice.Head us |> _.Body |> bToT
+  | UnionsWD uds ->
+    slice.Head uds.Unions |> _.Body |> bToT
+  | DefaultOnly db -> bToT db
 
 let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
   match rexpr with
