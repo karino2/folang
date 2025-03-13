@@ -54,6 +54,9 @@ func mrsMapBlock(pBlock func(Block) Block, mr MatchRules) MatchRules {
 		nus := slice.Map(one, uds.Unions)
 		nd := pBlock(uds.Default)
 		return frt.Pipe(UnionMatchRulesWD{Unions: nus, Default: nd}, New_MatchRules_UnionsWD)
+	case MatchRules_DefaultOnly:
+		db := _v3.Value
+		return frt.Pipe(pBlock(db), New_MatchRules_DefaultOnly)
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}

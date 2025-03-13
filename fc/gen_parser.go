@@ -4,6 +4,8 @@ import "github.com/karino2/folang/pkg/frt"
 
 import "github.com/karino2/folang/pkg/slice"
 
+import "github.com/karino2/folang/pkg/dict"
+
 func parsePackage(ps ParseState) frt.Tuple2[ParseState, RootStmt] {
 	return frt.Pipe(frt.Pipe(psConsume(New_TokenType_PACKAGE, ps), psIdentNameNxL), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, RootStmt] {
 		return MapR(New_RootStmt_RSPackage, _r0)
@@ -198,7 +200,8 @@ func parseParam(ps ParseState) frt.Tuple2[ParseState, Param] {
 		scDefVar(ps2.scope, vname, v)
 		return frt.NewTuple2(ps2, New_Param_PVar(v))
 	default:
-		panic("Union pattern fail. Never reached here.")
+		psPanic(ps, "Unexpected token in parameter")
+		return frt.NewTuple2(ps, New_Param_PUnit)
 	}
 }
 
@@ -548,6 +551,44 @@ func parseUnionMatchRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block],
 	return ParseList2(parseOne, endPred, psSkipEOL, ps)
 }
 
+func exaustiveCheck(ttype FType, ucases []UnionMatchRule, ps ParseState) {
+	switch _v2 := (ttype).(type) {
+	case FType_FUnion:
+		fu := _v2.Value
+		ui := lookupUniInfo(fu)
+		cmap := frt.Pipe(frt.Pipe(ui.Cases, (func(_r0 []NameTypePair) []frt.Tuple2[string, bool] {
+			return slice.Map(func(ntp NameTypePair) frt.Tuple2[string, bool] {
+				return frt.NewTuple2(ntp.Name, false)
+			}, _r0)
+		})), dict.ToDict)
+		cases := frt.Pipe(frt.Pipe(ucases, (func(_r0 []UnionMatchRule) []UnionMatchPattern {
+			return slice.Map(func(_v1 UnionMatchRule) UnionMatchPattern {
+				return _v1.UnionPattern
+			}, _r0)
+		})), (func(_r0 []UnionMatchPattern) []string {
+			return slice.Map(func(_v2 UnionMatchPattern) string {
+				return _v2.CaseId
+			}, _r0)
+		}))
+		folder := func(dic dict.Dict[string, bool], one string) dict.Dict[string, bool] {
+			dict.Add(dic, one, true)
+			return dic
+		}
+		frt.Pipe(cases, (func(_r0 []string) dict.Dict[string, bool] { return slice.Fold(folder, cmap, _r0) }))
+		notFounds := frt.Pipe(dict.KVs(cmap), (func(_r0 []frt.Tuple2[string, bool]) []frt.Tuple2[string, bool] {
+			return slice.Filter(func(p frt.Tuple2[string, bool]) bool {
+				return frt.OpNot(frt.Snd(p))
+			}, _r0)
+		}))
+		frt.IfOnly(slice.IsNotEmpty(notFounds), (func() {
+			name, _ := frt.Destr2(slice.Head(notFounds))
+			psPanic(ps, frt.SInterP("match does not cover all cases. Can't find case: %s.", name))
+		}))
+	default:
+
+	}
+}
+
 func parseMatchRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], target Expr, ps ParseState) frt.Tuple2[ParseState, MatchRules] {
 	return frt.IfElse(isDefaultMR(ps), (func() frt.Tuple2[ParseState, MatchRules] {
 		return frt.Pipe(parseDefaultMatchRule(pBlock, ps), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, MatchRules] {
@@ -559,6 +600,7 @@ func parseMatchRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], targ
 			ps3, db := frt.Destr2(parseDefaultMatchRule(pBlock, ps2))
 			return frt.Pipe(frt.Pipe(UnionMatchRulesWD{Unions: us, Default: db}, New_MatchRules_UnionsWD), (func(_r0 MatchRules) frt.Tuple2[ParseState, MatchRules] { return PairL(ps3, _r0) }))
 		}), (func() frt.Tuple2[ParseState, MatchRules] {
+			exaustiveCheck(ExprToType(target), us, ps)
 			return frt.NewTuple2(ps2, New_MatchRules_Unions(us))
 		}))
 	}))
@@ -618,20 +660,21 @@ func tvgen2ftvgen(tgen func() TypeVar) FType {
 }
 
 func updateFunCallFunType(tgen func() TypeVar, res Resolver, vr VarRef, args []Expr) VarRef {
-	switch _v2 := (vr).(type) {
+	switch _v3 := (vr).(type) {
 	case VarRef_VRVar:
-		v := _v2.Value
-		switch _v3 := (v.Ftype).(type) {
+		v := _v3.Value
+		switch _v4 := (v.Ftype).(type) {
 		case FType_FFunc:
 			return vr
 		case FType_FTypeVar:
-			tv := _v3.Value
+			tv := _v4.Value
 			ntv := frt.Pipe(tgen(), New_FType_FTypeVar)
 			nftype := frt.Pipe(frt.Pipe(slice.Map(ExprToType, args), (func(_r0 []FType) []FType { return slice.PushLast(ntv, _r0) })), newFFunc)
 			frt.Pipe(UniRel{SrcV: tv.Name, Dest: nftype}, (func(_r0 UniRel) []UniRel { return updateResOne(res, _r0) }))
 			return frt.Pipe(Var{Name: v.Name, Ftype: nftype}, New_VarRef_VRVar)
 		default:
-			panic("Union pattern fail. Never reached here.")
+			PanicNow("Unknown funcall first arg type.")
+			return vr
 		}
 	case VarRef_VRSVar:
 		return vr
@@ -672,9 +715,9 @@ func parseTerm(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], pBlock func(
 		}), (func() frt.Tuple2[ParseState, Expr] {
 			head := slice.Head(es)
 			tail := slice.Tail(es)
-			switch _v4 := (head).(type) {
+			switch _v5 := (head).(type) {
 			case Expr_EVarRef:
-				vr := _v4.Value
+				vr := _v5.Value
 				tgen := psTypeVarGen(ps2)
 				nvr := updateFunCallFunType(tgen, ps2.tvc.resolver, vr, tail)
 				fc := FunCall{TargetFunc: nvr, Args: tail}
@@ -760,9 +803,9 @@ func parseBlockAfterPushScope(pExpr func(ParseState) frt.Tuple2[ParseState, Expr
 	})), (func(_r0 frt.Tuple2[ParseState, []Stmt]) frt.Tuple2[ParseState, []Stmt] { return MapL(psPopScope, _r0) })))
 	last := slice.Last(sls)
 	stmts := slice.PopLast(sls)
-	switch _v5 := (last).(type) {
+	switch _v6 := (last).(type) {
 	case Stmt_SExprStmt:
-		e := _v5.Value
+		e := _v6.Value
 		return frt.NewTuple2(ps2, Block{Stmts: stmts, FinalExpr: e})
 	default:
 		psPanic(ps2, "block of last is not expr")
@@ -816,9 +859,9 @@ func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps P
 	ps4, rhs0 := frt.Destr2(pExpr(ps3))
 	rhs := InferExpr(ps4.tvc, rhs0)
 	rtype := ExprToType(rhs)
-	switch _v6 := (rtype).(type) {
+	switch _v7 := (rtype).(type) {
 	case FType_FTuple:
-		tup := _v6.Value
+		tup := _v7.Value
 		vars := frt.Pipe(slice.Zip(vnames, tup.ElemTypes), (func(_r0 []frt.Tuple2[string, FType]) []Var {
 			return slice.Map(func(t frt.Tuple2[string, FType]) Var {
 				return newVar(frt.Fst(t), frt.Snd(t))
@@ -889,9 +932,9 @@ func parseLetFuncDef(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], p
 
 func rfdToFuncFactory(rfd RootFuncDef) FuncFactory {
 	targets := (func() []FType {
-		switch _v7 := (rfd.Lfd.Fvar.Ftype).(type) {
+		switch _v8 := (rfd.Lfd.Fvar.Ftype).(type) {
 		case FType_FFunc:
-			ft := _v7.Value
+			ft := _v8.Value
 			return ft.Targets
 		default:
 			PanicNow("root func def let with non func var, bug")

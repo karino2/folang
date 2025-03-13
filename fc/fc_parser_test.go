@@ -1345,6 +1345,35 @@ let ika () =
 		}
 	}
 }
+
+func TestNonExaustive(t *testing.T) {
+	src := `package main
+
+type Union =
+| A
+| B of string
+
+let hoge (u:Union) =
+  match u with
+  | A -> ""
+`
+
+	var panicFound = false
+	{
+		defer func() {
+			if r := recover(); r != nil {
+				panicFound = true
+			}
+		}()
+		transpile(src)
+		// t.Error(got)
+	}
+
+	if !panicFound {
+		t.Error("Not exausitve, but not check error.")
+	}
+}
+
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
@@ -1352,6 +1381,10 @@ type Union =
 | A
 | B of string
 
+let hoge (u:Union) =
+  match u with
+  | A -> ""
+  | B _ -> ""
 `
 
 	got := transpile(src)

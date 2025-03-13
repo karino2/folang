@@ -2,6 +2,7 @@ package main
 
 import frt
 import slice
+import dict
 
 let parsePackage (ps:ParseState) =
   psConsume PACKAGE ps
@@ -198,6 +199,9 @@ let parseParam (ps:ParseState) =
     let v = {Var.Name=vname; Ftype=ftv}
     scDefVar ps2.scope vname v
     (ps2, (PVar v))
+  | _ ->
+     psPanic ps "Unexpected token in parameter"
+     (ps, PUnit)
 
 let parseParams (ps:ParseState) : ParseState*[]Var =
   let (ps2, prm1) = parseParam ps
@@ -559,6 +563,22 @@ let parseUnionMatchRules pBlock target ps =
   let parseOne = parseUnonMatchRule pBlock target
   ParseList2 parseOne endPred psSkipEOL ps
 
+let exaustiveCheck (ttype:FType) (ucases:[]UnionMatchRule) ps =
+   match ttype with
+   | FUnion fu ->
+     let ui = lookupUniInfo fu
+     let cmap = ui.Cases |> slice.Map (fun ntp-> (ntp.Name, false)) |> dict.ToDict
+     let cases = ucases |> slice.Map _.UnionPattern |> slice.Map _.CaseId
+     let folder = fun dic one -> 
+                    dict.Add dic one true
+                    dic
+     cases |> slice.Fold folder cmap
+     let notFounds = dict.KVs cmap |> slice.Filter (fun p -> not (frt.Snd p))
+     if slice.IsNotEmpty notFounds then
+      let (name, _) = slice.Head notFounds       
+      psPanic ps $"match does not cover all cases. Can't find case: {name}."
+   | _ -> ()
+
 /*
 MATCH_RULES = UNION_MATCH_RULES (DEFAULT_MATCH_RULE)?
             | DEFAULT_MATCH_RULE
@@ -576,6 +596,7 @@ let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:Par
       |> UnionsWD
       |> PairL ps3
     else
+      exaustiveCheck (ExprToType target) us ps
       (ps2, Unions us)
 
 /*
@@ -673,6 +694,9 @@ let updateFunCallFunType (tgen:()->TypeVar) (res:Resolver) (vr: VarRef) (args:[]
       |> updateResOne res
       {Var.Name=v.Name; Ftype=nftype}
       |> VRVar
+    | _ ->
+      PanicNow "Unknown funcall first arg type."
+      vr
   | VRSVar _ -> vr // currently, this case is just NYI.
 
 /*

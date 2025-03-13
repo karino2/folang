@@ -48,6 +48,8 @@ let mrsMapBlock pBlock (mr:MatchRules) =
     let nus = slice.Map one uds.Unions
     let nd = pBlock uds.Default
     {Unions=nus; Default=nd} |> UnionsWD
+  | DefaultOnly db ->
+     pBlock db |> DefaultOnly
     
 let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let nss = bl.Stmts |> slice.Map transS
