@@ -830,7 +830,7 @@ let parseBlock (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : Parse
   LL_ONE_VAR_DEF = 'let' IDENTIFIER '=' expr
 */
 let parseLLOneVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
-  let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> MapL (psConsume EQ)
+  let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> MapL (psConsume EQ) |> MapL psSkipEOL
   let (ps3, rhs0) = pExpr ps2
   let rhs = InferExpr ps3.tvc rhs0
   let v = {Var.Name=vname; Ftype=(ExprToType rhs)}
@@ -859,7 +859,7 @@ let defVarIfNecessary (sc:Scope) (v:Var) =
 */
 let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let ps2 = psMulConsume [LET; LPAREN] ps
-  let (ps3, vnames) = ParseSepList psIdentOrUSNameNx COMMA ps2 |> MapL (psMulConsume [RPAREN; EQ])
+  let (ps3, vnames) = ParseSepList psIdentOrUSNameNx COMMA ps2 |> MapL (psMulConsume [RPAREN; EQ]) |> MapL psSkipEOL
   if (slice.Length vnames) > 3 then
     psPanic ps3 "More than 3 let destructuring, NYI"
 

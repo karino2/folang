@@ -821,9 +821,9 @@ func parseBlock(pLet func(ParseState) frt.Tuple2[ParseState, LLetVarDef], ps Par
 }
 
 func parseLLOneVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
-	ps2, vname := frt.Destr2(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LET, ps), psIdentNameNx), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] {
+	ps2, vname := frt.Destr2(frt.Pipe(frt.Pipe(frt.Pipe(psConsume(New_TokenType_LET, ps), psIdentNameNx), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] {
 		return MapL((func(_r0 ParseState) ParseState { return psConsume(New_TokenType_EQ, _r0) }), _r0)
-	})))
+	})), (func(_r0 frt.Tuple2[ParseState, string]) frt.Tuple2[ParseState, string] { return MapL(psSkipEOL, _r0) })))
 	ps3, rhs0 := frt.Destr2(pExpr(ps2))
 	rhs := InferExpr(ps3.tvc, rhs0)
 	v := Var{Name: vname, Ftype: ExprToType(rhs)}
@@ -848,10 +848,12 @@ func defVarIfNecessary(sc Scope, v Var) {
 
 func parseLLDestVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
 	ps2 := psMulConsume(([]TokenType{New_TokenType_LET, New_TokenType_LPAREN}), ps)
-	ps3, vnames := frt.Destr2(frt.Pipe(ParseSepList(psIdentOrUSNameNx, New_TokenType_COMMA, ps2), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
+	ps3, vnames := frt.Destr2(frt.Pipe(frt.Pipe(ParseSepList(psIdentOrUSNameNx, New_TokenType_COMMA, ps2), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
 		return MapL((func(_r0 ParseState) ParseState {
 			return psMulConsume(([]TokenType{New_TokenType_RPAREN, New_TokenType_EQ}), _r0)
 		}), _r0)
+	})), (func(_r0 frt.Tuple2[ParseState, []string]) frt.Tuple2[ParseState, []string] {
+		return MapL(psSkipEOL, _r0)
 	})))
 	frt.IfOnly((slice.Length(vnames) > 3), (func() {
 		psPanic(ps3, "More than 3 let destructuring, NYI")

@@ -954,6 +954,22 @@ let ika a b c =
 `,
 			"frt.NewTuple3", // whatever.
 		},
+		{
+			`package main
+
+type AorB =
+ | A
+ | B
+
+let ika () =
+  let a =
+    match A with
+    | A -> "a match"
+    | B -> "b match"
+  a
+`,
+			"a := (func",
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1377,14 +1393,16 @@ let hoge (u:Union) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type Union =
-| A
-| B of string
+type AorB =
+ | A
+ | B
 
-let hoge (u:Union) =
-  match u with
-  | A -> ""
-  | B _ -> ""
+let ika () =
+  let a =
+    match A with
+    | A -> "a match"
+    | B -> "b match"
+  a
 `
 
 	got := transpile(src)
