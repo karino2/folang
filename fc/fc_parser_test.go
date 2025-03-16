@@ -1383,6 +1383,18 @@ let ika (str:string) =
 `,
 			[]string{"sfun := func (b string)string{", "return sfun(str)"},
 		},
+		{
+			`package main
+
+let ika (str:string) =
+  let sfun b =
+	  match b with
+		| "abc" -> "hit"
+		| s -> s + " is not hit"
+  sfun str
+`,
+			[]string{"sfun := func (b string)", "switch s :=(b); s"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1429,7 +1441,9 @@ func TestParseAddhook(t *testing.T) {
 
 let ika (str:string) =
   let sfun b =
-	  b + " append"
+	  match b with
+		| "abc" -> "hit"
+		| s -> s + " is not hit"
   sfun str
 `
 

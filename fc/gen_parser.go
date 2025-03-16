@@ -649,7 +649,8 @@ func parseSRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps Parse
 	}))
 }
 
-func isUnionMatchRules(target Expr, ps ParseState) bool {
+func isUnionMatchRules(target Expr, ps0 ParseState) bool {
+	ps := psConsume(New_TokenType_BAR, ps0)
 	switch (ExprToType(target)).(type) {
 	case FType_FUnion:
 		return true
@@ -677,7 +678,8 @@ func isUnionMatchRules(target Expr, ps ParseState) bool {
 	}
 }
 
-func isStringMatchRules(target Expr, ps ParseState) bool {
+func isStringMatchRules(target Expr, ps0 ParseState) bool {
+	ps := psConsume(New_TokenType_BAR, ps0)
 	switch (ExprToType(target)).(type) {
 	case FType_FUnion:
 		return false

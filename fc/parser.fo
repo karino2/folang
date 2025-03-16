@@ -650,7 +650,8 @@ let parseSRules pBlock ps =
     |> PairL ps3
 
 
-let isUnionMatchRules target ps =
+let isUnionMatchRules target ps0 =
+  let ps = psConsume BAR ps0
   match ExprToType target with
   | FUnion -> true
   | FString -> false
@@ -676,7 +677,8 @@ let isUnionMatchRules target ps =
       psPanic ps "Unknown case rule of match expr"
       false
 
-let isStringMatchRules target ps =
+let isStringMatchRules target ps0 =
+  let ps = psConsume BAR ps0
   match ExprToType target with
   | FUnion -> false
   | FString -> true
