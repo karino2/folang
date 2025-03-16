@@ -402,3 +402,22 @@ There is no way to escape brace in this expression.`
 
 generated go: [gen_rawstring.go](./gen_rawstring.go)
 
+
+### Inner func definition by let
+
+```
+package main
+import frt
+
+let main () =
+  let inner s =
+    match s with
+    | "abc" -> "hit"
+    | v -> $"{v} does not hit"
+  frt.Println (inner "abc")
+
+
+```
+
+generated go: [gen_inner_func.go](./gen_inner_func.go)
+

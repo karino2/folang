@@ -18,3 +18,4 @@ type_inference.fo Type inference
 shorthand_prop.fo Shorthand property access notation
 sinterp.fo String interpolation
 rawstring.fo Backtick raw string and interpolation
+inner_func.fo Inner func definition by let

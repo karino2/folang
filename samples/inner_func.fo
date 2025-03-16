@@ -1,0 +1,10 @@
+package main
+import frt
+
+let main () =
+  let inner s =
+    match s with
+    | "abc" -> "hit"
+    | v -> $"{v} does not hit"
+  frt.Println (inner "abc")
+
