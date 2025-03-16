@@ -1083,25 +1083,20 @@ let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
   let ps = psResetTmpCtx ps0
   let pLet = parseLetVarDef pExpr
   let psN = psNext ps
-  match psCurrentTT psN with
-  | LPAREN ->
+  let psNN = psNext psN
+  match psCurrentTT psNN with
+  | EQ ->
+    let vname = psIdentName psN
+    let (psL1, rhs) = psConsume EQ psNN |> pExpr
+    let vtype = ExprToType rhs
+    let lv = {Var.Name=vname; Ftype=vtype}
+    let lvd = {Lvar=lv; Rhs=rhs}
+    scDefVar psL1.scope vname lv
+    let rootVd = {Vdef=lvd} |> RSRootVarDef
+    (psL1, rootVd)
+  | _ ->
     parseRootLetFuncDef pLet ps
     |> MapR RSRootFuncDef
-  | _ ->
-    let psNN = psNext psN
-    match psCurrentTT psNN with
-    | EQ ->
-      let vname = psIdentName psN
-      let (psL1, rhs) = psConsume EQ psNN |> pExpr
-      let vtype = ExprToType rhs
-      let lv = {Var.Name=vname; Ftype=vtype}
-      let lvd = {Lvar=lv; Rhs=rhs}
-      scDefVar psL1.scope vname lv
-      let rootVd = {Vdef=lvd} |> RSRootVarDef
-      (psL1, rootVd)
-    | _ ->
-      parseRootLetFuncDef pLet ps
-      |> MapR RSRootFuncDef
      
 /*
   parse RecordDef related.

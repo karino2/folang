@@ -1090,28 +1090,21 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 	ps := psResetTmpCtx(ps0)
 	pLet := (func(_r0 ParseState) frt.Tuple2[ParseState, LLetVarDef] { return parseLetVarDef(pExpr, _r0) })
 	psN := psNext(ps)
-	switch (psCurrentTT(psN)).(type) {
-	case TokenType_LPAREN:
+	psNN := psNext(psN)
+	switch (psCurrentTT(psNN)).(type) {
+	case TokenType_EQ:
+		vname := psIdentName(psN)
+		psL1, rhs := frt.Destr2(frt.Pipe(psConsume(New_TokenType_EQ, psNN), pExpr))
+		vtype := ExprToType(rhs)
+		lv := Var{Name: vname, Ftype: vtype}
+		lvd := LetVarDef{Lvar: lv, Rhs: rhs}
+		scDefVar(psL1.scope, vname, lv)
+		rootVd := frt.Pipe(RootVarDef{Vdef: lvd}, New_RootStmt_RSRootVarDef)
+		return frt.NewTuple2(psL1, rootVd)
+	default:
 		return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, RootFuncDef]) frt.Tuple2[ParseState, RootStmt] {
 			return MapR(New_RootStmt_RSRootFuncDef, _r0)
 		}))
-	default:
-		psNN := psNext(psN)
-		switch (psCurrentTT(psNN)).(type) {
-		case TokenType_EQ:
-			vname := psIdentName(psN)
-			psL1, rhs := frt.Destr2(frt.Pipe(psConsume(New_TokenType_EQ, psNN), pExpr))
-			vtype := ExprToType(rhs)
-			lv := Var{Name: vname, Ftype: vtype}
-			lvd := LetVarDef{Lvar: lv, Rhs: rhs}
-			scDefVar(psL1.scope, vname, lv)
-			rootVd := frt.Pipe(RootVarDef{Vdef: lvd}, New_RootStmt_RSRootVarDef)
-			return frt.NewTuple2(psL1, rootVd)
-		default:
-			return frt.Pipe(parseRootLetFuncDef(pLet, ps), (func(_r0 frt.Tuple2[ParseState, RootFuncDef]) frt.Tuple2[ParseState, RootStmt] {
-				return MapR(New_RootStmt_RSRootFuncDef, _r0)
-			}))
-		}
 	}
 }
 
