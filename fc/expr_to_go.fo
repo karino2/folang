@@ -218,7 +218,7 @@ let smrToGoReturn (toGo: Expr->string) (btogRet: Block->string) target  (rules:S
     buf.Write b $"); {vname}"
     buf.Write b"{\n"
     writeSmrs swv.Literals
-    svrToCase btogRet swv.VarRule
+    svrToCase btogRet swv.VarRule |> buf.Write b
     buf.Write b "}"
   | SCaseWD sds ->
     buf.Write b "switch ("

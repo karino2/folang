@@ -1393,7 +1393,7 @@ let ika (str:string) =
 		| s -> s + " is not hit"
   sfun str
 `,
-			[]string{"sfun := func (b string)", "switch s :=(b); s"},
+			[]string{"sfun := func (b string)", "switch s :=(b); s", `s+" is not hit"`},
 		},
 	}
 

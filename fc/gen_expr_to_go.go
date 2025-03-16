@@ -214,7 +214,7 @@ func smrToGoReturn(toGo func(Expr) string, btogRet func(Block) string, target Ex
 			buf.Write(b, frt.SInterP("); %s", vname))
 			buf.Write(b, "{\n")
 			writeSmrs(swv.Literals)
-			svrToCase(btogRet, swv.VarRule)
+			frt.PipeUnit(svrToCase(btogRet, swv.VarRule), (func(_r0 string) { buf.Write(b, _r0) }))
 			buf.Write(b, "}")
 		case StringMatchRules_SCaseWD:
 			sds := _v4.Value
