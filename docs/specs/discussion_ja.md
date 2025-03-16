@@ -311,3 +311,256 @@ Borgoという言語にはRustのenumみたいなのがあるので見てみる�
 タグを使っているなぁ。
 
 
+## 文字列リテラル
+
+F# はダブルクオート３つがあるが、golangはバッククオートなんだよなぁ。
+そしてinterpolationは欲しい。
+
+[Interpolated strings - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/interpolated-strings)
+
+とりあえずバッククオートとドル始まりを実装するかな。
+
+
+```
+let a = `This is
+Multiline
+string`
+
+let b = $"String {a} interpolation"
+
+let c = $`This
+is
+also {a}
+interpolation. {{}} for brace pair.`
+```
+
+この２つがあれば十分か。
+
+## Unionのgenerics
+
+Golangのinterfaceってgenerics使えるのかな？と調べても良く分からなかったが、chatGPTに聞いたらコード出してくれて動いた。
+
+```golang
+package main
+
+import "fmt"
+
+// 型パラメータ T を持つインターフェース
+type Printer[T any] interface {
+	Print(value T)
+}
+
+// int 型の Printer 実装
+type IntPrinter struct{}
+
+func (p IntPrinter) Print(value int) {
+	fmt.Println("Printing int:", value)
+}
+
+// string 型の Printer 実装
+type StringPrinter struct{}
+
+func (p StringPrinter) Print(value string) {
+	fmt.Println("Printing string:", value)
+}
+
+func main() {
+	var intPrinter Printer[int] = IntPrinter{}
+	intPrinter.Print(42)
+
+	var stringPrinter Printer[string] = StringPrinter{}
+	stringPrinter.Print("Hello, World!")
+}
+```
+
+これが動くならそれほど難しい事は無いかな？
+
+Optionalの実装とかってどっかにあるのかな、とググって以下を見つける。
+
+[Generic Go Optionals · Preslav Rachev](https://preslav.me/2021/11/18/generic-golang-optionals/)
+
+なんかレコードとUnionのGenerics対応も出来そうだな。
+
+以下みたいなのを作りたい。
+
+```
+type Result<T> =
+| Success of T
+| Failure of string
+```
+
+これはGoのコードとしては、以下で良さそうか。
+
+```golang
+type Result[T any] interface {
+   Result_Union()
+}
+
+func (Result_Success[T]) Result_Union(){}
+func (Result_Failure[T]) Result_Union(){}
+
+type Result_Success[T any] struct {
+  Value T
+}
+
+type Result_Failure[T any] struct {
+  Value string
+}
+
+func New_Result_Success[T any](v T) Result[T] { return Result_Success[T]{v} }
+func New_Result_Failure[T any](v string) Result[T] { return Result_Failure[T]{v} }
+```
+
+動作は確認出来た。
+
+でもFolang側での型推論は簡単では無いよな。
+
+[Understanding Parser Combinators - F# for fun and profit](https://fsharpforfunandprofit.com/posts/understanding-parser-combinators/)
+
+の以下の例を見ると
+
+```fsharp
+type ParseResult<'a> =
+  | Success of 'a
+  | Failure of string
+
+let pchar (charToMatch,str) =
+  if String.IsNullOrEmpty(str) then
+    Failure "No more input"
+  else
+    let first = str.[0]
+    if first = charToMatch then
+      let remaining = str.[1..]
+      Success (charToMatch,remaining)
+    else
+      let msg = sprintf "Expecting '%c'. Got '%c'" charToMatch first
+      Failure msg
+```
+
+このFailureの方のtype parameterはSuccessの方で初めて確定する訳で。いや、別に全部バラバラにtype variableを振って推移律でunifyすればいいか。
+
+本家のResult型も貼っておく。
+
+- [Result<'T, 'TError> (FSharp.Core) - FSharp.Core](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-fsharpresult-2.html)
+- [Result (FSharp.Core) - FSharp.Core](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-resultmodule.html)
+- [Results - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/results)
+
+### 値が無いケースがこれではうまう行かない
+
+実装をしてみようとした所、値が無いケースがうまく行かない。[folang/docs/specs/union_ja.md at main · karino2/folang](https://github.com/karino2/folang/blob/main/docs/specs/union_ja.md)
+
+もともと以下のようなUnionには
+
+```fsharp
+type AorB =
+  | A
+  | B
+```
+
+以下のようなGoのコードが生成されていた。
+
+```golang
+var New_AorB_A AorB = AorB_A{}
+```
+
+だが、これではTが指定出来ない。
+こういう変数は作れない。
+
+```golang
+var New_AorB_A AorB[T] = AorB_A[T}{}
+```
+
+値が無いケースも関数にするしか無いかなぁ。以下のようになっていればおおむねいいか。
+
+```golang
+func New_AorB_A[T any]() AorB[T] { return AorB_A[T]{} }
+```
+
+Folangとしては当然明示的にspecifyするしか無いが、
+
+```fsharp
+AorB_A<int> ()
+```
+
+F# ではどうなっているんだっけ？
+
+```
+> type AorB<'t> =
+- | A
+- | B of 't
+-
+- ;;
+type AorB<'t> =
+  | A
+  | B of 't
+
+> A ;;
+val it: AorB<'a>
+
+> B 123 ;;
+val it: AorB<int> = B 123
+```
+
+うーむ、Aはgenerics型の変数になるのか。これはたぶんgolangでは実現出来ないな。どうするのがいいんだろう？
+
+ReScriptでもやはり異なる型の引数に同じ変数が使えるな。
+
+```rescript
+
+type result<'a> =
+  | Ok('a)
+  | Failure
+  | Other
+
+
+module App = {
+  let iToS = (i) => {
+    switch(i) {
+      | Ok(arg) => Int.toString(arg)
+      | Failure => "int fail"
+      | Other => "int other"
+    }
+  }
+  
+  let sToS = (s) => {
+    switch(s) {
+      | Ok(arg) => arg
+      | Failure => "s fail"
+      | Other => "s other"
+    }
+  }
+    
+  let make = (cond) => {
+    let f = Failure
+    let o = Other
+    let a = if cond { Ok(123) } else { f }
+    let b = if cond { Ok("abc") } else { f }
+    iToS(a) ++ sToS(b) ++ iToS(o) ++ sToS(o)
+  }
+}
+```
+
+変数の参照の所で型が決まり、ランタイムとしては別に同じ値を入れておいてキャストでもすれば良いという気はする。
+このケースだけは変数の定義では無くて参照で型が決まる気がするな。
+
+### Folangではタイプパラメータがある時は関数にする
+
+Golangに存在しない概念をあまり入れすぎるのもトランスパイラとして良くないな、と思い直し、以下のケースでは、
+
+```
+type AorB<T> =
+ | A
+ | B of T
+```
+
+Aを作る場合は`()`の引数があるとする。
+
+```
+let a = A<int> ()
+```
+
+inferenceで確定するならintは無しでも良いが、とにかく関数コールだとする。
+これだと一度確定した変数が違う型になる事は出来ないが、それが仕様とする。
+
+タイプパラメータが無い時は変数になるので一貫性は無い。全部関数にすべきだったと思うけれど、今から直す気も起こらないので、
+genericsだけの特別扱いとする。

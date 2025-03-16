@@ -313,3 +313,257 @@ In JS, type information is lost at runtime, so this seems necessary, but isn't i
 The language Borgo has something similar to Rust's enum, so I'll take a look at it. [borgo/compiler/test/snapshot/codegen-emit/enums.exp at main · borgo-lang/borgo](https://github.com/borgo-lang/borgo/blob/main/compiler/test/snapshot/codegen-emit/enums.exp)
 
 Tags are used.
+
+## String literals
+
+F# has three double quotes, but golang has backquotes.
+
+I also need interpolation.
+
+[Interpolated strings - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/interpolated-strings)
+
+I think I'll implement backquotes and dollar prefixes for now.
+
+```
+let a = `This is
+Multiline
+string`
+
+let b = $"String {a} interpolation"
+
+let c = $`This
+is
+also {a}
+interpolation. {{}} for brace pair.`
+```
+
+Are these two enough?
+
+## Union generics
+
+I wonder if generics can be used in Golang interfaces? I looked it up but couldn't really find out, but when I asked chatGPT, they gave me the code and it worked.
+
+```golang
+package main
+
+import "fmt"
+
+// Interface with type parameter T
+type Printer[T any] interface {
+	Print(value T)
+}
+
+// Printer implementation of int type
+type IntPrinter struct{}
+
+func (p IntPrinter) Print(value int) {
+	fmt.Println("Printing int:", value)
+}
+
+// Printer implementation of string type
+type StringPrinter struct{}
+
+func (p StringPrinter) Print(value string) {
+	fmt.Println("Printing string:", value)
+}
+
+func main() {
+	var intPrinter Printer[int] = IntPrinter{}
+	intPrinter.Print(42)
+
+	var stringPrinter Printer[string] = StringPrinter{}
+	stringPrinter.Print("Hello, World!")
+}
+```
+
+If this works, it's not that difficult, right?
+
+I googled to see if there was an implementation of Optional somewhere, and found the following.
+
+[Generic Go Optionals · Preslav Rachev](https://preslav.me/2021/11/18/generic-golang-optionals/)
+
+It seems like it might be possible to support generics for records and unions.
+
+I want to make something like this.
+
+```
+type Result<T> =
+| Success of T
+| Failure of string
+```
+
+This seems like the following would be fine as Go code.
+
+```golang
+type Result[T any] interface {
+   Result_Union()
+}
+
+func (Result_Success[T]) Result_Union(){}
+func (Result_Failure[T]) Result_Union(){}
+
+type Result_Success[T any] struct {
+  Value T
+}
+
+type Result_Failure[T any] struct {
+  Value string
+}
+
+func New_Result_Success[T any](v T) Result[T] { return Result_Success[T]{v} }
+func New_Result_Failure[T any](v string) Result[T] { return Result_Failure[T]{v} }
+```
+
+I was able to confirm that it works.
+
+But type inference on the Folang side is not easy.
+
+Looking at the following example from [Understanding Parser Combinators - F# for fun and profit](https://fsharpforfunandprofit.com/posts/understanding-parser-combinators/),
+
+```fsharp
+type ParseResult<'a> =
+  | Success of 'a
+  | Failure of string
+
+let pchar (charToMatch,str) =
+  if String.IsNullOrEmpty(str) then
+    Failure "No more input"
+  else
+    let first = str.[0]
+    if first = charToMatch then
+      let remaining = str.[1..]
+      Success (charToMatch,remaining)
+    else
+      let msg = sprintf "Expecting '%c'. Got '%c'" charToMatch first
+      Failure msg
+```
+
+The type parameter of this Failure is only determined by Success. No, I can just assign type variables to everything separately and unify them with transitive law.
+
+I'll also post the original Result type.
+
+- [Result<'T, 'TError> (FSharp.Core) - FSharp.Core](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-fsharpresult-2.html)
+- [Result (FSharp.Core) - FSharp.Core](https://fsharp.github.io/fsharp-core-docs/reference/fsharp-core-resultmodule.html)
+- [Results - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/results)
+
+### This doesn't work for cases where there are no values
+
+When I tried to implement it, it didn't work for cases where there are no values. [folang/docs/specs/union_ja.md at main · karino2/folang](https://github.com/karino2/folang/blob/main/docs/specs/union_ja.md)
+
+Originally, for the following Union,
+
+```fsharp
+type AorB =
+| A
+| B
+```
+
+The following Go code was generated.
+
+```golang
+var New_AorB_A AorB = AorB_A{}
+```
+
+But this doesn't allow you to specify T.
+
+You can't create variables like this.
+
+```golang
+var New_AorB_A AorB[T] = AorB_A[T}{}
+```
+
+I guess the only way to make the case where there is no value a function is to use it. It's mostly fine as long as it's like this.
+
+```golang
+func New_AorB_A[T any]() AorB[T] { return AorB_A[T]{} }
+```
+
+Of course, in Folang, you have to specify it explicitly, but
+
+```fsharp
+AorB_A<int> ()
+```
+
+How does it work in F#?
+
+```
+> type AorB<'t> =
+- | A
+- | B of 't
+-
+- ;;
+type AorB<'t> =
+  | A
+  | B of 't
+
+> A ;;
+val it: AorB<'a>
+
+> B 123 ;;
+val it: AorB<int> = B 123
+```
+
+Hmm, A is a generics type variable. This probably can't be achieved in golang. What should I do?
+
+You can also use the same variable for arguments of different types in ReScript.
+
+```rescript
+
+type result<'a> =
+  | Ok('a)
+  | Failure
+  | Other
+
+
+module App = {
+  let iToS = (i) => {
+    switch(i) {
+      | Ok(arg) => Int.toString(arg)
+      | Failure => "int fail"
+      | Other => "int other"
+    }
+  }
+  
+  let sToS = (s) => {
+    switch(s) {
+      | Ok(arg) => arg
+      | Failure => "s fail"
+      | Other => "s other"
+    }
+  }
+    
+  let make = (cond) => {
+    let f = Failure
+    let o = Other
+    let a = if cond { Ok(123) } else { f }
+    let b = if cond { Ok("abc") } else { f }
+    iToS(a) ++ sToS(b) ++ iToS(o) ++ sToS(o)
+  }
+}
+```
+
+The type is determined when the variable is referenced, and I feel that it would be fine to just put the same value in at runtime and cast it.
+
+I feel that in this case, the type is determined by the reference, not the variable definition.
+
+### In Golang, if there is a type parameter, it is a function.
+
+I thought that it would not be good for a transpiler to include too many concepts that do not exist in Golang, so in the following case,
+
+```
+type AorB<T> =
+ | A
+ | B of T
+```
+
+When creating A, assume that there is an argument of `()`.
+
+```
+let a = A<int> ()
+```
+
+If it is determined by inference, int is not necessary, but it is a function call anyway.
+
+This means that once a variable has been determined, it cannot be of a different type, but that is the specification.
+
+If there is no type parameter, it becomes a variable, so there is no consistency. I think I should have made them all functions, but I don't feel like fixing it now, so I'll just make them special for generics.

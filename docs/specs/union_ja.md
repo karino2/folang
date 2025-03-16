@@ -91,3 +91,50 @@ var New_AorB_A AorB = AorB_A{}
 - [Discriminated Unions - F# for fun and profit](https://fsharpforfunandprofit.com/posts/discriminated-unions/) F#の機能としての説明
 - [Discriminated Unions - F# - Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/discriminated-unions)
 
+## Genericsの実装
+
+F# とは細かい所が違うので、比較の為にF# の挙動も載せておく。
+
+### F# での挙動
+
+F# などで以下のようなUnionのGenericsがあった時、
+
+```fsharp
+type Option<T> =
+| Some of T
+| None
+```
+
+Noneはグローバル変数のようなものになるのだが、Tの指定は無い。
+以下のように変数にNoneを入れた場合、
+
+```fsharp
+let a = None
+```
+
+このaは`Option<'a>` という型になり、これは`Option<int>`型の変数にも`Option<string>`型の変数にも代入出来る。
+aは全てになれる何かとなる。
+
+### Folangでの実装
+
+複数の具体的な型に同じ変数をassign出来る、というのはGolangで実現は難しいので、
+FolangではもっとGolang的に自然な仕様にする。
+
+GenericなUnion型の場合は値が無くても関数になる事にし、
+type argumentであらわに指定する事にする。
+
+```fsharp
+type Option<T> =
+| Some of T
+| None
+
+let a = None<int> () // Noneは関数
+
+type AorB =
+| A
+| B
+
+let b = B // Bはグローバル変数
+```
+
+なお、型推論が働くので型指定を明示的にしなくても解決出来る場合は指定の必要は無い。

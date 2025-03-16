@@ -8,6 +8,10 @@
 
 こうした決定に関する経緯は[discussion_ja.md](discussion_ja.md)に。
 
+## floatはfloat64
+
+float型はGolangのfloat64とする。float32はない。
+
 ## トップレベルのletによる変数定義
 
 関数内のletは`:=`に展開されるが、

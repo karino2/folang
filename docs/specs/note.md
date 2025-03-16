@@ -8,6 +8,10 @@ I'd like to organize it once it's more solidified.
 
 The background to these decisions is in [discussion.md](discussion.md).
 
+## float is float64
+
+The float type is Golang's float64. There is no float32.
+
 ## Defining variables with top-level let
 
 Let inside a function expands to `:=`,
