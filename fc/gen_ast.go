@@ -497,6 +497,36 @@ type LetDestVarDef struct {
 	Lvars []Var
 	Rhs   Expr
 }
+type RawLetDef interface {
+	RawLetDef_Union()
+}
+
+func (RawLetDef_RLetOneVar) RawLetDef_Union()  {}
+func (RawLetDef_RLetDestVar) RawLetDef_Union() {}
+func (RawLetDef_RLetFunc) RawLetDef_Union()    {}
+
+func (v RawLetDef_RLetOneVar) String() string  { return frt.Sprintf1("(RLetOneVar: %v)", v.Value) }
+func (v RawLetDef_RLetDestVar) String() string { return frt.Sprintf1("(RLetDestVar: %v)", v.Value) }
+func (v RawLetDef_RLetFunc) String() string    { return frt.Sprintf1("(RLetFunc: %v)", v.Value) }
+
+type RawLetDef_RLetOneVar struct {
+	Value LetVarDef
+}
+
+func New_RawLetDef_RLetOneVar(v LetVarDef) RawLetDef { return RawLetDef_RLetOneVar{v} }
+
+type RawLetDef_RLetDestVar struct {
+	Value LetDestVarDef
+}
+
+func New_RawLetDef_RLetDestVar(v LetDestVarDef) RawLetDef { return RawLetDef_RLetDestVar{v} }
+
+type RawLetDef_RLetFunc struct {
+	Value LetFuncDef
+}
+
+func New_RawLetDef_RLetFunc(v LetFuncDef) RawLetDef { return RawLetDef_RLetFunc{v} }
+
 type LLetVarDef interface {
 	LLetVarDef_Union()
 }

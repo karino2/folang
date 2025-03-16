@@ -117,6 +117,10 @@ and RootFuncDef = {Tparams:[]string; Lfd:LetFuncDef}
 and RootVarDef = {Vdef: LetVarDef}
 and LetVarDef = {Lvar: Var; Rhs: Expr}
 and LetDestVarDef = {Lvars: []Var; Rhs: Expr}
+and RawLetDef =
+| RLetOneVar of LetVarDef
+| RLetDestVar of LetDestVarDef
+| RLetFunc of LetFuncDef
 and LLetVarDef =
 | LLOneVarDef of LetVarDef
 | LLDestVarDef of LetDestVarDef

@@ -945,16 +945,15 @@ let parseBlock (pLet: ParseState->ParseState*LLetVarDef) (ps:ParseState) : Parse
   psPushScope ps |> parseBlockAfterPushScope pExpr pLet
 
 /*
-  LL_ONE_VAR_DEF = 'let' IDENTIFIER '=' expr
+  LET_ONE_VAR_DEF = 'let' IDENTIFIER '=' expr
 */
-let parseLLOneVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+let parseLetOneVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let (ps2, vname) = psConsume LET ps |> psIdentNameNx |> MapL (psConsume EQ) |> MapL psSkipEOL
   let (ps3, rhs0) = pExpr ps2
   let rhs = InferExpr ps3.tvc rhs0
   let v = {Var.Name=vname; Ftype=(ExprToType rhs)}
   scDefVar ps3.scope vname v
   {LetVarDef.Lvar=v; Rhs=rhs}
-  |> LLOneVarDef
   |> PairL ps3
 
 
@@ -973,9 +972,9 @@ let defVarIfNecessary (sc:Scope) (v:Var) =
   Destructuring, only support pair for a while like:
   let (a, b) = ...
 
-  LL_DEST_VAR_DEF = 'let' '(' IDENTIFIER ',' IDENTIFIER ')' '=' expr
+  LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER ',' IDENTIFIER ')' '=' expr
 */
-let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
+let parseLetDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let ps2 = psMulConsume [LET; LPAREN] ps
   let (ps3, vnames) = ParseSepList psIdentOrUSNameNx COMMA ps2 |> MapL (psMulConsume [RPAREN; EQ]) |> MapL psSkipEOL
   if (slice.Length vnames) > 3 then
@@ -990,7 +989,6 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
                |> slice.Map (fun t-> newVar (frt.Fst t) (frt.Snd t))
     slice.Iter (defVarIfNecessary ps4.scope) vars
     {LetDestVarDef.Lvars=vars; Rhs=rhs}
-    |> LLDestVarDef
     |> PairL ps4
   | FTypeVar _ ->
     // rhs is TypeVar (unresolved), so assign left vars new TypeVar's and resolve later.
@@ -1005,12 +1003,11 @@ let parseLLDestVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
                |> slice.Map (fun t-> newVar (frt.Fst t) (frt.Snd t))
     slice.Iter (defVarIfNecessary ps4.scope) vars
     {LetDestVarDef.Lvars=vars; Rhs=rhs}
-    |> LLDestVarDef
     |> PairL ps4
   | _ ->
     psPanic ps2 "Destructuring let, but rhs is not tuple. NYI."
-    let dummy = GoEval<[]Var> "[]Var{}"
-    (ps2, LLDestVarDef {LetDestVarDef.Lvars=dummy; Rhs=EUnit})
+    let dummy = frt.Empty<[]Var> ()
+    (ps2, {LetDestVarDef.Lvars=dummy; Rhs=EUnit})
 
 /*
   LET_FUNC_DEF = 'let' IDENTIFIER PARAMS (':' TYPE)? '=' EOL? BLOCK
@@ -1069,9 +1066,11 @@ LET_VAR_DEF = LL_ONE_VAR_DEF | LL_DEST_VAR_DEF
 let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   let peekPs = psConsume LET ps
   if psCurIs LPAREN peekPs then
-    parseLLDestVarDef pExpr ps
+    parseLetDestVarDef pExpr ps
+    |> MapR LLDestVarDef
   else
-    parseLLOneVarDef pExpr ps
+    parseLetOneVarDef pExpr ps
+    |> MapR LLOneVarDef
 
 /*
   LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
@@ -1079,24 +1078,41 @@ let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
   LET_VAR_DEF = 'let' IDENTIFIER '=' expr
   LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
 */
-let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
-  let ps = psResetTmpCtx ps0
+let parseRawLet pExpr ps =
   let pLet = parseLetVarDef pExpr
   let psN = psNext ps
   let psNN = psNext psN
-  match psCurrentTT psNN with
-  | EQ ->
-    let vname = psIdentName psN
-    let (psL1, rhs) = psConsume EQ psNN |> pExpr
-    let vtype = ExprToType rhs
-    let lv = {Var.Name=vname; Ftype=vtype}
-    let lvd = {Lvar=lv; Rhs=rhs}
-    scDefVar psL1.scope vname lv
-    let rootVd = {Vdef=lvd} |> RSRootVarDef
-    (psL1, rootVd)
+  match psCurrentTT psN with
+  | LPAREN ->
+    parseLetDestVarDef pExpr ps
+    |> MapR RLetDestVar
   | _ ->
-    parseRootLetFuncDef pLet ps
-    |> MapR RSRootFuncDef
+    match psCurrentTT psNN with
+    | EQ ->
+      parseLetOneVarDef pExpr ps
+      |> MapR RLetOneVar
+    | _ ->
+      parseLetFuncDef pLet ps
+      |> MapR RLetFunc
+
+let parseRootLet (pExpr:ParseState->ParseState*Expr) (ps0:ParseState) =
+  let ps = psResetTmpCtx ps0
+  psForErrMsg ps
+  let (ps2, rlet) = parseRawLet pExpr ps
+  match rlet with
+  | RLetOneVar one ->
+    let lv = one.Lvar
+    scDefVar ps2.scope lv.Name lv
+    let rootVd = {Vdef=one} |> RSRootVarDef
+    (ps2, rootVd)    
+  | RLetDestVar _ ->
+    psPanic ps "Root destructuring let, NYI."
+    (ps2, frt.Empty<RootStmt> ())
+  | RLetFunc lfd ->
+    psForErrMsg ps // for infer error, let def start point is better error msg than end.
+    let rfd = InferLfd ps2.tvc lfd
+    rfdToFuncFactory rfd |> scRegFunFac ps2.scope rfd.Lfd.Fvar.Name
+    (ps2, RSRootFuncDef rfd)
      
 /*
   parse RecordDef related.
