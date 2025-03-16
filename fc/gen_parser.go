@@ -1090,8 +1090,36 @@ func parseLetVarDef(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps Pars
 	}))
 }
 
+func lfdToLetVar(lfd LetFuncDef) LetVarDef {
+	elambda := frt.Pipe(LambdaExpr{Params: lfd.Params, Body: lfd.Body}, New_Expr_ELambda)
+	return LetVarDef{Lvar: lfd.Fvar, Rhs: elambda}
+}
+
+func rawLetToLetVar(rawLet RawLetDef, ps ParseState) LLetVarDef {
+	switch _v9 := (rawLet).(type) {
+	case RawLetDef_RLetOneVar:
+		one := _v9.Value
+		return New_LLetVarDef_LLOneVarDef(one)
+	case RawLetDef_RLetDestVar:
+		dest := _v9.Value
+		return New_LLetVarDef_LLDestVarDef(dest)
+	case RawLetDef_RLetFunc:
+		lfd := _v9.Value
+		lvd := lfdToLetVar(lfd)
+		nrhs := InferExpr(ps.tvc, lvd.Rhs)
+		nv := Var{Name: lvd.Lvar.Name, Ftype: ExprToType(nrhs)}
+		scDefVar(ps.scope, nv.Name, nv)
+		return frt.Pipe(LetVarDef{Lvar: nv, Rhs: nrhs}, New_LLetVarDef_LLOneVarDef)
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
 func parseRawLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps ParseState) frt.Tuple2[ParseState, RawLetDef] {
-	pLet := (func(_r0 ParseState) frt.Tuple2[ParseState, LLetVarDef] { return parseLetVarDef(pExpr, _r0) })
+	pLet := func(tps ParseState) frt.Tuple2[ParseState, LLetVarDef] {
+		tps2, rl := frt.Destr2(parseRawLet(pExpr, tps))
+		return frt.Pipe(rawLetToLetVar(rl, tps2), (func(_r0 LLetVarDef) frt.Tuple2[ParseState, LLetVarDef] { return PairL(tps2, _r0) }))
+	}
 	psN := psNext(ps)
 	psNN := psNext(psN)
 	switch (psCurrentTT(psN)).(type) {
@@ -1117,9 +1145,9 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 	ps := psResetTmpCtx(ps0)
 	psForErrMsg(ps)
 	ps2, rlet := frt.Destr2(parseRawLet(pExpr, ps))
-	switch _v9 := (rlet).(type) {
+	switch _v10 := (rlet).(type) {
 	case RawLetDef_RLetOneVar:
-		one := _v9.Value
+		one := _v10.Value
 		lv := one.Lvar
 		scDefVar(ps2.scope, lv.Name, lv)
 		rootVd := frt.Pipe(RootVarDef{Vdef: one}, New_RootStmt_RSRootVarDef)
@@ -1128,7 +1156,7 @@ func parseRootLet(pExpr func(ParseState) frt.Tuple2[ParseState, Expr], ps0 Parse
 		psPanic(ps, "Root destructuring let, NYI.")
 		return frt.NewTuple2(ps2, frt.Empty[RootStmt]())
 	case RawLetDef_RLetFunc:
-		lfd := _v9.Value
+		lfd := _v10.Value
 		psForErrMsg(ps)
 		rfd := InferLfd(ps2.tvc, lfd)
 		frt.PipeUnit(rfdToFuncFactory(rfd), (func(_r0 FuncFactory) { scRegFunFac(ps2.scope, rfd.Lfd.Fvar.Name, _r0) }))

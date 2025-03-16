@@ -1073,13 +1073,43 @@ let parseLetVarDef (pExpr: ParseState->ParseState*Expr) (ps:ParseState) =
     |> MapR LLOneVarDef
 
 /*
+  convert from:
+
+  let a b = c
+
+  to:
+
+  let a = fun b -> c
+and LambdaExpr = {Params: []Var; Body:Block}
+and LetFuncDef = {Fvar: Var; Params: []Var; Body:Block}
+and LetVarDef = {Lvar: Var; Rhs: Expr}
+*/
+let lfdToLetVar (lfd:LetFuncDef) =
+  let elambda = {LambdaExpr.Params=lfd.Params; Body=lfd.Body} |> ELambda
+  {LetVarDef.Lvar=lfd.Fvar; Rhs=elambda}
+
+let rawLetToLetVar (rawLet: RawLetDef) (ps:ParseState) =
+  match rawLet with
+  | RLetOneVar one -> LLOneVarDef one
+  | RLetDestVar dest -> LLDestVarDef dest
+  | RLetFunc lfd ->
+    let lvd = lfdToLetVar lfd
+    let nrhs = InferExpr ps.tvc lvd.Rhs
+    let nv = {Var.Name=lvd.Lvar.Name; Ftype=(ExprToType nrhs)}
+    scDefVar ps.scope nv.Name nv
+    {LetVarDef.Lvar=nv; Rhs=nrhs} |> LLOneVarDef
+
+/*
   LET = LET_DEST_VAR_DEF | LET_VAR_DEF | LET_FUNC_DEF
 
   LET_VAR_DEF = 'let' IDENTIFIER '=' expr
   LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
 */
-let parseRawLet pExpr ps =
-  let pLet = parseLetVarDef pExpr
+let parseRawLet pExpr ps : (ParseState*RawLetDef) =
+  let pLet = fun tps ->
+    let (tps2, rl) = parseRawLet pExpr tps 
+    rawLetToLetVar rl tps2
+    |> PairL tps2
   let psN = psNext ps
   let psNN = psNext psN
   match psCurrentTT psN with

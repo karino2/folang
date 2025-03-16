@@ -1373,6 +1373,16 @@ let ika () =
 `,
 			[]string{"frt.Destr3", "frt.NewTuple3"},
 		},
+		{
+			`package main
+
+let ika (str:string) =
+  let sfun b =
+	  b + " append"
+  sfun str
+`,
+			[]string{"sfun := func (b string)string{", "return sfun(str)"},
+		},
 	}
 
 	for _, test := range tests {
@@ -1417,12 +1427,10 @@ let hoge (u:Union) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-let ika () =
-  let a =
-    match "abc" with
-    | "abc" -> "hit"
-    | s -> s + " not hit"
-  a
+let ika (str:string) =
+  let sfun b =
+	  b + " append"
+  sfun str
 `
 
 	got := transpile(src)
