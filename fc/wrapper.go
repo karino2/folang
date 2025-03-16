@@ -550,6 +550,16 @@ func PanicNow(msg string) {
 	tkzPanic(lastTkz, msg)
 }
 
+func Cast[T any](src any, ps ParseState) T {
+	v, ok := src.(T)
+	if ok {
+		return v
+	} else {
+		tkzPanic(ps.tkz, "Cast fail. Unexpected type.")
+		panic("Never reached here")
+	}
+}
+
 /*
 	  To avoid deep stack trace, loop in go layer instead of recursive call.
 

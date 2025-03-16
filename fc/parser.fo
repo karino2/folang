@@ -530,7 +530,7 @@ ex:
   | Record _ -> ""
   | None -> ""
 */
-let parseUnonMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) =
+let parseUnionMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) =
   let (ps3, cname) = psConsume BAR ps |> psIdentNameNx
   let (ps4, vname) = match (psCurrentTT ps3) with
                       | RARROW ->
@@ -544,7 +544,7 @@ let parseUnonMatchRule (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:
   if vname <> "" && vname <> "_" then
     let tt = ExprToType target
     // currently, match expect union type
-    let fu = GoEval<UnionType> "tt.(FType_FUnion).Value"
+    let fu = GoEval<UnionType> "Cast[FType_FUnion](tt, ps5).Value"
     let cp = lookupCase fu cname
     scDefVar ps5.scope vname {Var.Name=vname; Ftype=cp.Ftype}
   let (ps6, block) = pBlock ps5 |> MapL psPopScope
@@ -560,7 +560,7 @@ let insideOffside (ps:ParseState) =
 let parseUnionMatchRules pBlock target ps =
   let nextIsUMR = fun tps -> (insideOffside tps) && (psCurIs BAR tps) && not (isDefaultMR tps)
   let endPred = fun tps -> not (nextIsUMR tps)
-  let parseOne = parseUnonMatchRule pBlock target
+  let parseOne = parseUnionMatchRule pBlock target
   ParseList2 parseOne endPred psSkipEOL ps
 
 let exaustiveCheck (ttype:FType) (ucases:[]UnionMatchRule) ps =
