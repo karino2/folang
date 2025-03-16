@@ -1108,7 +1108,7 @@ let rawLetToLetVar (rawLet: RawLetDef) (ps:ParseState) =
   LET_DEST_VAR_DEF = 'let' '(' IDENTIFIER, IDENTIFIER ')' '=' expr
 */
 let parseRawLet pExpr ps : (ParseState*RawLetDef) =
-  let pLet = fun tps ->
+  let pLet tps =
     let (tps2, rl) = parseRawLet pExpr tps 
     rawLetToLetVar rl tps2
     |> PairL tps2
