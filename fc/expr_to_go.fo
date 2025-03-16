@@ -128,7 +128,7 @@ default:
    body...
 
 */
-let drToCase (btogRet: Block->string) (uname: string) (tmpVarName: string) (db: Block)  =
+let drToCase (btogRet: Block->string) (db: Block)  =
   let b = buf.New ()
   buf.Write b "default:\n"
   btogRet db |> buf.Write b
@@ -142,42 +142,98 @@ let umrHasNoCaseVar (umr: UnionMatchRule) =
 /*
   If atlease one value or not (if not, tmp var is not necessary).
 */
-let mrsHasCaseVar (rules:MatchRules) =
+let umrHasCaseVar (rules:UnionMatchRules) =
   let allNoCaseF = slice.Forall umrHasNoCaseVar
   match rules with
-  | Unions us -> not (allNoCaseF us)
-  | UnionsWD uds -> not (allNoCaseF uds.Unions)
-  | DefaultOnly -> false
+  | UCaseOnly us -> not (allNoCaseF us)
+  | UCaseWD uds -> not (allNoCaseF uds.Unions)
 
-let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
-  let ttype = ExprToType me.Target
-  let uttype = GoEval<UnionType> "ttype.(FType_FUnion).Value" // for non UnionType, NYI.
+
+let umrToGoReturn (toGo: Expr->string) (btogRet: Block->string) target (rules:UnionMatchRules) =
+  let ttype = ExprToType target
+  let uttype = GoEval<UnionType> "CastNow[FType_FUnion](ttype).Value"
   let uname = utName uttype
-  let hasCaseVar = mrsHasCaseVar me.Rules
+  let hasCaseVar = umrHasCaseVar rules
   let tmpVarName = if hasCaseVar then uniqueTmpVarName () else ""
   let b = buf.New ()
   let umrstocases = slice.Map (umrToCase btogRet uname tmpVarName)
-  let drtocase = drToCase btogRet uname tmpVarName
   let writeUmrs = fun umrs -> umrstocases umrs |> strings.Concat "" |> buf.Write b
   buf.Write b "switch "
   if hasCaseVar then
     buf.Write b tmpVarName
     buf.Write b " := "
   buf.Write b "("
-  toGo me.Target |> buf.Write b 
+  toGo target |> buf.Write b 
   buf.Write b ").(type){\n"
   // case code.
-  match me.Rules with
-  | Unions us ->
+  match rules with
+  | UCaseOnly us ->
     writeUmrs us
     buf.Write b "default:\npanic(\"Union pattern fail. Never reached here.\")\n"
-  | UnionsWD uds ->
+  | UCaseWD uds ->
     writeUmrs uds.Unions
-    drtocase uds.Default |> buf.Write b
-  | DefaultOnly db ->
-    drtocase db |> buf.Write b
+    drToCase btogRet uds.Default |> buf.Write b
   buf.Write b "}"
   buf.String b
+
+/*
+case "hogehoge":
+	body...
+*/
+let smrToCase (btogRet: Block->string) (smr: StringMatchRule)  =
+  let b = buf.New ()
+  let lp = smr.LiteralPattern
+  buf.Write b $`case "{lp}":`
+  buf.Write b "\n"
+  btogRet smr.Body |> buf.Write b
+  buf.Write b "\n"
+  buf.String b  
+
+
+/*
+var is already capture in switch.
+So just emit following.
+
+default:
+   body...
+
+*/
+let svrToCase (btogRet: Block->string) (svr: StringVarMatchRule)  =
+  let b = buf.New ()
+  buf.Write b "default:\n"
+  btogRet svr.Body |> buf.Write b
+  buf.Write b "\n"
+  buf.String b  
+
+let smrToGoReturn (toGo: Expr->string) (btogRet: Block->string) target  (rules:StringMatchRules) =
+  let b = buf.New ()
+  let smrstocases = slice.Map (smrToCase btogRet)
+  let writeSmrs = fun smrs -> smrstocases smrs |> strings.Concat "" |> buf.Write b
+  match rules with
+  | SCaseWV swv ->
+    let vname = swv.VarRule.VarName
+    buf.Write b $"switch {vname} :="
+    buf.Write b "("
+    toGo target |> buf.Write b 
+    buf.Write b $"); {vname}"
+    buf.Write b"{\n"
+    writeSmrs swv.Literals
+    svrToCase btogRet swv.VarRule
+    buf.Write b "}"
+  | SCaseWD sds ->
+    buf.Write b "switch ("
+    toGo target |> buf.Write b 
+    buf.Write b "){\n"
+    writeSmrs sds.Literals
+    drToCase btogRet sds.Default |> buf.Write b
+    buf.Write b "}"
+  buf.String b
+
+
+let meToGoReturn (toGo: Expr->string) (btogRet: Block->string) (me:MatchExpr) =
+  match me.Rules with
+  | RUnions ru -> umrToGoReturn toGo btogRet me.Target ru
+  | RStrings su -> smrToGoReturn toGo btogRet me.Target su
 
 let meToExpr (me:MatchExpr) =
   RMatchExpr me |> EReturnableExpr

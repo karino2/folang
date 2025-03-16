@@ -41,14 +41,23 @@ let exprToBlock (bexpr:Expr) =
     PanicNow "Not block."
     frt.Empty<Block> ()
 
+let umrFirstBody (umr:UnionMatchRules) =
+  match umr with
+  | UCaseOnly us -> slice.Head us |> _.Body
+  | UCaseWD uds -> slice.Head uds.Unions |> _.Body
+
+let smrFirstBody (smr:StringMatchRules) =
+  match smr with
+  | SCaseWV svs -> slice.Head svs.Literals |> _.Body
+  | SCaseWD sds -> slice.Head sds.Literals |> _.Body
+
 let meToType (toT: Expr->FType) (me:MatchExpr) =
   let bToT = fun b -> blockToExpr b |> toT
-  match me.Rules with
-  | Unions us ->
-    slice.Head us |> _.Body |> bToT
-  | UnionsWD uds ->
-    slice.Head uds.Unions |> _.Body |> bToT
-  | DefaultOnly db -> bToT db
+  let firstBody = 
+    match me.Rules with
+    | RUnions ru -> umrFirstBody ru
+    | RStrings rs -> smrFirstBody rs
+  bToT firstBody
 
 let returnableToType (toT: Expr->FType) (rexpr:ReturnableExpr)  : FType =
   match rexpr with

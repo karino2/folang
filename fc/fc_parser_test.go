@@ -970,6 +970,30 @@ let ika () =
 `,
 			"a := (func",
 		},
+		{
+			`package main
+
+let ika () =
+  let a =
+    match "abc" with
+    | "abc" -> "hit"
+    | _ -> "not hit"
+  a
+`,
+			`switch ("abc")`,
+		},
+		{
+			`package main
+
+let ika () =
+  let a =
+    match "abc" with
+    | "abc" -> "hit"
+    | s -> s + " not hit"
+  a
+`,
+			`switch s :=("abc"); s{`,
+		},
 	}
 	for _, test := range tests {
 		got := transpile(test.input)
@@ -1393,15 +1417,11 @@ let hoge (u:Union) =
 func TestParseAddhook(t *testing.T) {
 	src := `package main
 
-type AorB =
- | A
- | B
-
 let ika () =
   let a =
-    match A with
-    | A -> "a match"
-    | B -> "b match"
+    match "abc" with
+    | "abc" -> "hit"
+    | s -> s + " not hit"
   a
 `
 

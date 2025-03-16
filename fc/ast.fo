@@ -83,10 +83,20 @@ and Block = {Stmts: []Stmt; FinalExpr: Expr}
 and LazyBlock = {Block: Block}
 and UnionMatchRule = {UnionPattern: UnionMatchPattern; Body: Block}
 and UnionMatchRulesWD = {Unions: []UnionMatchRule; Default: Block}
+and UnionMatchRules =
+| UCaseOnly of []UnionMatchRule
+| UCaseWD of UnionMatchRulesWD
+and StringMatchRule = {LiteralPattern: string; Body: Block}
+and StringVarMatchRule = {VarName: string; Body: Block}
+and StringMatchRulesWV = {Literals: []StringMatchRule; VarRule: StringVarMatchRule}
+and StringMatchRulesWD = {Literals: []StringMatchRule; Default: Block}
+// SCase must end with either variable case or default case (if not, it's not exhaustive)
+and StringMatchRules =
+| SCaseWV of StringMatchRulesWV
+| SCaseWD of StringMatchRulesWD
 and MatchRules =
-| Unions of []UnionMatchRule
-| UnionsWD of UnionMatchRulesWD
-| DefaultOnly of Block
+| RUnions of UnionMatchRules
+| RStrings of StringMatchRules
 and MatchExpr = {Target: Expr; Rules: MatchRules}
 and ReturnableExpr =
 | RBlock of Block

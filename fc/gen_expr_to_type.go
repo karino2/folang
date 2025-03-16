@@ -55,36 +55,66 @@ func exprToBlock(bexpr Expr) Block {
 	}
 }
 
-func meToType(toT func(Expr) FType, me MatchExpr) FType {
-	bToT := func(b Block) FType {
-		return frt.Pipe(blockToExpr(b), toT)
-	}
-	switch _v4 := (me.Rules).(type) {
-	case MatchRules_Unions:
+func umrFirstBody(umr UnionMatchRules) Block {
+	switch _v4 := (umr).(type) {
+	case UnionMatchRules_UCaseOnly:
 		us := _v4.Value
-		return frt.Pipe(frt.Pipe(slice.Head(us), func(_v1 UnionMatchRule) Block {
+		return frt.Pipe(slice.Head(us), func(_v1 UnionMatchRule) Block {
 			return _v1.Body
-		}), bToT)
-	case MatchRules_UnionsWD:
+		})
+	case UnionMatchRules_UCaseWD:
 		uds := _v4.Value
-		return frt.Pipe(frt.Pipe(slice.Head(uds.Unions), func(_v2 UnionMatchRule) Block {
+		return frt.Pipe(slice.Head(uds.Unions), func(_v2 UnionMatchRule) Block {
 			return _v2.Body
-		}), bToT)
-	case MatchRules_DefaultOnly:
-		db := _v4.Value
-		return bToT(db)
+		})
 	default:
 		panic("Union pattern fail. Never reached here.")
 	}
 }
 
+func smrFirstBody(smr StringMatchRules) Block {
+	switch _v5 := (smr).(type) {
+	case StringMatchRules_SCaseWV:
+		svs := _v5.Value
+		return frt.Pipe(slice.Head(svs.Literals), func(_v1 StringMatchRule) Block {
+			return _v1.Body
+		})
+	case StringMatchRules_SCaseWD:
+		sds := _v5.Value
+		return frt.Pipe(slice.Head(sds.Literals), func(_v2 StringMatchRule) Block {
+			return _v2.Body
+		})
+	default:
+		panic("Union pattern fail. Never reached here.")
+	}
+}
+
+func meToType(toT func(Expr) FType, me MatchExpr) FType {
+	bToT := func(b Block) FType {
+		return frt.Pipe(blockToExpr(b), toT)
+	}
+	firstBody := (func() Block {
+		switch _v6 := (me.Rules).(type) {
+		case MatchRules_RUnions:
+			ru := _v6.Value
+			return umrFirstBody(ru)
+		case MatchRules_RStrings:
+			rs := _v6.Value
+			return smrFirstBody(rs)
+		default:
+			panic("Union pattern fail. Never reached here.")
+		}
+	})()
+	return bToT(firstBody)
+}
+
 func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
-	switch _v5 := (rexpr).(type) {
+	switch _v7 := (rexpr).(type) {
 	case ReturnableExpr_RBlock:
-		b := _v5.Value
+		b := _v7.Value
 		return blockToType(toT, b)
 	case ReturnableExpr_RMatchExpr:
-		me := _v5.Value
+		me := _v7.Value
 		return meToType(toT, me)
 	default:
 		panic("Union pattern fail. Never reached here.")
@@ -94,9 +124,9 @@ func returnableToType(toT func(Expr) FType, rexpr ReturnableExpr) FType {
 func fcToFuncType(fc FunCall) FuncType {
 	tfv := fc.TargetFunc
 	ft := varRefVarType(tfv)
-	switch _v6 := (ft).(type) {
+	switch _v8 := (ft).(type) {
 	case FType_FFunc:
-		ft := _v6.Value
+		ft := _v8.Value
 		return ft
 	default:
 		return FuncType{}
@@ -131,9 +161,9 @@ func lambdaToType(bToT func(Block) FType, le LambdaExpr) FType {
 }
 
 func ExprToType(expr Expr) FType {
-	switch _v7 := (expr).(type) {
+	switch _v9 := (expr).(type) {
 	case Expr_EGoEvalExpr:
-		ge := _v7.Value
+		ge := _v9.Value
 		return ge.TypeArg
 	case Expr_EStringLiteral:
 		return New_FType_FString
@@ -146,38 +176,38 @@ func ExprToType(expr Expr) FType {
 	case Expr_EBoolLiteral:
 		return New_FType_FBool
 	case Expr_EFieldAccess:
-		fa := _v7.Value
+		fa := _v9.Value
 		return faToType(ExprToType, fa)
 	case Expr_ELambda:
-		le := _v7.Value
+		le := _v9.Value
 		return lambdaToType((func(_r0 Block) FType { return blockToType(ExprToType, _r0) }), le)
 	case Expr_EVarRef:
-		vr := _v7.Value
+		vr := _v9.Value
 		v := varRefVar(vr)
 		return v.Ftype
 	case Expr_ESlice:
-		s := _v7.Value
+		s := _v9.Value
 		etp := frt.Pipe(slice.Head(s), ExprToType)
 		st := SliceType{ElemType: etp}
 		return New_FType_FSlice(st)
 	case Expr_ETupleExpr:
-		es := _v7.Value
+		es := _v9.Value
 		ts := slice.Map(ExprToType, es)
 		return frt.Pipe(TupleType{ElemTypes: ts}, New_FType_FTuple)
 	case Expr_ERecordGen:
-		rg := _v7.Value
+		rg := _v9.Value
 		return New_FType_FRecord(rg.RecordType)
 	case Expr_ELazyBlock:
-		lb := _v7.Value
+		lb := _v9.Value
 		return lblockToType(ExprToType, lb)
 	case Expr_EReturnableExpr:
-		re := _v7.Value
+		re := _v9.Value
 		return returnableToType(ExprToType, re)
 	case Expr_EFunCall:
-		fc := _v7.Value
+		fc := _v9.Value
 		return fcToType(fc)
 	case Expr_EBinOpCall:
-		bc := _v7.Value
+		bc := _v9.Value
 		return bc.Rtype
 	default:
 		panic("Union pattern fail. Never reached here.")

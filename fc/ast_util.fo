@@ -40,16 +40,37 @@ let umrMapBlock (pBlock: Block->Block) (umr: UnionMatchRule) =
    let nbody = pBlock umr.Body
    {UnionPattern=umr.UnionPattern; Body=nbody}
 
-let mrsMapBlock pBlock (mr:MatchRules) =
+let umrsMapBlock pBlock (umrs: UnionMatchRules) =
   let one = umrMapBlock pBlock
-  match mr with
-  | Unions us -> slice.Map one us |> Unions
-  | UnionsWD uds ->
+  match umrs with
+  | UCaseOnly us ->slice.Map one us |> UCaseOnly
+  | UCaseWD uds ->
     let nus = slice.Map one uds.Unions
     let nd = pBlock uds.Default
-    {Unions=nus; Default=nd} |> UnionsWD
-  | DefaultOnly db ->
-     pBlock db |> DefaultOnly
+    {Unions=nus; Default=nd} |> UCaseWD
+
+let smrMapBlock (pBlock: Block->Block) (smr: StringMatchRule) =
+   let nbody = pBlock smr.Body
+   {LiteralPattern=smr.LiteralPattern; Body=nbody}
+
+let smrsMapBlock pBlock (smrs: StringMatchRules) =
+  let plit = slice.Map (smrMapBlock pBlock)
+  match smrs with
+  | SCaseWV sv ->
+    let nl = plit sv.Literals
+    let nvbody = pBlock sv.VarRule.Body
+    let nv = {StringVarMatchRule.VarName=sv.VarRule.VarName; Body=nvbody}
+    {Literals=nl; VarRule=nv} |> SCaseWV
+  | SCaseWD sd ->
+    let nl = plit sd.Literals
+    let nd = pBlock sd.Default
+    {Literals=nl; Default=nd} |> SCaseWD
+
+
+let mrsMapBlock pBlock (mr:MatchRules) =
+  match mr with
+  | RUnions ru -> umrsMapBlock pBlock ru |> RUnions
+  | RStrings su -> smrsMapBlock pBlock su |> RStrings
     
 let transBlock (transE:Expr->Expr) (transS:Stmt->Stmt) (bl:Block) =
   let nss = bl.Stmts |> slice.Map transS
@@ -199,11 +220,22 @@ let collectTVarBlock (collE:Expr->[]string) (collS:Stmt->[]string) (bl:Block) =
   let fexpr = collE bl.FinalExpr
   slice.Append nss fexpr
 
+let umrsToBlock (urs:UnionMatchRules) =
+  match urs with
+  | UCaseOnly co -> slice.Map _.Body co
+  | UCaseWD cd -> slice.Map _.Body cd.Unions |> slice.PushLast cd.Default
+
+let smrsToBlock (srs: StringMatchRules) =
+  match srs with
+  | SCaseWV swv ->
+    slice.Map _.Body swv.Literals |> slice.PushLast swv.VarRule.Body
+  | SCaseWD swd ->
+    slice.Map _.Body swd.Literals |> slice.PushLast swd.Default
+
 let mrsToBlocks (rules:MatchRules) =
   match rules with
-  | Unions us -> slice.Map _.Body us
-  | UnionsWD uds -> slice.Map _.Body uds.Unions |> slice.PushLast uds.Default
-  | DefaultOnly db -> [db]
+  | RUnions ru -> umrsToBlock ru
+  | RStrings rs -> smrsToBlock rs
 
 let collectTVarExpr (expr:Expr) : []string =
   let recurse = collectTVarExpr

@@ -333,6 +333,14 @@ func psNext(ps ParseState) ParseState {
 	return psWithTkz(ps, ntk)
 }
 
+func psNextTT(ps ParseState) TokenType {
+	return psCurrentTT(psNext(ps))
+}
+
+func psNextIs(expectTT TokenType, ps ParseState) bool {
+	return frt.OpEqual(psNextTT(ps), expectTT)
+}
+
 func psNextNOL(ps ParseState) ParseState {
 	ntk := tkzNextNOL(ps.tkz)
 	return psWithTkz(ps, ntk)

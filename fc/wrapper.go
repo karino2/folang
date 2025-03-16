@@ -560,6 +560,16 @@ func Cast[T any](src any, ps ParseState) T {
 	}
 }
 
+func CastNow[T any](src any) T {
+	v, ok := src.(T)
+	if ok {
+		return v
+	} else {
+		PanicNow("Cast fail. Unexpected type.")
+		panic("Never reached here")
+	}
+}
+
 /*
 	  To avoid deep stack trace, loop in go layer instead of recursive call.
 

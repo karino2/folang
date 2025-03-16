@@ -132,13 +132,13 @@ let compositeTp (lhs:FType) (rhs:FType) : FType*[]UniRel =
         emptyRels ()
         |> withTp lhs
     | FParamd pt2 ->
-      let pt1 = GoEval<ParamdType> "lhs.(FType_FParamd).Value"
+      let pt1 = GoEval<ParamdType> "CastNow[FType_FParamd](lhs).Value"
       let (tps, rels) = compositeTpList compositeTp pt1.Targs pt2.Targs
       {ParamdType.Name=pt1.Name; Targs=tps}
       |> FParamd
       |> withRels rels
     | FTuple tt2 ->
-      let tt1 = GoEval<TupleType> "lhs.(FType_FTuple).Value"
+      let tt1 = GoEval<TupleType> "CastNow[FType_FTuple](lhs).Value"
       // [](type*[]UniRel)
       let (tps, rels) = compositeTpList compositeTp tt1.ElemTypes tt2.ElemTypes
       {TupleType.ElemTypes=tps}

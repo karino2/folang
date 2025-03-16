@@ -579,25 +579,143 @@ let exaustiveCheck (ttype:FType) (ucases:[]UnionMatchRule) ps =
       psPanic ps $"match does not cover all cases. Can't find case: {name}."
    | _ -> ()
 
+let parseURules (pBlock: ParseState->ParseState*Block) target ps =
+  let (ps2, us) = parseUnionMatchRules pBlock target ps
+  if (insideOffside ps2) && (isDefaultMR ps2) then
+    let (ps3, db) = parseDefaultMatchRule pBlock ps2
+    {Unions=us; Default=db}
+    |> UCaseWD
+    |> PairL ps3
+  else
+    exaustiveCheck (ExprToType target) us ps
+    (ps2, UCaseOnly us)
+
+/*
+  STRING_MATCH_RULE = '|' STRING '->' BLOCK
+*/
+let parseStringMatchRule pBlock ps =
+  let (ps2, pat) = psConsume BAR ps |> psStringValNx
+  let ps3 = ps2 |> psConsume RARROW |> psSkipEOL |> psPushScope
+  let (ps4, block) = pBlock ps3 |> MapL psPopScope
+  {StringMatchRule.LiteralPattern=pat; Body=block}
+  |> PairL ps4
+
+/*
+  STRING_VAR_RULE = '|' IDENTIFIER '->' BLOCK
+*/
+let parseStringVarRule pBlock ps =
+  let (ps2, vname) = psConsume BAR ps |> psIdentNameNx
+  let ps3 = ps2 |> psConsume RARROW |> psSkipEOL |> psPushScope
+  scDefVar ps3.scope vname {Var.Name=vname; Ftype=FString}
+  let (ps4, block) = pBlock ps3 |> MapL psPopScope
+  {StringVarMatchRule.VarName=vname; Body=block}
+  |> PairL ps4
+
+let isSLitRule ps =
+  if psCurIsNot BAR ps then
+    false
+  elif psNextIs STRING ps then
+    true
+  else
+    false
+
+let parseSMRules pBlock ps =
+  let one = parseStringMatchRule pBlock
+  let endPred = fun tps -> not (isSLitRule tps)
+  let next = fun tps -> tps
+  ParseList2 one endPred next ps
+
+/*
+  SRULES = STRING_MATCH_RULE+ (STRING_VAR_RULE|DEFAULT_RULE)
+         
+  STRING_MATCH_RULE = '|' STRING '->' BLOCK
+  STRING_VAR_RULE = '|' IDENTIFIER '->' BLOCK
+
+ex:
+  | "hogehoge" -> "abc"
+  | a -> a + "def"
+*/
+let parseSRules pBlock ps =
+  let (ps2, ss) = parseSMRules pBlock ps
+  if (insideOffside ps2) && (isDefaultMR ps2) then
+    let (ps3, db) = parseDefaultMatchRule pBlock ps2
+    {StringMatchRulesWD.Literals=ss; Default=db}
+    |> SCaseWD
+    |> PairL ps3
+  else
+    // must be ends with var rule.
+    let (ps3, vr) = parseStringVarRule pBlock ps2
+    {StringMatchRulesWV.Literals=ss; VarRule=vr}
+    |> SCaseWV
+    |> PairL ps3
+
+
+let isUnionMatchRules target ps =
+  match ExprToType target with
+  | FUnion -> true
+  | FString -> false
+  | _ ->
+    // can't infer from target, check for pattern.
+    // if "literal pat" ->, then it's StringMatchRules.
+    // if CASE_NAME vname ->, then iit's UnionMatchRules
+    // if IDENTIFIER ->, we can't figure out whether this is VarRule of string or union case name.
+    // in this case, parse error for a while.
+    match psCurrentTT ps with
+    | STRING -> false
+    | IDENTIFIER ->
+      match psNextTT ps with
+      | IDENTIFIER ->
+        true
+      | RARROW ->
+        psPanic ps "Can't distinguish String var pattern or union case only pattern. Syntax error for a while."
+        false
+      | _ -> 
+        psPanic ps "Unknown case rule of match expr(2)"
+        false
+    | _ ->
+      psPanic ps "Unknown case rule of match expr"
+      false
+
+let isStringMatchRules target ps =
+  match ExprToType target with
+  | FUnion -> false
+  | FString -> true
+  | _ ->
+    // can't infer from target, check for pattern.
+    // See comment of isUnionMatchRules.
+    match psCurrentTT ps with
+    | STRING -> true
+    | IDENTIFIER ->
+      match psNextTT ps with
+      | IDENTIFIER ->
+        false
+      | RARROW ->
+        psPanic ps "Can't distinguish String var pattern or union case only pattern. Syntax error for a while."
+        false
+      | _ -> 
+        psPanic ps "Unknown case rule of match expr(2)"
+        false
+    | _ ->
+      psPanic ps "Unknown case rule of match expr"
+      false
+
+
 /*
 MATCH_RULES = UNION_MATCH_RULES (DEFAULT_MATCH_RULE)?
-            | DEFAULT_MATCH_RULE
+            | SRULES
 */
 let parseMatchRules (pBlock: ParseState->ParseState*Block) (target:Expr) (ps:ParseState) : ParseState*MatchRules =
+  let dummy = frt.Empty<MatchRules> () |> PairL ps
   if isDefaultMR ps then
-    // default only
-    parseDefaultMatchRule pBlock ps
-    |> MapR DefaultOnly
+    psPanic ps "Only default case, illegal."
+    dummy
+  elif isUnionMatchRules target ps then
+    parseURules pBlock target ps |> MapR RUnions
+  elif isStringMatchRules target ps then
+    parseSRules pBlock ps |> MapR RStrings
   else
-    let (ps2, us) = parseUnionMatchRules pBlock target ps
-    if (insideOffside ps2) && (isDefaultMR ps2) then
-      let (ps3, db) = parseDefaultMatchRule pBlock ps2
-      {Unions=us; Default=db}
-      |> UnionsWD
-      |> PairL ps3
-    else
-      exaustiveCheck (ExprToType target) us ps
-      (ps2, Unions us)
+    psPanic ps "Unknown match case, illegal."
+    dummy
 
 /*
   MATCH_EXPR = 'match' EXPR 'with' EOL MATCH_RULE+

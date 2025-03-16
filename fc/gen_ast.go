@@ -275,35 +275,95 @@ type UnionMatchRulesWD struct {
 	Unions  []UnionMatchRule
 	Default Block
 }
+type UnionMatchRules interface {
+	UnionMatchRules_Union()
+}
+
+func (UnionMatchRules_UCaseOnly) UnionMatchRules_Union() {}
+func (UnionMatchRules_UCaseWD) UnionMatchRules_Union()   {}
+
+func (v UnionMatchRules_UCaseOnly) String() string { return frt.Sprintf1("(UCaseOnly: %v)", v.Value) }
+func (v UnionMatchRules_UCaseWD) String() string   { return frt.Sprintf1("(UCaseWD: %v)", v.Value) }
+
+type UnionMatchRules_UCaseOnly struct {
+	Value []UnionMatchRule
+}
+
+func New_UnionMatchRules_UCaseOnly(v []UnionMatchRule) UnionMatchRules {
+	return UnionMatchRules_UCaseOnly{v}
+}
+
+type UnionMatchRules_UCaseWD struct {
+	Value UnionMatchRulesWD
+}
+
+func New_UnionMatchRules_UCaseWD(v UnionMatchRulesWD) UnionMatchRules {
+	return UnionMatchRules_UCaseWD{v}
+}
+
+type StringMatchRule struct {
+	LiteralPattern string
+	Body           Block
+}
+type StringVarMatchRule struct {
+	VarName string
+	Body    Block
+}
+type StringMatchRulesWV struct {
+	Literals []StringMatchRule
+	VarRule  StringVarMatchRule
+}
+type StringMatchRulesWD struct {
+	Literals []StringMatchRule
+	Default  Block
+}
+type StringMatchRules interface {
+	StringMatchRules_Union()
+}
+
+func (StringMatchRules_SCaseWV) StringMatchRules_Union() {}
+func (StringMatchRules_SCaseWD) StringMatchRules_Union() {}
+
+func (v StringMatchRules_SCaseWV) String() string { return frt.Sprintf1("(SCaseWV: %v)", v.Value) }
+func (v StringMatchRules_SCaseWD) String() string { return frt.Sprintf1("(SCaseWD: %v)", v.Value) }
+
+type StringMatchRules_SCaseWV struct {
+	Value StringMatchRulesWV
+}
+
+func New_StringMatchRules_SCaseWV(v StringMatchRulesWV) StringMatchRules {
+	return StringMatchRules_SCaseWV{v}
+}
+
+type StringMatchRules_SCaseWD struct {
+	Value StringMatchRulesWD
+}
+
+func New_StringMatchRules_SCaseWD(v StringMatchRulesWD) StringMatchRules {
+	return StringMatchRules_SCaseWD{v}
+}
+
 type MatchRules interface {
 	MatchRules_Union()
 }
 
-func (MatchRules_Unions) MatchRules_Union()      {}
-func (MatchRules_UnionsWD) MatchRules_Union()    {}
-func (MatchRules_DefaultOnly) MatchRules_Union() {}
+func (MatchRules_RUnions) MatchRules_Union()  {}
+func (MatchRules_RStrings) MatchRules_Union() {}
 
-func (v MatchRules_Unions) String() string      { return frt.Sprintf1("(Unions: %v)", v.Value) }
-func (v MatchRules_UnionsWD) String() string    { return frt.Sprintf1("(UnionsWD: %v)", v.Value) }
-func (v MatchRules_DefaultOnly) String() string { return frt.Sprintf1("(DefaultOnly: %v)", v.Value) }
+func (v MatchRules_RUnions) String() string  { return frt.Sprintf1("(RUnions: %v)", v.Value) }
+func (v MatchRules_RStrings) String() string { return frt.Sprintf1("(RStrings: %v)", v.Value) }
 
-type MatchRules_Unions struct {
-	Value []UnionMatchRule
+type MatchRules_RUnions struct {
+	Value UnionMatchRules
 }
 
-func New_MatchRules_Unions(v []UnionMatchRule) MatchRules { return MatchRules_Unions{v} }
+func New_MatchRules_RUnions(v UnionMatchRules) MatchRules { return MatchRules_RUnions{v} }
 
-type MatchRules_UnionsWD struct {
-	Value UnionMatchRulesWD
+type MatchRules_RStrings struct {
+	Value StringMatchRules
 }
 
-func New_MatchRules_UnionsWD(v UnionMatchRulesWD) MatchRules { return MatchRules_UnionsWD{v} }
-
-type MatchRules_DefaultOnly struct {
-	Value Block
-}
-
-func New_MatchRules_DefaultOnly(v Block) MatchRules { return MatchRules_DefaultOnly{v} }
+func New_MatchRules_RStrings(v StringMatchRules) MatchRules { return MatchRules_RStrings{v} }
 
 type MatchExpr struct {
 	Target Expr

@@ -508,7 +508,7 @@ func parseDefaultMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block]
 	return frt.Pipe(frt.Pipe(psMulConsume(([]TokenType{New_TokenType_BAR, New_TokenType_UNDER_SCORE, New_TokenType_RARROW}), ps), psSkipEOL), pBlock)
 }
 
-func parseUnonMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], target Expr, ps ParseState) frt.Tuple2[ParseState, UnionMatchRule] {
+func parseUnionMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], target Expr, ps ParseState) frt.Tuple2[ParseState, UnionMatchRule] {
 	ps3, cname := frt.Destr2(frt.Pipe(psConsume(New_TokenType_BAR, ps), psIdentNameNx))
 	ps4, vname := frt.Destr2((func() frt.Tuple2[ParseState, string] {
 		switch (psCurrentTT(ps3)).(type) {
@@ -523,7 +523,7 @@ func parseUnonMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], t
 	ps5 := frt.Pipe(frt.Pipe(psConsume(New_TokenType_RARROW, ps4), psSkipEOL), psPushScope)
 	frt.IfOnly((frt.OpNotEqual(vname, "") && frt.OpNotEqual(vname, "_")), (func() {
 		tt := ExprToType(target)
-		fu := tt.(FType_FUnion).Value
+		fu := Cast[FType_FUnion](tt, ps5).Value
 		cp := lookupCase(fu, cname)
 		scDefVar(ps5.scope, vname, Var{Name: vname, Ftype: cp.Ftype})
 	}))
@@ -546,7 +546,7 @@ func parseUnionMatchRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block],
 		return frt.OpNot(nextIsUMR(tps))
 	}
 	parseOne := (func(_r0 ParseState) frt.Tuple2[ParseState, UnionMatchRule] {
-		return parseUnonMatchRule(pBlock, target, _r0)
+		return parseUnionMatchRule(pBlock, target, _r0)
 	})
 	return ParseList2(parseOne, endPred, psSkipEOL, ps)
 }
@@ -589,19 +589,141 @@ func exaustiveCheck(ttype FType, ucases []UnionMatchRule, ps ParseState) {
 	}
 }
 
-func parseMatchRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], target Expr, ps ParseState) frt.Tuple2[ParseState, MatchRules] {
-	return frt.IfElse(isDefaultMR(ps), (func() frt.Tuple2[ParseState, MatchRules] {
-		return frt.Pipe(parseDefaultMatchRule(pBlock, ps), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, MatchRules] {
-			return MapR(New_MatchRules_DefaultOnly, _r0)
+func parseURules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], target Expr, ps ParseState) frt.Tuple2[ParseState, UnionMatchRules] {
+	ps2, us := frt.Destr2(parseUnionMatchRules(pBlock, target, ps))
+	return frt.IfElse((insideOffside(ps2) && isDefaultMR(ps2)), (func() frt.Tuple2[ParseState, UnionMatchRules] {
+		ps3, db := frt.Destr2(parseDefaultMatchRule(pBlock, ps2))
+		return frt.Pipe(frt.Pipe(UnionMatchRulesWD{Unions: us, Default: db}, New_UnionMatchRules_UCaseWD), (func(_r0 UnionMatchRules) frt.Tuple2[ParseState, UnionMatchRules] { return PairL(ps3, _r0) }))
+	}), (func() frt.Tuple2[ParseState, UnionMatchRules] {
+		exaustiveCheck(ExprToType(target), us, ps)
+		return frt.NewTuple2(ps2, New_UnionMatchRules_UCaseOnly(us))
+	}))
+}
+
+func parseStringMatchRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, StringMatchRule] {
+	ps2, pat := frt.Destr2(frt.Pipe(psConsume(New_TokenType_BAR, ps), psStringValNx))
+	ps3 := frt.Pipe(frt.Pipe(frt.Pipe(ps2, (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RARROW, _r0) })), psSkipEOL), psPushScope)
+	ps4, block := frt.Destr2(frt.Pipe(pBlock(ps3), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return MapL(psPopScope, _r0) })))
+	return frt.Pipe(StringMatchRule{LiteralPattern: pat, Body: block}, (func(_r0 StringMatchRule) frt.Tuple2[ParseState, StringMatchRule] { return PairL(ps4, _r0) }))
+}
+
+func parseStringVarRule(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, StringVarMatchRule] {
+	ps2, vname := frt.Destr2(frt.Pipe(psConsume(New_TokenType_BAR, ps), psIdentNameNx))
+	ps3 := frt.Pipe(frt.Pipe(frt.Pipe(ps2, (func(_r0 ParseState) ParseState { return psConsume(New_TokenType_RARROW, _r0) })), psSkipEOL), psPushScope)
+	scDefVar(ps3.scope, vname, Var{Name: vname, Ftype: New_FType_FString})
+	ps4, block := frt.Destr2(frt.Pipe(pBlock(ps3), (func(_r0 frt.Tuple2[ParseState, Block]) frt.Tuple2[ParseState, Block] { return MapL(psPopScope, _r0) })))
+	return frt.Pipe(StringVarMatchRule{VarName: vname, Body: block}, (func(_r0 StringVarMatchRule) frt.Tuple2[ParseState, StringVarMatchRule] { return PairL(ps4, _r0) }))
+}
+
+func isSLitRule(ps ParseState) bool {
+	return frt.IfElse(psCurIsNot(New_TokenType_BAR, ps), (func() bool {
+		return false
+	}), (func() bool {
+		return frt.IfElse(psNextIs(New_TokenType_STRING, ps), (func() bool {
+			return true
+		}), (func() bool {
+			return false
 		}))
+	}))
+}
+
+func parseSMRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, []StringMatchRule] {
+	one := (func(_r0 ParseState) frt.Tuple2[ParseState, StringMatchRule] { return parseStringMatchRule(pBlock, _r0) })
+	endPred := func(tps ParseState) bool {
+		return frt.OpNot(isSLitRule(tps))
+	}
+	next := func(tps ParseState) ParseState {
+		return tps
+	}
+	return ParseList2(one, endPred, next, ps)
+}
+
+func parseSRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], ps ParseState) frt.Tuple2[ParseState, StringMatchRules] {
+	ps2, ss := frt.Destr2(parseSMRules(pBlock, ps))
+	return frt.IfElse((insideOffside(ps2) && isDefaultMR(ps2)), (func() frt.Tuple2[ParseState, StringMatchRules] {
+		ps3, db := frt.Destr2(parseDefaultMatchRule(pBlock, ps2))
+		return frt.Pipe(frt.Pipe(StringMatchRulesWD{Literals: ss, Default: db}, New_StringMatchRules_SCaseWD), (func(_r0 StringMatchRules) frt.Tuple2[ParseState, StringMatchRules] { return PairL(ps3, _r0) }))
+	}), (func() frt.Tuple2[ParseState, StringMatchRules] {
+		ps3, vr := frt.Destr2(parseStringVarRule(pBlock, ps2))
+		return frt.Pipe(frt.Pipe(StringMatchRulesWV{Literals: ss, VarRule: vr}, New_StringMatchRules_SCaseWV), (func(_r0 StringMatchRules) frt.Tuple2[ParseState, StringMatchRules] { return PairL(ps3, _r0) }))
+	}))
+}
+
+func isUnionMatchRules(target Expr, ps ParseState) bool {
+	switch (ExprToType(target)).(type) {
+	case FType_FUnion:
+		return true
+	case FType_FString:
+		return false
+	default:
+		switch (psCurrentTT(ps)).(type) {
+		case TokenType_STRING:
+			return false
+		case TokenType_IDENTIFIER:
+			switch (psNextTT(ps)).(type) {
+			case TokenType_IDENTIFIER:
+				return true
+			case TokenType_RARROW:
+				psPanic(ps, "Can't distinguish String var pattern or union case only pattern. Syntax error for a while.")
+				return false
+			default:
+				psPanic(ps, "Unknown case rule of match expr(2)")
+				return false
+			}
+		default:
+			psPanic(ps, "Unknown case rule of match expr")
+			return false
+		}
+	}
+}
+
+func isStringMatchRules(target Expr, ps ParseState) bool {
+	switch (ExprToType(target)).(type) {
+	case FType_FUnion:
+		return false
+	case FType_FString:
+		return true
+	default:
+		switch (psCurrentTT(ps)).(type) {
+		case TokenType_STRING:
+			return true
+		case TokenType_IDENTIFIER:
+			switch (psNextTT(ps)).(type) {
+			case TokenType_IDENTIFIER:
+				return false
+			case TokenType_RARROW:
+				psPanic(ps, "Can't distinguish String var pattern or union case only pattern. Syntax error for a while.")
+				return false
+			default:
+				psPanic(ps, "Unknown case rule of match expr(2)")
+				return false
+			}
+		default:
+			psPanic(ps, "Unknown case rule of match expr")
+			return false
+		}
+	}
+}
+
+func parseMatchRules(pBlock func(ParseState) frt.Tuple2[ParseState, Block], target Expr, ps ParseState) frt.Tuple2[ParseState, MatchRules] {
+	dummy := frt.Pipe(frt.Empty[MatchRules](), (func(_r0 MatchRules) frt.Tuple2[ParseState, MatchRules] { return PairL(ps, _r0) }))
+	return frt.IfElse(isDefaultMR(ps), (func() frt.Tuple2[ParseState, MatchRules] {
+		psPanic(ps, "Only default case, illegal.")
+		return dummy
 	}), (func() frt.Tuple2[ParseState, MatchRules] {
-		ps2, us := frt.Destr2(parseUnionMatchRules(pBlock, target, ps))
-		return frt.IfElse((insideOffside(ps2) && isDefaultMR(ps2)), (func() frt.Tuple2[ParseState, MatchRules] {
-			ps3, db := frt.Destr2(parseDefaultMatchRule(pBlock, ps2))
-			return frt.Pipe(frt.Pipe(UnionMatchRulesWD{Unions: us, Default: db}, New_MatchRules_UnionsWD), (func(_r0 MatchRules) frt.Tuple2[ParseState, MatchRules] { return PairL(ps3, _r0) }))
+		return frt.IfElse(isUnionMatchRules(target, ps), (func() frt.Tuple2[ParseState, MatchRules] {
+			return frt.Pipe(parseURules(pBlock, target, ps), (func(_r0 frt.Tuple2[ParseState, UnionMatchRules]) frt.Tuple2[ParseState, MatchRules] {
+				return MapR(New_MatchRules_RUnions, _r0)
+			}))
 		}), (func() frt.Tuple2[ParseState, MatchRules] {
-			exaustiveCheck(ExprToType(target), us, ps)
-			return frt.NewTuple2(ps2, New_MatchRules_Unions(us))
+			return frt.IfElse(isStringMatchRules(target, ps), (func() frt.Tuple2[ParseState, MatchRules] {
+				return frt.Pipe(parseSRules(pBlock, ps), (func(_r0 frt.Tuple2[ParseState, StringMatchRules]) frt.Tuple2[ParseState, MatchRules] {
+					return MapR(New_MatchRules_RStrings, _r0)
+				}))
+			}), (func() frt.Tuple2[ParseState, MatchRules] {
+				psPanic(ps, "Unknown match case, illegal.")
+				return dummy
+			}))
 		}))
 	}))
 }
